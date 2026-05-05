@@ -14,9 +14,9 @@ const KEY_MAP: Record<string, InputKey> = {
   ArrowUp: 'up',
   ArrowDown: 'down',
   KeyZ: 'attack',
-  KeyX: 'skill1',
-  KeyC: 'skill2',
-  KeyV: 'skill3',
+  KeyA: 'skill1',
+  KeyS: 'skill2',
+  KeyD: 'skill3',
 };
 
 type DoubleTapState = {

@@ -123,7 +123,8 @@ ruído no tuning de timing window do combo.
 
 Estrutura entregue:
 
-- Inputs novos: X = S1, C = S2, V = S3 (`KeyX/C/V` em `Input.ts`)
+- Inputs: A = S1, S = S2, D = S3 (`KeyA/S/D` em `Input.ts`). Setas continuam
+  reservadas para movimento; WASD livre para skills.
 - Estados novos: `Skill1/2/3`, cores azul/ciano para diferenciar do combo
   vermelho-laranja
 - MP system: `maxMp: 100`, regen passivo `mpRegenPerSec: 6`, on-hit reward
@@ -141,9 +142,9 @@ Estrutura entregue:
 
 | Skill | Tecla | MP | Duration | Hits |
 |---|---|---|---|---|
-| S1 | X | 25 | 480ms | 1× active 140-280ms, dmg 32, kb 280, hitbox (cx 36, y 10, w 60, h 48) |
-| S2 | C | 50 | 750ms | 3 hits @ 140-220 (dmg 12), 380-460 (16), 580-680 (24) |
-| S3 | V | 80 | 1000ms | 1× active 280-600ms, dmg 60, kb 480, AoE cx=0 (centrada) w 160 h 100 |
+| S1 | A | 25 | 480ms | 1× active 140-280ms, dmg 32, kb 280, hitbox (cx 36, y 10, w 60, h 48) |
+| S2 | S | 50 | 750ms | 3 hits @ 140-220 (dmg 12), 380-460 (16), 580-680 (24) |
+| S3 | D | 80 | 1000ms | 1× active 280-600ms, dmg 60, kb 480, AoE cx=0 (centrada) w 160 h 100 |
 
 ### Por que `computeActiveHit` (não `startAttack`) incrementa `attackId`
 
