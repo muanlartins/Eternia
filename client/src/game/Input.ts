@@ -1,35 +1,17 @@
-// Keyboard input with edge detection (justPressed/justReleased) and double-tap detection.
-// Call update() once per frame AFTER reading input, BEFORE next frame's polling.
+// Keyboard input — arrow keys only (Grand Chase style).
+// ↑ acts as both jump trigger (edge-pressed) and dash modifier (held during dash).
+// ↓ acts as crouch / dash modifier.
+//
+// Edge detection (justPressed/justReleased), held queries, double-tap detection.
+// Call endFrame() once per frame AFTER reading input, BEFORE next frame's polling.
 
-export type InputKey =
-  | 'left'
-  | 'right'
-  | 'up'
-  | 'down'
-  | 'jump'
-  | 'attack'
-  | 'skill1'
-  | 'skill2'
-  | 'skill3'
-  | 'dodge';
+export type InputKey = 'left' | 'right' | 'up' | 'down';
 
 const KEY_MAP: Record<string, InputKey> = {
   ArrowLeft: 'left',
   ArrowRight: 'right',
   ArrowUp: 'up',
   ArrowDown: 'down',
-  KeyA: 'left',
-  KeyD: 'right',
-  KeyW: 'up',
-  KeyS: 'down',
-  Space: 'jump',
-  KeyX: 'jump',
-  KeyZ: 'attack',
-  KeyC: 'skill1',
-  KeyV: 'skill2',
-  KeyB: 'skill3',
-  ShiftLeft: 'dodge',
-  ShiftRight: 'dodge',
 };
 
 type DoubleTapState = {
@@ -83,7 +65,7 @@ export class Input {
         this.doubleTap.lastAt = now;
       }
     }
-    // Prevent default for game keys to avoid browser scrolling/searching.
+    // Prevent default for arrow keys to avoid browser scrolling.
     e.preventDefault();
   };
 
@@ -135,4 +117,3 @@ export class Input {
     this.releasedThisFrame.clear();
   }
 }
-

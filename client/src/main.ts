@@ -77,8 +77,8 @@ async function main() {
 
   const controls = new Text({
     text:
-      'controls: arrows/WASD = move, double-tap left/right = dash, ' +
-      'space/X = jump (hold for higher, double-jump in air)',
+      'controls: ← → = move (hold = run), ↑ = jump (hold = higher, again = double jump), ' +
+      'double-tap ← / → = dash. In air after first jump: dash again (1x) — hold ↑ or ↓ for diagonal.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
   controls.x = 12;

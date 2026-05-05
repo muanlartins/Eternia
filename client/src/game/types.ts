@@ -4,10 +4,11 @@ export const PlayerState = {
   Idle: 'idle',
   Walk: 'walk',
   Run: 'run',
-  JumpRise: 'jump_rise',
-  Fall: 'fall',
-  DoubleJump: 'double_jump',
-  Dash: 'dash',
+  JumpRise: 'jump_rise', // first jump rising — has air drift, can air dash
+  Fall: 'fall', // falling from first jump — same powers
+  DoubleJump: 'double_jump', // second jump — horizontal LOCKED, no dash
+  Dash: 'dash', // ground dash
+  AirDash: 'air_dash', // air dash (one per first-jump cycle)
   Land: 'land',
 } as const;
 
@@ -26,5 +27,6 @@ export const STATE_COLOR: Record<PlayerState, number> = {
   [PlayerState.Fall]: 0xa78bfa,
   [PlayerState.DoubleJump]: 0xec4899,
   [PlayerState.Dash]: 0xef4444,
+  [PlayerState.AirDash]: 0xfb923c,
   [PlayerState.Land]: 0xffffff,
 };

@@ -37,6 +37,12 @@ export const ELESIS = {
   dashDurationMs: 200,
   dashCooldownMs: 350,
 
+  // Air dash (only during first-jump cycle, once per cycle, diagonal via up/down hold)
+  airDashSpeed: 720,
+  airDashDurationMs: 200,
+  airDashUpVy: -420, // when ↑ held during air dash (diagonal-up)
+  airDashDownVy: 520, // when ↓ held during air dash (diagonal-down)
+
   // Modernization (S5-style forgiveness)
   coyoteTimeMs: 90, // can still jump for this long after leaving ground
   jumpBufferMs: 90, // remember jump press for this long if pressed in air
