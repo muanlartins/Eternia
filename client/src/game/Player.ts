@@ -357,6 +357,11 @@ export class Player {
   }
 
   private tickAirDash(dtMs: number, input: Input, ax: number) {
+    if (input.justPressed('attack') && !this.airAtkUsed) {
+      this.startJumpAtk();
+      return;
+    }
+
     if (input.justPressed('down')) {
       this.vy = Math.max(this.vy, this.spec.airDashDropVy);
       this.setState(PlayerState.Fall);

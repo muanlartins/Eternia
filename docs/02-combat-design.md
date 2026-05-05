@@ -173,7 +173,7 @@ Z agora funciona em qualquer estado de movimento. Z dispatch:
 | Dash (ground) | DashAtk (cancela dash) |
 | JumpRise / Fall | JumpAtk (1× por ciclo aéreo) |
 | DoubleJump | JumpAtk (1× por ciclo aéreo, compartilhado com primeiro pulo) |
-| AirDash | (ignorado — espera dash terminar) |
+| AirDash | JumpAtk (cancela o dash; clamp de vx pra walkSpeed faz o slide quebrar) |
 | Land | (ignorado — recovery é breve) |
 | Skill1/2/3 | (ignorado — skill é committed) |
 | Attack1/2/3 | tickAttack handle (combo chain dentro da nextWindow) |
