@@ -1,10 +1,11 @@
-export type InputKey = 'left' | 'right' | 'up' | 'down';
+export type InputKey = 'left' | 'right' | 'up' | 'down' | 'attack';
 
 const KEY_MAP: Record<string, InputKey> = {
   ArrowLeft: 'left',
   ArrowRight: 'right',
   ArrowUp: 'up',
   ArrowDown: 'down',
+  KeyZ: 'attack',
 };
 
 type DoubleTapState = {

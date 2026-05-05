@@ -8,6 +8,9 @@ export const PlayerState = {
   Dash: 'dash',
   AirDash: 'air_dash',
   Land: 'land',
+  Attack1: 'attack_1',
+  Attack2: 'attack_2',
+  Attack3: 'attack_3',
 } as const;
 
 export type PlayerState = (typeof PlayerState)[keyof typeof PlayerState];
@@ -26,4 +29,7 @@ export const STATE_COLOR: Record<PlayerState, number> = {
   [PlayerState.Dash]: 0xef4444,
   [PlayerState.AirDash]: 0xfb923c,
   [PlayerState.Land]: 0xffffff,
+  [PlayerState.Attack1]: 0xff8800,
+  [PlayerState.Attack2]: 0xff5522,
+  [PlayerState.Attack3]: 0xdd0044,
 };

@@ -70,7 +70,7 @@ async function main() {
     text:
       'controls: ← → = move (hold = run), ↑ = jump (hold = higher, again = double jump), ' +
       'double-tap ← / → = dash (1x in air). ↑ during ground dash = jump out, ↓ during air dash = diagonal-down drop, ' +
-      'opposite hold mid-dash = decelerate.',
+      'opposite hold mid-dash = decelerate. Z = attack (combo Z→Z→Z, time the chain).',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
   controls.x = 12;

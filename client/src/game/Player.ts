@@ -34,12 +34,15 @@ export class Player {
   readonly view = new Container();
   private body: Graphics;
   private facingMarker: Graphics;
+  private hitboxMarker: Graphics;
 
   constructor(private readonly spec: ElesisSpec) {
     this.body = new Graphics();
     this.facingMarker = new Graphics();
+    this.hitboxMarker = new Graphics();
     this.view.addChild(this.body);
     this.view.addChild(this.facingMarker);
+    this.view.addChild(this.hitboxMarker);
     this.redraw();
   }
 
@@ -92,6 +95,15 @@ export class Player {
       case PlayerState.Land:
         this.tickLand(dtMs, input, ax);
         break;
+      case PlayerState.Attack1:
+        this.tickAttack(dtMs, input, 0);
+        break;
+      case PlayerState.Attack2:
+        this.tickAttack(dtMs, input, 1);
+        break;
+      case PlayerState.Attack3:
+        this.tickAttack(dtMs, input, 2);
+        break;
     }
 
     const dt = dtMs / 1000;
@@ -124,7 +136,11 @@ export class Player {
       }
     }
 
-    if (ax !== 0) {
+    const isAttacking =
+      this.state === PlayerState.Attack1 ||
+      this.state === PlayerState.Attack2 ||
+      this.state === PlayerState.Attack3;
+    if (ax !== 0 && !isAttacking) {
       this.facing = ax > 0 ? 1 : -1;
     }
 
@@ -134,6 +150,11 @@ export class Player {
   }
 
   private tickGround(_dtMs: number, input: Input, ax: number) {
+    if (input.justPressed('attack')) {
+      this.startAttack(0);
+      return;
+    }
+
     const wantsRun = this.dirHoldMs >= this.spec.walkToRunHoldMs;
     const dt = input.consumeDoubleTap();
 
@@ -298,6 +319,27 @@ export class Player {
     }
   }
 
+  private tickAttack(_dtMs: number, input: Input, comboIdx: number) {
+    this.vx = 0;
+    const spec = this.spec.comboZ[comboIdx]!;
+    const nw = spec.nextWindow;
+
+    if (
+      nw !== null &&
+      input.justPressed('attack') &&
+      this.stateTimeMs >= nw[0] &&
+      this.stateTimeMs <= nw[1] &&
+      comboIdx < 2
+    ) {
+      this.startAttack(comboIdx + 1);
+      return;
+    }
+
+    if (this.stateTimeMs >= spec.duration) {
+      this.setState(PlayerState.Idle);
+    }
+  }
+
   private startGroundJump() {
     if (this.onGround || this.coyoteMs > 0) {
       this.vy = this.spec.jumpInitialVy;
@@ -334,6 +376,17 @@ export class Player {
     this.setState(PlayerState.AirDash);
   }
 
+  private startAttack(comboIdx: number) {
+    this.vx = 0;
+    const state =
+      comboIdx === 0
+        ? PlayerState.Attack1
+        : comboIdx === 1
+          ? PlayerState.Attack2
+          : PlayerState.Attack3;
+    this.setState(state);
+  }
+
   private onLand() {
     this.jumpsUsed = 0;
     this.airDashUsed = false;
@@ -364,5 +417,26 @@ export class Player {
       .moveTo(cx, cy)
       .lineTo(tipX, cy)
       .stroke({ color: 0xffffff, width: 2 });
+
+    this.hitboxMarker.clear();
+    const attackSpec =
+      this.state === PlayerState.Attack1
+        ? this.spec.comboZ[0]!
+        : this.state === PlayerState.Attack2
+          ? this.spec.comboZ[1]!
+          : this.state === PlayerState.Attack3
+            ? this.spec.comboZ[2]!
+            : null;
+    if (attackSpec !== null) {
+      const active = attackSpec.active;
+      if (this.stateTimeMs >= active[0] && this.stateTimeMs <= active[1]) {
+        const hb = attackSpec.hitbox;
+        const hbX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
+        this.hitboxMarker
+          .rect(hbX, hb.y, hb.w, hb.h)
+          .fill({ color: 0xff3344, alpha: 0.35 })
+          .stroke({ color: 0xff0022, width: 2, alpha: 0.9 });
+      }
+    }
   }
 }
