@@ -1,23 +1,13 @@
-// Player state machine + physics.
-// Phase 1 scope: GC-style movement.
-//
-// Key mechanic: dash chaining. The first jump preserves full mobility (air drift +
-// one air dash per cycle, optionally diagonal via ↑/↓). The second jump ("double jump")
-// locks horizontal velocity entirely — no drift, no dash. Reset on landing.
-
 import { Container, Graphics } from 'pixi.js';
 import type { ElesisSpec } from '../data/elesis.js';
 import type { Input } from './Input.js';
 import { PlayerState, STATE_COLOR, type Facing } from './types.js';
 
-const GROUND_Y = 480; // flat ground for Phase 1
+const GROUND_Y = 480;
 
 export class Player {
-  // Position (top-left of bounding box, in world coords)
   x = 0;
   y = GROUND_Y - 64;
-
-  // Velocity (px/sec)
   vx = 0;
   vy = 0;
 
@@ -29,18 +19,15 @@ export class Player {
   private jumpsUsed = 0;
   private airDashUsed = false;
 
-  // Modernization timers
   private coyoteMs = 0;
   private jumpBufferMs = 0;
 
-  // Walk -> run transition tracker
   private dirHoldMs = 0;
   private holdDir: -1 | 0 | 1 = 0;
 
-  // Dash
   private dashCooldownMs = 0;
+  private dashDir: -1 | 1 = 1;
 
-  // Visual (Phase 1 = colored rect; Phase 7 will swap for sprites)
   readonly view = new Container();
   private body: Graphics;
   private facingMarker: Graphics;
@@ -61,7 +48,6 @@ export class Player {
 
     const ax = input.axisX();
 
-    // --- Track direction hold for walk->run transition
     if (ax !== 0) {
       if (ax === this.holdDir) {
         this.dirHoldMs += dtMs;
@@ -74,12 +60,10 @@ export class Player {
       this.dirHoldMs = 0;
     }
 
-    // --- Jump input buffering (↑ press)
     if (input.justPressed('up')) {
       this.jumpBufferMs = this.spec.jumpBufferMs;
     }
 
-    // --- State-specific update
     switch (this.state) {
       case PlayerState.Idle:
       case PlayerState.Walk:
@@ -93,25 +77,23 @@ export class Player {
         this.tickFirstJumpAir(dtMs, input, ax, false);
         break;
       case PlayerState.DoubleJump:
-        this.tickDoubleJump(dtMs);
+        this.tickDoubleJump(dtMs, ax);
         break;
       case PlayerState.Dash:
         this.tickDash(dtMs, ax);
         break;
       case PlayerState.AirDash:
-        this.tickAirDash(dtMs);
+        this.tickAirDash(dtMs, input, ax);
         break;
       case PlayerState.Land:
         this.tickLand(dtMs, input, ax);
         break;
     }
 
-    // --- Apply velocity
     const dt = dtMs / 1000;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    // --- Ground collision (flat infinite ground for Phase 1)
     const feetY = this.y + this.spec.height;
     if (feetY >= GROUND_Y) {
       this.y = GROUND_Y - this.spec.height;
@@ -122,11 +104,9 @@ export class Player {
       if (this.vy > 0) this.vy = 0;
     } else {
       if (this.onGround) {
-        // Just stepped off — start coyote window
         this.coyoteMs = this.spec.coyoteTimeMs;
       }
       this.onGround = false;
-      // Drop into Fall if falling without an active airborne state
       const airborneStates: PlayerState[] = [
         PlayerState.JumpRise,
         PlayerState.Fall,
@@ -140,29 +120,19 @@ export class Player {
       }
     }
 
-    // --- Update facing (don't flip during locked-horizontal states)
-    if (
-      ax !== 0 &&
-      this.state !== PlayerState.DoubleJump &&
-      this.state !== PlayerState.Dash &&
-      this.state !== PlayerState.AirDash
-    ) {
+    if (ax !== 0) {
       this.facing = ax > 0 ? 1 : -1;
     }
 
-    // --- Sync view to position
     this.view.x = this.x;
     this.view.y = this.y;
     this.redraw();
   }
 
-  // ─── State handlers ─────────────────────────────────────────────
-
   private tickGround(_dtMs: number, input: Input, ax: number) {
     const wantsRun = this.dirHoldMs >= this.spec.walkToRunHoldMs;
     const dt = input.consumeDoubleTap();
 
-    // Ground dash on double-tap (only if pressing same direction as the tap).
     if (dt !== 0 && this.dashCooldownMs <= 0 && ax === dt) {
       this.startGroundDash(dt);
       return;
@@ -173,9 +143,8 @@ export class Player {
       const speed = wantsRun ? this.spec.runSpeed : this.spec.walkSpeed;
       targetVx = ax * speed;
     }
-    this.vx = targetVx; // crisp, instantaneous on ground
+    this.vx = targetVx;
 
-    // Update state by movement
     if (ax === 0) {
       this.setState(PlayerState.Idle);
     } else if (wantsRun) {
@@ -184,7 +153,6 @@ export class Player {
       this.setState(PlayerState.Walk);
     }
 
-    // Buffered jump
     if (this.jumpBufferMs > 0) {
       this.startGroundJump();
     }
@@ -193,7 +161,6 @@ export class Player {
   private tickFirstJumpAir(dtMs: number, input: Input, ax: number, rising: boolean) {
     const dt = dtMs / 1000;
 
-    // Air drift (analog horizontal control during first-jump cycle)
     const targetVx = ax * this.spec.runSpeed;
     const accel = this.spec.airAcceleration * dt;
     if (targetVx > this.vx) {
@@ -202,40 +169,42 @@ export class Player {
       this.vx = Math.max(targetVx, this.vx - accel);
     }
 
-    // Gravity (heavier when falling for snappy feel)
     const g =
       this.vy >= 0
         ? this.spec.gravity * this.spec.fallGravityMultiplier
         : this.spec.gravity;
     this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
 
-    // Short hop: jump released while rising → cut velocity
     if (rising && input.justReleased('up') && this.vy < 0) {
       this.vy *= this.spec.shortHopMultiplier;
     }
 
-    // Apex passed → fall
     if (rising && this.vy >= 0) {
       this.setState(PlayerState.Fall);
     }
 
-    // Air dash (one per air cycle; diagonal via ↑/↓ hold)
     const dtap = input.consumeDoubleTap();
     if (dtap !== 0 && !this.airDashUsed && ax === dtap) {
-      this.startAirDash(dtap, input);
+      this.startAirDash(dtap);
       return;
     }
 
-    // Double jump (locks horizontal). Triggered by buffered ↑ press.
     if (this.jumpBufferMs > 0 && this.jumpsUsed < 2) {
       this.startDoubleJump();
     }
   }
 
-  private tickDoubleJump(dtMs: number) {
-    // Horizontal LOCKED — vx stays whatever it was (set to 0 on entry below).
-    // No drift, no dashes.
+  private tickDoubleJump(dtMs: number, ax: number) {
     const dt = dtMs / 1000;
+
+    const targetVx = ax * this.spec.runSpeed;
+    const accel = this.spec.airAcceleration * dt;
+    if (targetVx > this.vx) {
+      this.vx = Math.min(targetVx, this.vx + accel);
+    } else if (targetVx < this.vx) {
+      this.vx = Math.max(targetVx, this.vx - accel);
+    }
+
     const g =
       this.vy >= 0
         ? this.spec.gravity * this.spec.fallGravityMultiplier
@@ -243,9 +212,24 @@ export class Player {
     this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
   }
 
-  private tickDash(_dtMs: number, ax: number) {
-    // Locked horizontal (set on entry). No gravity (stays at ground level).
+  private tickDash(dtMs: number, ax: number) {
     this.vy = 0;
+
+    if (this.jumpBufferMs > 0) {
+      this.startGroundJump();
+      return;
+    }
+
+    if (ax !== 0 && ax !== this.dashDir) {
+      const dt = dtMs / 1000;
+      const targetVx = ax * this.spec.runSpeed;
+      const decel = this.spec.groundFriction * dt;
+      if (targetVx > this.vx) {
+        this.vx = Math.min(targetVx, this.vx + decel);
+      } else if (targetVx < this.vx) {
+        this.vx = Math.max(targetVx, this.vx - decel);
+      }
+    }
 
     if (this.stateTimeMs >= this.spec.dashDurationMs) {
       if (ax !== 0) {
@@ -258,15 +242,29 @@ export class Player {
     }
   }
 
-  private tickAirDash(_dtMs: number) {
-    // No gravity during air dash — it's a brief "flash forward".
+  private tickAirDash(dtMs: number, input: Input, ax: number) {
+    if (input.justPressed('down')) {
+      this.setState(PlayerState.Fall);
+      return;
+    }
+
+    if (ax !== 0 && ax !== this.dashDir) {
+      const dt = dtMs / 1000;
+      const targetVx = ax * this.spec.runSpeed;
+      const accel = this.spec.airAcceleration * dt;
+      if (targetVx > this.vx) {
+        this.vx = Math.min(targetVx, this.vx + accel);
+      } else if (targetVx < this.vx) {
+        this.vx = Math.max(targetVx, this.vx - accel);
+      }
+    }
+
     if (this.stateTimeMs >= this.spec.airDashDurationMs) {
       this.setState(PlayerState.Fall);
     }
   }
 
   private tickLand(_dtMs: number, _input: Input, ax: number) {
-    this.vx = 0;
     if (this.stateTimeMs >= this.spec.landDurationMs) {
       this.setState(ax === 0 ? PlayerState.Idle : PlayerState.Walk);
     }
@@ -274,8 +272,6 @@ export class Player {
       this.startGroundJump();
     }
   }
-
-  // ─── Transitions ────────────────────────────────────────────────
 
   private startGroundJump() {
     if (this.onGround || this.coyoteMs > 0) {
@@ -289,7 +285,6 @@ export class Player {
   }
 
   private startDoubleJump() {
-    this.vx = 0; // LOCK horizontal
     this.vy = this.spec.doubleJumpInitialVy;
     this.jumpsUsed = 2;
     this.jumpBufferMs = 0;
@@ -301,20 +296,16 @@ export class Player {
     this.vy = 0;
     this.dashCooldownMs = this.spec.dashCooldownMs;
     this.facing = dir;
+    this.dashDir = dir;
     this.setState(PlayerState.Dash);
   }
 
-  private startAirDash(dir: -1 | 1, input: Input) {
+  private startAirDash(dir: -1 | 1) {
     this.airDashUsed = true;
     this.vx = dir * this.spec.airDashSpeed;
-    if (input.isHeld('up')) {
-      this.vy = this.spec.airDashUpVy;
-    } else if (input.isHeld('down')) {
-      this.vy = this.spec.airDashDownVy;
-    } else {
-      this.vy = 0;
-    }
+    this.vy = 0;
     this.facing = dir;
+    this.dashDir = dir;
     this.setState(PlayerState.AirDash);
   }
 
@@ -330,8 +321,6 @@ export class Player {
       this.stateTimeMs = 0;
     }
   }
-
-  // ─── Visual ─────────────────────────────────────────────────────
 
   private redraw() {
     this.body.clear();

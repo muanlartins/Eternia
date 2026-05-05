@@ -1,6 +1,3 @@
-// Phase 1 — Movement: Elesis state machine + input + camera.
-// No combat, no mobs, no networked game logic yet.
-
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import type { ClientMessage, ServerMessage } from '@eternia/shared';
 import { ELESIS } from './data/elesis.js';
@@ -26,21 +23,17 @@ async function main() {
   if (!container) throw new Error('#game-container missing');
   container.appendChild(app.canvas);
 
-  // ─── Layers ─────────────────────────────────────────────────────
-  // World stage moves with camera. UI stage stays fixed.
   const worldStage = new Container();
   const uiStage = new Container();
   app.stage.addChild(worldStage);
   app.stage.addChild(uiStage);
 
-  // ─── World: ground + parallax markers (so motion is visible) ───
   const ground = new Graphics();
   ground
     .rect(-5000, GROUND_Y, 10000, 200)
     .fill({ color: 0x1f2937 });
   worldStage.addChild(ground);
 
-  // Vertical reference lines every 200px so we can SEE motion.
   for (let x = -4000; x <= 4000; x += 200) {
     const line = new Graphics();
     const isMajor = x % 1000 === 0;
@@ -59,14 +52,12 @@ async function main() {
     }
   }
 
-  // ─── Player + Input + Camera ───────────────────────────────────
   const input = new Input({ doubleTapWindowMs: ELESIS.doubleTapWindowMs });
   const player = new Player(ELESIS);
   worldStage.addChild(player.view);
 
   const camera = new Camera(worldStage, GAME_W, GAME_H);
 
-  // ─── UI: state HUD ──────────────────────────────────────────────
   const hud = new Text({
     text: '',
     style: { fontFamily: 'monospace', fontSize: 13, fill: 0xddddee },
@@ -78,14 +69,14 @@ async function main() {
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump (hold = higher, again = double jump), ' +
-      'double-tap ← / → = dash. In air after first jump: dash again (1x) — hold ↑ or ↓ for diagonal.',
+      'double-tap ← / → = dash (1x in air). ↑ during ground dash = jump out, ↓ during air dash = drop, ' +
+      'opposite hold mid-dash = decelerate.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
   controls.x = 12;
   controls.y = GAME_H - 24;
   uiStage.addChild(controls);
 
-  // ─── WebSocket (kept from Phase 0) ─────────────────────────────
   const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
   const ws = new WebSocket(wsUrl);
   let serverInfo = 'connecting…';
@@ -104,7 +95,6 @@ async function main() {
   ws.addEventListener('close', () => (serverInfo = 'disconnected'));
   ws.addEventListener('error', () => (serverInfo = 'ws error'));
 
-  // ─── Game loop ──────────────────────────────────────────────────
   app.ticker.add(() => {
     const dtMs = app.ticker.deltaMS;
 
@@ -112,7 +102,6 @@ async function main() {
     camera.follow(player.x + ELESIS.width / 2, player.y + ELESIS.height / 2);
     camera.update(dtMs);
 
-    // HUD: state + position + velocity
     hud.text =
       `state: ${player.state.padEnd(12, ' ')}  ` +
       `pos: (${player.x.toFixed(0)}, ${player.y.toFixed(0)})  ` +
@@ -129,5 +118,4 @@ main().catch((err) => {
   document.body.innerHTML = `<pre style="color:#f88">${err.stack ?? err}</pre>`;
 });
 
-// Help TS that PlayerState is referenced (for tree-shake hints during dev).
 void PlayerState;

@@ -1,14 +1,12 @@
-// Shared game-side types. Player state machine + helpers.
-
 export const PlayerState = {
   Idle: 'idle',
   Walk: 'walk',
   Run: 'run',
-  JumpRise: 'jump_rise', // first jump rising — has air drift, can air dash
-  Fall: 'fall', // falling from first jump — same powers
-  DoubleJump: 'double_jump', // second jump — horizontal LOCKED, no dash
-  Dash: 'dash', // ground dash
-  AirDash: 'air_dash', // air dash (one per first-jump cycle)
+  JumpRise: 'jump_rise',
+  Fall: 'fall',
+  DoubleJump: 'double_jump',
+  Dash: 'dash',
+  AirDash: 'air_dash',
   Land: 'land',
 } as const;
 
@@ -18,7 +16,6 @@ export type Vec2 = { x: number; y: number };
 
 export type Facing = -1 | 1;
 
-// Visual color per state — used during Phase 1 (no sprites yet).
 export const STATE_COLOR: Record<PlayerState, number> = {
   [PlayerState.Idle]: 0x4a8eff,
   [PlayerState.Walk]: 0x4ade80,
