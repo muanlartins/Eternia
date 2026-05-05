@@ -36,11 +36,11 @@ Estados (cor no debug):
 - `AirDash` 🟠 — air dash, 1× por ciclo aéreo
 - `Land` ⚪ — recuperação curta ao tocar o solo (60ms)
 
-## Tabela de tuning (Phase 1, iteração 2)
+## Tabela de tuning (Phase 1, iteração 3)
 
 | Constante | Valor | Justificativa |
 |---|---|---|
-| `walkSpeed` | 280 | Iter1 foi 220 → muito lento. Subiu para 280 para tornar walk útil em reposicionamento. |
+| `walkSpeed` | 270 | Iter1 220 → Iter2 280 → Iter3 270. Ajuste fino; 280 estava só um toque rápido demais. |
 | `runSpeed` | 360 | Iter1 foi 420 → discrepante demais com walk. Caiu para 360. Gap walk→run intencionalmente apertado: dashes carregam a mobilidade. |
 | `walkToRunHoldMs` | 180 | Hold direção por 180ms para entrar em run. Curto o suficiente para responsividade, longo o suficiente para distinguir intenção de walk e run. |
 | `airAcceleration` | 1800 | Air drift suficiente para corrigir trajetória sem virar full-control aéreo. Reaproveitado também como decel reverso no air dash. |
@@ -52,7 +52,8 @@ Estados (cor no debug):
 | `shortHopMultiplier` | 0.7 | Iter1 foi 0.5 → diferença com full jump grande demais. Subiu para 0.7. Short hop hoje é "quase um full jump curto", não um saltinho miúdo. |
 | `dashSpeed` × `dashDurationMs` | 700 × 200ms | Distância ground dash ≈ 140 unidades. Validado no playtest como "muito bom". Não mexer. |
 | `dashCooldownMs` | 350 | Curto o suficiente para chain dash no chão; longo o suficiente para não ser spam infinito. |
-| `airDashSpeed` × `airDashDurationMs` | 500 × 200ms | Iter1 foi 720 → distância total ~250 (incluindo momentum residual durante a queda) era buff demais comparado ao ground dash. Caiu para 500: distância pelo dash em si ≈ 100, mais ~50-80 de drift residual = total ~150-180. Dentro do alvo do feedback. |
+| `airDashSpeed` × `airDashDurationMs` | 630 × 200ms | Iter1 720 (buff demais, ~250) → Iter2 500 (distância correta, mas velocidade visualmente lenta vs ground 700) → Iter3 630. A distância fica em ~200, um pouco maior que o ground (140), mas a sensação de velocidade horizontal aproxima do ground dash. Compromisso: visual de speed importa tanto quanto distância pura. |
+| `airDashDropVy` | 520 | Impulso vertical aplicado quando o jogador pressiona ↓ DURANTE o air dash. Permite "diagonal-down dash" como finisher fluido do chain dash, sem engessar a trajetória inicial. Ver "Regras especiais 1.4". |
 | `coyoteTimeMs` / `jumpBufferMs` | 90 / 90 | Modernization windows. Padrão de plataformers atuais. |
 | `landDurationMs` | 60 | Lock muito breve ao aterrissar. Não zera vx (preserva momentum aéreo na transição para walk/run). |
 
@@ -66,9 +67,14 @@ Estados (cor no debug):
   imediatamente em `startGroundJump()`. `vx` é preservado (não reseta para 0), então
   o pulo herda a velocidade do dash → arco amplo. Isto é o que dá a sensação de
   "dash em diagonal subindo" sem precisar de uma trajetória diagonal literal.
-- **Air dash → drop** (`↓` durante o air dash): transiciona para `Fall`. Sem boost
-  de velocidade vertical — apenas remove o lock do dash, gravidade natural toma
-  conta. Sensação de "dash em diagonal caindo".
+- **Air dash → drop** (`↓` durante o air dash): transiciona para `Fall` E aplica
+  `vy = max(vy, airDashDropVy)`. O impulso vertical (520 px/s) acelera a volta ao
+  chão, permitindo recomeçar o chain dash com momento inicial preservado (vx do
+  air dash + vy boost). Combina com `Math.max` para não freiar quem já está caindo
+  rápido. **Por que `justPressed` e não `isHeld`:** o impulso é uma decisão fluida
+  do jogador no meio/fim do dash ("D + DS"), não um modificador travado no início.
+  Se fosse `isHeld`, ↓ pressionado antes do dash transformaria a entrada inteira
+  em diagonal-down e voltaríamos a engessar a trajetória.
 - **Reverse-direction decel** (segurar oposto durante dash): aplica decel ao `vx`
   em direção ao oposto. Em `Dash` usa `groundFriction` (decel forte); em `AirDash`
   usa `airAcceleration` (decel mais suave). Não inverte o sinal — só reduz para 0
@@ -119,11 +125,23 @@ para combate futuro (ataques mid-dash respeitam direção do input, não do dash
   grande demais, double jump trava momentum, land reseta momentum, air dash buff
   demais (~250 unidades vs ~140 do ground), diagonal por vy não era ideal.
 
-### Iter 2 (atual)
-- Aplicado feedback completo. Constantes na tabela acima.
-- Removidos `airDashUpVy` e `airDashDownVy` (sem diagonal por vy).
+### Iter 2
+- Aplicado feedback completo. Constantes ajustadas (walk 280, run 360, jump -680,
+  shortHop 0.7, airDash 500).
+- Removidos `airDashUpVy` e `airDashDownVy` (sem diagonal por vy fixo).
 - Adicionado `dashDir` para preservar direção original mesmo após facing flipar.
-- Adicionado jump-out de ground dash, drop-out de air dash, reverse-decel em ambos.
+- Adicionado jump-out de ground dash, drop-out de air dash (sem impulso),
+  reverse-decel em ambos.
+
+### Iter 3 (atual)
+- Walk 280 → 270 (toque fino).
+- Air dash speed 500 → 630: a distância de 500 era correta, mas a velocidade
+  visualmente lenta comparada ao ground 700 quebrava a coerência. 630 mantém o
+  feel do dash sem inflar demais a distância total.
+- Adicionado `airDashDropVy: 520`. ↓ durante o air dash agora aplica impulso
+  vertical fluido (`Math.max` com vy atual), permitindo o "diagonal-down dash"
+  como finisher do chain dash. Crítico: usa `justPressed`, não `isHeld` — o
+  impulso é decisão de timing do jogador, não modificador estático.
 
 ## Próximos passos para Phase 2 (Combat)
 

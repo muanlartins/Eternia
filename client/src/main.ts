@@ -69,7 +69,7 @@ async function main() {
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump (hold = higher, again = double jump), ' +
-      'double-tap ← / → = dash (1x in air). ↑ during ground dash = jump out, ↓ during air dash = drop, ' +
+      'double-tap ← / → = dash (1x in air). ↑ during ground dash = jump out, ↓ during air dash = diagonal-down drop, ' +
       'opposite hold mid-dash = decelerate.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });

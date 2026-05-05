@@ -2,7 +2,7 @@ export const ELESIS = {
   width: 32,
   height: 64,
 
-  walkSpeed: 280,
+  walkSpeed: 270,
   runSpeed: 360,
   airAcceleration: 1800,
   groundFriction: 4000,
@@ -21,8 +21,9 @@ export const ELESIS = {
   dashDurationMs: 200,
   dashCooldownMs: 350,
 
-  airDashSpeed: 500,
+  airDashSpeed: 630,
   airDashDurationMs: 200,
+  airDashDropVy: 520,
 
   coyoteTimeMs: 90,
   jumpBufferMs: 90,
