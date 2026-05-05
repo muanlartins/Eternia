@@ -1,0 +1,19 @@
+{
+  "name": "eternia",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Personal browser-based action game inspired by Grand Chase",
+  "scripts": {
+    "dev:client": "pnpm --filter @eternia/client dev",
+    "build:client": "pnpm --filter @eternia/client build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.12.0"
+}
