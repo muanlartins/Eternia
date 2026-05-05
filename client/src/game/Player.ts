@@ -511,6 +511,8 @@ export class Player {
 
   private startJumpAtk() {
     this.airAtkUsed = true;
+    this.airDashUsed = true;
+    this.jumpsUsed = 2;
     this.clampVxToWalkSpeed();
     this.setState(PlayerState.JumpAtk);
   }

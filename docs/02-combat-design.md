@@ -191,12 +191,16 @@ Z agora funciona em qualquer estado de movimento. Z dispatch:
 
 #### JumpAtk
 
-- `airAtkUsed` flag tracka 1 ataque aéreo por ciclo. Reset em `onLand()`
 - Active `[60, 220]`, duration 320ms
 - Damage 14, knockback 200, hitbox (cx 30, y 22, w 50, h 50) — desce um pouco
   pra atingir alvos no chão se o player estiver caindo perto deles
 - Sem air drift durante o ataque (vx preservado, sem input)
 - Gravidade continua normal
+- **Commits todas as ações aéreas**: `startJumpAtk()` marca `airAtkUsed = true`,
+  `airDashUsed = true`, `jumpsUsed = 2`. Resultado: depois do JumpAtk (mesmo
+  já em estado Fall), o jogador NÃO pode fazer air dash, atacar de novo, nem
+  double jump. Fica preso na descida até pousar — mesma "penalidade total"
+  que o DoubleJump tem. Tudo reseta em `onLand()`.
 - Se aterrissa durante o ataque, ground collision → `onLand()` → state Land
   automaticamente. JumpAtk não bloqueia esse pipeline.
 - Após duration, transita pra Fall
