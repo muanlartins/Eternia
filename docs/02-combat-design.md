@@ -10,7 +10,8 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.A** | Combo Z básico (3 hits encadeáveis) com hitbox visual e timing window | implementado |
 | **2.B** | Boneco-alvo + dano + knockback + popup de dano + hit spark | implementado |
 | **2.C** | Skills S1/S2/S3 com custo de MP | implementado |
-| **2.D** | DASH_ATK + JUMP_ATK + GROUND_DOWN_DASH | pendente |
+| **2.D** | DashAtk (Z em corrida/dash) + JumpAtk (Z no ar) | implementado parcial |
+| **2.D.2** | GROUND_DOWN_DASH (slam vindo do air dash) | pendente |
 | **2.E** | Dodge (barra + iframes) | pendente |
 | **2.F** | Parry (timing window + reflect) | pendente |
 
@@ -162,10 +163,64 @@ incrementa attackId. Cada fase ativa ganha seu próprio ID.
 Isso unifica combo Z (1 fase por estado, mas estado muda a cada chain) e skills
 (múltiplas fases por estado). Mesma lógica.
 
-### Sub-fase 2.D (próxima)
+### Sub-fase 2.D (parcialmente implementada)
 
-- DASH_ATK: ataque durante ground dash (cancela dash em ataque preservando
-  parte do vx)
-- JUMP_ATK: Z no ar dispara ataque aéreo (state Attack_Air)
-- GROUND_DOWN_DASH: ↓ durante air dash → ataque com queda (slam)
-- Air skills opcional (S1/S2/S3 utilizáveis no ar)
+Z agora funciona em qualquer estado de movimento. Z dispatch:
+
+| Estado de origem | Comportamento |
+|---|---|
+| Idle / Walk | Attack1 (combo) |
+| Run | DashAtk |
+| Dash (ground) | DashAtk (cancela dash) |
+| JumpRise / Fall | JumpAtk (1× por ciclo aéreo) |
+| DoubleJump | JumpAtk (1× por ciclo aéreo, compartilhado com primeiro pulo) |
+| AirDash | (ignorado — espera dash terminar) |
+| Land | (ignorado — recovery é breve) |
+| Skill1/2/3 | (ignorado — skill é committed) |
+| Attack1/2/3 | tickAttack handle (combo chain dentro da nextWindow) |
+| DashAtk / JumpAtk | (ignorado — committed) |
+
+#### DashAtk
+
+- `vxInitial: 700` no momento do start (mesma velocidade do ground dash)
+- Decai por `groundFriction: 4000 px/s²` durante o ataque → para em ~175ms
+- Active hitbox `[60, 220]` (cobre o slide), duration total 380ms
+- Damage 18, knockback 240, hitbox (cx 38, y 14, w 64, h 36) — alongada e
+  forward-reaching
+- Termina em Idle; tickGround volta a Walk/Run conforme input no próximo
+  frame, então direção segurada → Run sem fricção visível
+
+#### JumpAtk
+
+- `airAtkUsed` flag tracka 1 ataque aéreo por ciclo. Reset em `onLand()`
+- Active `[60, 220]`, duration 320ms
+- Damage 14, knockback 200, hitbox (cx 30, y 22, w 50, h 50) — desce um pouco
+  pra atingir alvos no chão se o player estiver caindo perto deles
+- Sem air drift durante o ataque (vx preservado, sem input)
+- Gravidade continua normal
+- Se aterrissa durante o ataque, ground collision → `onLand()` → state Land
+  automaticamente. JumpAtk não bloqueia esse pipeline.
+- Após duration, transita pra Fall
+
+#### Decisão: Z em Run = DashAtk (não Attack1)
+
+Trade-off: jogador correndo que aperta Z pra atacar inimigo parado pode esperar
+combo simples. Mas o "feel GC" é exatamente esse — o ataque-corrida é a
+assinatura da movimentação. Se ele quer combo simples, anda devagar (Walk) e
+aperta Z. Se quer dash-atk, segura direção forte e Z. Skill expression.
+
+Detecção: `wantsRun = dirHoldMs >= walkToRunHoldMs`. Verificada no momento do
+press, antes de a transição Walk→Run completar formalmente, então não tem
+edge case de "primeiro frame de Run não dispara DashAtk".
+
+### Sub-fase 2.D.2 (pendente)
+
+- GROUND_DOWN_DASH: ↓ durante air dash atualmente faz drop com vy boost. Ideia
+  pra slam: se Z+↓ durante air dash → entra em estado AirSlam com hitbox forte
+  e vy alto, gera AoE no impacto com o chão.
+- Talvez Phase 2.E (dodge) seja prioridade maior antes do slam.
+
+### Sub-fase 2.E (próxima)
+
+- Dodge: barra de dodge (3 segments?), input dedicado, animação roll, iframes
+  durante o roll. Ainda decidir tecla — possivelmente Shift ou tecla extra.

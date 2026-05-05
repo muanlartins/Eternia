@@ -51,6 +51,8 @@ export class Player {
   private lastActiveHitIdx = -1;
   private activeHit: ActiveHit | null = null;
 
+  private airAtkUsed = false;
+
   readonly view = new Container();
   private body: Graphics;
   private facingMarker: Graphics;
@@ -107,10 +109,10 @@ export class Player {
         this.tickFirstJumpAir(dtMs, input, ax, false);
         break;
       case PlayerState.DoubleJump:
-        this.tickDoubleJump(dtMs, ax);
+        this.tickDoubleJump(dtMs, input, ax);
         break;
       case PlayerState.Dash:
-        this.tickDash(dtMs, ax);
+        this.tickDash(dtMs, input, ax);
         break;
       case PlayerState.AirDash:
         this.tickAirDash(dtMs, input, ax);
@@ -135,6 +137,12 @@ export class Player {
         break;
       case PlayerState.Skill3:
         this.tickSkill(dtMs, 2);
+        break;
+      case PlayerState.DashAtk:
+        this.tickDashAtk(dtMs);
+        break;
+      case PlayerState.JumpAtk:
+        this.tickJumpAtk(dtMs);
         break;
     }
 
@@ -162,6 +170,7 @@ export class Player {
         PlayerState.Dash,
         PlayerState.AirDash,
         PlayerState.Land,
+        PlayerState.JumpAtk,
       ];
       if (!airborneStates.includes(this.state) && this.vy > 0) {
         this.setState(PlayerState.Fall);
@@ -194,12 +203,17 @@ export class Player {
       }
     }
 
+    const wantsRun = this.dirHoldMs >= this.spec.walkToRunHoldMs;
+
     if (input.justPressed('attack')) {
-      this.startAttack(0);
+      if (wantsRun && ax !== 0) {
+        this.startDashAtk();
+      } else {
+        this.startAttack(0);
+      }
       return;
     }
 
-    const wantsRun = this.dirHoldMs >= this.spec.walkToRunHoldMs;
     const dt = input.consumeDoubleTap();
 
     if (dt !== 0 && this.dashCooldownMs <= 0 && ax === dt) {
@@ -228,6 +242,11 @@ export class Player {
   }
 
   private tickFirstJumpAir(dtMs: number, input: Input, ax: number, rising: boolean) {
+    if (input.justPressed('attack') && !this.airAtkUsed) {
+      this.startJumpAtk();
+      return;
+    }
+
     const dt = dtMs / 1000;
 
     const targetVx = ax * this.spec.runSpeed;
@@ -283,7 +302,12 @@ export class Player {
     }
   }
 
-  private tickDoubleJump(dtMs: number, ax: number) {
+  private tickDoubleJump(dtMs: number, input: Input, ax: number) {
+    if (input.justPressed('attack') && !this.airAtkUsed) {
+      this.startJumpAtk();
+      return;
+    }
+
     const dt = dtMs / 1000;
 
     const targetVx = ax * this.spec.runSpeed;
@@ -301,8 +325,13 @@ export class Player {
     this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
   }
 
-  private tickDash(dtMs: number, ax: number) {
+  private tickDash(dtMs: number, input: Input, ax: number) {
     this.vy = 0;
+
+    if (input.justPressed('attack')) {
+      this.startDashAtk();
+      return;
+    }
 
     if (this.jumpBufferMs > 0) {
       this.startGroundJump();
@@ -392,6 +421,30 @@ export class Player {
     }
   }
 
+  private tickDashAtk(dtMs: number) {
+    const dt = dtMs / 1000;
+    const decel = this.spec.groundFriction * dt;
+    if (this.vx > 0) this.vx = Math.max(0, this.vx - decel);
+    else if (this.vx < 0) this.vx = Math.min(0, this.vx + decel);
+
+    if (this.stateTimeMs >= this.spec.dashAtk.duration) {
+      this.setState(PlayerState.Idle);
+    }
+  }
+
+  private tickJumpAtk(dtMs: number) {
+    const dt = dtMs / 1000;
+    const g =
+      this.vy >= 0
+        ? this.spec.gravity * this.spec.fallGravityMultiplier
+        : this.spec.gravity;
+    this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
+
+    if (this.stateTimeMs >= this.spec.jumpAtk.duration) {
+      this.setState(PlayerState.Fall);
+    }
+  }
+
   private startGroundJump() {
     if (this.onGround || this.coyoteMs > 0) {
       this.vy = this.spec.jumpInitialVy;
@@ -454,6 +507,16 @@ export class Player {
     return true;
   }
 
+  private startDashAtk() {
+    this.vx = this.facing * this.spec.dashAtk.vxInitial;
+    this.setState(PlayerState.DashAtk);
+  }
+
+  private startJumpAtk() {
+    this.airAtkUsed = true;
+    this.setState(PlayerState.JumpAtk);
+  }
+
   private skillByIdx(idx: number) {
     if (idx === 0) return this.spec.skills.s1;
     if (idx === 1) return this.spec.skills.s2;
@@ -467,6 +530,8 @@ export class Player {
     if (this.state === PlayerState.Skill1) return this.spec.skills.s1.hits;
     if (this.state === PlayerState.Skill2) return this.spec.skills.s2.hits;
     if (this.state === PlayerState.Skill3) return this.spec.skills.s3.hits;
+    if (this.state === PlayerState.DashAtk) return [this.spec.dashAtk];
+    if (this.state === PlayerState.JumpAtk) return [this.spec.jumpAtk];
     return [];
   }
 
@@ -507,7 +572,9 @@ export class Player {
       this.state === PlayerState.Attack3 ||
       this.state === PlayerState.Skill1 ||
       this.state === PlayerState.Skill2 ||
-      this.state === PlayerState.Skill3
+      this.state === PlayerState.Skill3 ||
+      this.state === PlayerState.DashAtk ||
+      this.state === PlayerState.JumpAtk
     );
   }
 
@@ -522,6 +589,7 @@ export class Player {
   private onLand() {
     this.jumpsUsed = 0;
     this.airDashUsed = false;
+    this.airAtkUsed = false;
     this.airDashBufferedDir = 0;
     this.airDashBufferedMs = 0;
     this.setState(PlayerState.Land);

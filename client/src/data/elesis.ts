@@ -42,6 +42,23 @@ export const ELESIS = {
   mpRegenPerSec: 6,
   mpPerHit: 4,
 
+  dashAtk: {
+    duration: 380,
+    vxInitial: 700,
+    active: [60, 220],
+    damage: 18,
+    knockback: 240,
+    hitbox: { cx: 38, y: 14, w: 64, h: 36 },
+  },
+
+  jumpAtk: {
+    duration: 320,
+    active: [60, 220],
+    damage: 14,
+    knockback: 200,
+    hitbox: { cx: 30, y: 22, w: 50, h: 50 },
+  },
+
   skills: {
     s1: {
       duration: 480,

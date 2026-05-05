@@ -14,6 +14,8 @@ export const PlayerState = {
   Skill1: 'skill_1',
   Skill2: 'skill_2',
   Skill3: 'skill_3',
+  DashAtk: 'dash_atk',
+  JumpAtk: 'jump_atk',
 } as const;
 
 export type PlayerState = (typeof PlayerState)[keyof typeof PlayerState];
@@ -53,4 +55,6 @@ export const STATE_COLOR: Record<PlayerState, number> = {
   [PlayerState.Skill1]: 0x4488ff,
   [PlayerState.Skill2]: 0x66bbff,
   [PlayerState.Skill3]: 0x88ddff,
+  [PlayerState.DashAtk]: 0xff6633,
+  [PlayerState.JumpAtk]: 0xffaa44,
 };
