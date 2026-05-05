@@ -5,6 +5,20 @@ import { PlayerState, STATE_COLOR, type ActiveHit, type Facing } from './types.j
 
 const GROUND_Y = 480;
 
+interface HitPhase {
+  readonly active: readonly [number, number];
+  readonly damage: number;
+  readonly knockback: number;
+  readonly hitbox: {
+    readonly cx: number;
+    readonly y: number;
+    readonly w: number;
+    readonly h: number;
+  };
+}
+
+const SKILL_KEYS = ['skill1', 'skill2', 'skill3'] as const;
+
 export class Player {
   x = 0;
   y = GROUND_Y - 64;
@@ -14,6 +28,8 @@ export class Player {
   facing: Facing = 1;
   state: PlayerState = PlayerState.Idle;
   stateTimeMs = 0;
+
+  mp: number;
 
   private onGround = true;
   private jumpsUsed = 0;
@@ -32,6 +48,8 @@ export class Player {
   private airDashBufferedMs = 0;
 
   private currentAttackId = 0;
+  private lastActiveHitIdx = -1;
+  private activeHit: ActiveHit | null = null;
 
   readonly view = new Container();
   private body: Graphics;
@@ -39,6 +57,7 @@ export class Player {
   private hitboxMarker: Graphics;
 
   constructor(private readonly spec: ElesisSpec) {
+    this.mp = spec.maxMp;
     this.body = new Graphics();
     this.facingMarker = new Graphics();
     this.hitboxMarker = new Graphics();
@@ -54,6 +73,8 @@ export class Player {
     this.jumpBufferMs = Math.max(0, this.jumpBufferMs - dtMs);
     this.dashCooldownMs = Math.max(0, this.dashCooldownMs - dtMs);
     this.airDashBufferedMs = Math.max(0, this.airDashBufferedMs - dtMs);
+
+    this.mp = Math.min(this.spec.maxMp, this.mp + (this.spec.mpRegenPerSec * dtMs) / 1000);
 
     const ax = input.axisX();
 
@@ -106,6 +127,15 @@ export class Player {
       case PlayerState.Attack3:
         this.tickAttack(dtMs, input, 2);
         break;
+      case PlayerState.Skill1:
+        this.tickSkill(dtMs, 0);
+        break;
+      case PlayerState.Skill2:
+        this.tickSkill(dtMs, 1);
+        break;
+      case PlayerState.Skill3:
+        this.tickSkill(dtMs, 2);
+        break;
     }
 
     const dt = dtMs / 1000;
@@ -138,20 +168,32 @@ export class Player {
       }
     }
 
-    const isAttacking =
-      this.state === PlayerState.Attack1 ||
-      this.state === PlayerState.Attack2 ||
-      this.state === PlayerState.Attack3;
-    if (ax !== 0 && !isAttacking) {
+    if (ax !== 0 && !this.isLockedFacing()) {
       this.facing = ax > 0 ? 1 : -1;
     }
+
+    this.activeHit = this.computeActiveHit();
 
     this.view.x = this.x;
     this.view.y = this.y;
     this.redraw();
   }
 
+  giveMp(amount: number) {
+    this.mp = Math.min(this.spec.maxMp, this.mp + amount);
+  }
+
+  getActiveHit(): ActiveHit | null {
+    return this.activeHit;
+  }
+
   private tickGround(_dtMs: number, input: Input, ax: number) {
+    for (let i = 0; i < SKILL_KEYS.length; i++) {
+      if (input.justPressed(SKILL_KEYS[i]!)) {
+        if (this.startSkill(i)) return;
+      }
+    }
+
     if (input.justPressed('attack')) {
       this.startAttack(0);
       return;
@@ -342,6 +384,14 @@ export class Player {
     }
   }
 
+  private tickSkill(_dtMs: number, skillIdx: number) {
+    this.vx = 0;
+    const skill = this.skillByIdx(skillIdx);
+    if (this.stateTimeMs >= skill.duration) {
+      this.setState(PlayerState.Idle);
+    }
+  }
+
   private startGroundJump() {
     if (this.onGround || this.coyoteMs > 0) {
       this.vy = this.spec.jumpInitialVy;
@@ -380,7 +430,6 @@ export class Player {
 
   private startAttack(comboIdx: number) {
     this.vx = 0;
-    this.currentAttackId++;
     const state =
       comboIdx === 0
         ? PlayerState.Attack1
@@ -390,25 +439,84 @@ export class Player {
     this.setState(state);
   }
 
-  getActiveHit(): ActiveHit | null {
-    let attackSpec: (typeof this.spec.comboZ)[number] | null = null;
-    if (this.state === PlayerState.Attack1) attackSpec = this.spec.comboZ[0]!;
-    else if (this.state === PlayerState.Attack2) attackSpec = this.spec.comboZ[1]!;
-    else if (this.state === PlayerState.Attack3) attackSpec = this.spec.comboZ[2]!;
-    if (attackSpec === null) return null;
+  private startSkill(skillIdx: number): boolean {
+    const skill = this.skillByIdx(skillIdx);
+    if (this.mp < skill.mpCost) return false;
+    this.mp -= skill.mpCost;
+    this.vx = 0;
+    const state =
+      skillIdx === 0
+        ? PlayerState.Skill1
+        : skillIdx === 1
+          ? PlayerState.Skill2
+          : PlayerState.Skill3;
+    this.setState(state);
+    return true;
+  }
 
-    const active = attackSpec.active;
-    if (this.stateTimeMs < active[0] || this.stateTimeMs > active[1]) return null;
+  private skillByIdx(idx: number) {
+    if (idx === 0) return this.spec.skills.s1;
+    if (idx === 1) return this.spec.skills.s2;
+    return this.spec.skills.s3;
+  }
 
-    const hb = attackSpec.hitbox;
+  private currentHitList(): readonly HitPhase[] {
+    if (this.state === PlayerState.Attack1) return [this.spec.comboZ[0]!];
+    if (this.state === PlayerState.Attack2) return [this.spec.comboZ[1]!];
+    if (this.state === PlayerState.Attack3) return [this.spec.comboZ[2]!];
+    if (this.state === PlayerState.Skill1) return this.spec.skills.s1.hits;
+    if (this.state === PlayerState.Skill2) return this.spec.skills.s2.hits;
+    if (this.state === PlayerState.Skill3) return this.spec.skills.s3.hits;
+    return [];
+  }
+
+  private computeActiveHit(): ActiveHit | null {
+    const hits = this.currentHitList();
+    let activeIdx = -1;
+    for (let i = 0; i < hits.length; i++) {
+      const h = hits[i]!;
+      if (this.stateTimeMs >= h.active[0] && this.stateTimeMs <= h.active[1]) {
+        activeIdx = i;
+        break;
+      }
+    }
+
+    if (activeIdx !== this.lastActiveHitIdx) {
+      if (activeIdx >= 0) this.currentAttackId++;
+      this.lastActiveHitIdx = activeIdx;
+    }
+
+    if (activeIdx < 0) return null;
+
+    const h = hits[activeIdx]!;
+    const hb = h.hitbox;
     const localX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
     return {
       bbox: { x: this.x + localX, y: this.y + hb.y, w: hb.w, h: hb.h },
-      damage: attackSpec.damage,
-      knockback: attackSpec.knockback,
+      damage: h.damage,
+      knockback: h.knockback,
       attackId: this.currentAttackId,
       facing: this.facing,
     };
+  }
+
+  private isLockedFacing(): boolean {
+    return (
+      this.state === PlayerState.Attack1 ||
+      this.state === PlayerState.Attack2 ||
+      this.state === PlayerState.Attack3 ||
+      this.state === PlayerState.Skill1 ||
+      this.state === PlayerState.Skill2 ||
+      this.state === PlayerState.Skill3
+    );
+  }
+
+  private isSkillState(): boolean {
+    return (
+      this.state === PlayerState.Skill1 ||
+      this.state === PlayerState.Skill2 ||
+      this.state === PlayerState.Skill3
+    );
   }
 
   private onLand() {
@@ -423,6 +531,7 @@ export class Player {
     if (this.state !== s) {
       this.state = s;
       this.stateTimeMs = 0;
+      this.lastActiveHitIdx = -1;
     }
   }
 
@@ -443,24 +552,17 @@ export class Player {
       .stroke({ color: 0xffffff, width: 2 });
 
     this.hitboxMarker.clear();
-    const attackSpec =
-      this.state === PlayerState.Attack1
-        ? this.spec.comboZ[0]!
-        : this.state === PlayerState.Attack2
-          ? this.spec.comboZ[1]!
-          : this.state === PlayerState.Attack3
-            ? this.spec.comboZ[2]!
-            : null;
-    if (attackSpec !== null) {
-      const active = attackSpec.active;
-      if (this.stateTimeMs >= active[0] && this.stateTimeMs <= active[1]) {
-        const hb = attackSpec.hitbox;
-        const hbX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
-        this.hitboxMarker
-          .rect(hbX, hb.y, hb.w, hb.h)
-          .fill({ color: 0xff3344, alpha: 0.35 })
-          .stroke({ color: 0xff0022, width: 2, alpha: 0.9 });
-      }
+    if (this.activeHit !== null) {
+      const hb = this.activeHit.bbox;
+      const localX = hb.x - this.x;
+      const localY = hb.y - this.y;
+      const isSkill = this.isSkillState();
+      const fillColor = isSkill ? 0x4488ff : 0xff3344;
+      const strokeColor = isSkill ? 0x2266dd : 0xff0022;
+      this.hitboxMarker
+        .rect(localX, localY, hb.w, hb.h)
+        .fill({ color: fillColor, alpha: 0.32 })
+        .stroke({ color: strokeColor, width: 2, alpha: 0.9 });
     }
   }
 }

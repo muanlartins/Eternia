@@ -92,9 +92,9 @@ async function main() {
 
   const controls = new Text({
     text:
-      'controls: ← → = move (hold = run), ↑ = jump (hold = higher, again = double jump), ' +
-      'double-tap ← / → = dash (1x in air). ↑ during ground dash = jump out, ↓ during air dash = diagonal-down drop, ' +
-      'opposite hold mid-dash = decelerate. Z = attack (combo Z→Z→Z, time the chain).',
+      'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
+      'Z = attack (combo Z→Z→Z). X = S1 (25 MP), C = S2 (50 MP), V = S3 (80 MP). ' +
+      '↑ during ground dash = jump out, ↓ during air dash = drop, opposite hold mid-dash = decelerate.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
   controls.x = 12;
@@ -135,6 +135,7 @@ async function main() {
             const c = intersectionCenter(hit.bbox, hb);
             hitFx.popup(c.x, c.y, hit.damage);
             hitFx.spark(c.x, c.y);
+            player.giveMp(ELESIS.mpPerHit);
           }
         }
       }
@@ -148,6 +149,7 @@ async function main() {
 
     hud.text =
       `state: ${player.state.padEnd(12, ' ')}  ` +
+      `mp: ${player.mp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxMp}  ` +
       `pos: (${player.x.toFixed(0)}, ${player.y.toFixed(0)})  ` +
       `vel: (${player.vx.toFixed(0)}, ${player.vy.toFixed(0)})  ` +
       `face: ${player.facing > 0 ? '→' : '←'}  ` +

@@ -11,6 +11,9 @@ export const PlayerState = {
   Attack1: 'attack_1',
   Attack2: 'attack_2',
   Attack3: 'attack_3',
+  Skill1: 'skill_1',
+  Skill2: 'skill_2',
+  Skill3: 'skill_3',
 } as const;
 
 export type PlayerState = (typeof PlayerState)[keyof typeof PlayerState];
@@ -47,4 +50,7 @@ export const STATE_COLOR: Record<PlayerState, number> = {
   [PlayerState.Attack1]: 0xff8800,
   [PlayerState.Attack2]: 0xff5522,
   [PlayerState.Attack3]: 0xdd0044,
+  [PlayerState.Skill1]: 0x4488ff,
+  [PlayerState.Skill2]: 0x66bbff,
+  [PlayerState.Skill3]: 0x88ddff,
 };

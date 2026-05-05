@@ -37,6 +37,36 @@ export const ELESIS = {
     { duration: 320, active: [100, 220], nextWindow: [160, 320], damage: 12, knockback: 220, hitbox: { cx: 30, y: 14, w: 42, h: 34 } },
     { duration: 420, active: [140, 280], nextWindow: null, damage: 22, knockback: 420, hitbox: { cx: 32, y: 8, w: 52, h: 44 } },
   ],
+
+  maxMp: 100,
+  mpRegenPerSec: 6,
+  mpPerHit: 4,
+
+  skills: {
+    s1: {
+      duration: 480,
+      mpCost: 25,
+      hits: [
+        { active: [140, 280], damage: 32, knockback: 280, hitbox: { cx: 36, y: 10, w: 60, h: 48 } },
+      ],
+    },
+    s2: {
+      duration: 750,
+      mpCost: 50,
+      hits: [
+        { active: [140, 220], damage: 12, knockback: 130, hitbox: { cx: 30, y: 14, w: 46, h: 36 } },
+        { active: [380, 460], damage: 16, knockback: 170, hitbox: { cx: 32, y: 12, w: 50, h: 40 } },
+        { active: [580, 680], damage: 24, knockback: 340, hitbox: { cx: 36, y: 8, w: 58, h: 48 } },
+      ],
+    },
+    s3: {
+      duration: 1000,
+      mpCost: 80,
+      hits: [
+        { active: [280, 600], damage: 60, knockback: 480, hitbox: { cx: 0, y: -10, w: 160, h: 100 } },
+      ],
+    },
+  },
 } as const;
 
 export type ElesisSpec = typeof ELESIS;
