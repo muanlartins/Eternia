@@ -4,7 +4,21 @@ import { ELESIS } from './data/elesis.js';
 import { Input } from './game/Input.js';
 import { Player } from './game/Player.js';
 import { Camera } from './game/Camera.js';
-import { PlayerState } from './game/types.js';
+import { TargetDummy } from './game/TargetDummy.js';
+import { HitFx } from './game/HitFx.js';
+import { PlayerState, type AABB } from './game/types.js';
+
+function rectsOverlap(a: AABB, b: AABB): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function intersectionCenter(a: AABB, b: AABB): { x: number; y: number } {
+  const left = Math.max(a.x, b.x);
+  const right = Math.min(a.x + a.w, b.x + b.w);
+  const top = Math.max(a.y, b.y);
+  const bottom = Math.min(a.y + a.h, b.y + b.h);
+  return { x: (left + right) / 2, y: (top + bottom) / 2 };
+}
 
 const GAME_W = 1024;
 const GAME_H = 576;
@@ -54,7 +68,17 @@ async function main() {
 
   const input = new Input({ doubleTapWindowMs: ELESIS.doubleTapWindowMs });
   const player = new Player(ELESIS);
+
+  const dummies = [
+    new TargetDummy(220, GROUND_Y - 64),
+    new TargetDummy(-260, GROUND_Y - 64),
+  ];
+  for (const d of dummies) worldStage.addChild(d.view);
+
   worldStage.addChild(player.view);
+
+  const hitFx = new HitFx();
+  worldStage.addChild(hitFx.container);
 
   const camera = new Camera(worldStage, GAME_W, GAME_H);
 
@@ -99,6 +123,26 @@ async function main() {
     const dtMs = app.ticker.deltaMS;
 
     player.update(dtMs, input);
+
+    const hit = player.getActiveHit();
+    if (hit !== null) {
+      for (const d of dummies) {
+        if (!d.alive) continue;
+        const hb = d.hurtbox();
+        if (rectsOverlap(hit.bbox, hb)) {
+          const accepted = d.receiveHit(hit.attackId, hit.damage, hit.knockback * hit.facing);
+          if (accepted) {
+            const c = intersectionCenter(hit.bbox, hb);
+            hitFx.popup(c.x, c.y, hit.damage);
+            hitFx.spark(c.x, c.y);
+          }
+        }
+      }
+    }
+
+    for (const d of dummies) d.update(dtMs);
+    hitFx.update(dtMs);
+
     camera.follow(player.x + ELESIS.width / 2, player.y + ELESIS.height / 2);
     camera.update(dtMs);
 

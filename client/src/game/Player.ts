@@ -1,7 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { ElesisSpec } from '../data/elesis.js';
 import type { Input } from './Input.js';
-import { PlayerState, STATE_COLOR, type Facing } from './types.js';
+import { PlayerState, STATE_COLOR, type ActiveHit, type Facing } from './types.js';
 
 const GROUND_Y = 480;
 
@@ -30,6 +30,8 @@ export class Player {
 
   private airDashBufferedDir: -1 | 0 | 1 = 0;
   private airDashBufferedMs = 0;
+
+  private currentAttackId = 0;
 
   readonly view = new Container();
   private body: Graphics;
@@ -378,6 +380,7 @@ export class Player {
 
   private startAttack(comboIdx: number) {
     this.vx = 0;
+    this.currentAttackId++;
     const state =
       comboIdx === 0
         ? PlayerState.Attack1
@@ -385,6 +388,27 @@ export class Player {
           ? PlayerState.Attack2
           : PlayerState.Attack3;
     this.setState(state);
+  }
+
+  getActiveHit(): ActiveHit | null {
+    let attackSpec: (typeof this.spec.comboZ)[number] | null = null;
+    if (this.state === PlayerState.Attack1) attackSpec = this.spec.comboZ[0]!;
+    else if (this.state === PlayerState.Attack2) attackSpec = this.spec.comboZ[1]!;
+    else if (this.state === PlayerState.Attack3) attackSpec = this.spec.comboZ[2]!;
+    if (attackSpec === null) return null;
+
+    const active = attackSpec.active;
+    if (this.stateTimeMs < active[0] || this.stateTimeMs > active[1]) return null;
+
+    const hb = attackSpec.hitbox;
+    const localX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
+    return {
+      bbox: { x: this.x + localX, y: this.y + hb.y, w: hb.w, h: hb.h },
+      damage: attackSpec.damage,
+      knockback: attackSpec.knockback,
+      attackId: this.currentAttackId,
+      facing: this.facing,
+    };
   }
 
   private onLand() {

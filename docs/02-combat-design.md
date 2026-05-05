@@ -8,7 +8,7 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | Sub-fase | Escopo | Status |
 |---|---|---|
 | **2.A** | Combo Z básico (3 hits encadeáveis) com hitbox visual e timing window | implementado |
-| **2.B** | Boneco-alvo + dano + knockback + popup de dano + hit spark | pendente |
+| **2.B** | Boneco-alvo + dano + knockback + popup de dano + hit spark | implementado |
 | **2.C** | Skills S1/S2/S3 com custo de MP | pendente |
 | **2.D** | DASH_ATK + JUMP_ATK + GROUND_DOWN_DASH | pendente |
 | **2.E** | Dodge (barra + iframes) | pendente |
@@ -92,18 +92,34 @@ Pode reconsiderar depois de playtest se sentir que está exigente demais.
 
 ## Roadmap próximos passos
 
-### Sub-fase 2.B (próxima)
+### Sub-fase 2.B (implementada)
 
-- Boneco-alvo estático: rect marrom no chão, posição fixa
-- Hurtbox no boneco (rectangle bounds)
-- Detecção de colisão hitbox vs hurtbox durante frames active
-- Dano: cada hit do combo tem `damage` no spec
-- HP do boneco: barra acima dele, decrementa com cada acerto
-- Knockback: aplicar `vx = facing * knockbackForce` no boneco no momento do hit
-- Damage popup: Pixi Text spawnado no ponto de impacto, sobe e fade out (~600ms)
-- Hit spark: Graphics circle amarelo no ponto de impacto, escala e fade (~120ms)
-- Hitlag (opcional): freezar o player por 2-3 frames no momento do hit pra dar
-  peso ao acerto. Pode atrasar pra Phase 5 (polish).
+Estrutura entregue:
+
+- `client/src/game/TargetDummy.ts` — boneco com hurtbox AABB, HP, knockback
+  decay, hit-flash visual, respawn automático após 2s no ponto original
+- `client/src/game/HitFx.ts` — gerenciador de popups de dano (Text que sobe e
+  esmaece em 600ms) e hit sparks (círculo amarelo que cresce e esmaece em 140ms)
+- `Player.getActiveHit()` — expõe ActiveHit ({ bbox, damage, knockback,
+  attackId, facing }) ou null se não há hitbox ativa neste frame
+- `main.ts` — main loop checa `rectsOverlap` entre player hitbox e cada hurtbox
+  de boneco, dispara `receiveHit` + popup + spark se aceito
+
+Damage por hit do combo Z: 8 / 12 / 22 (combo completo = 42, mata um boneco em
+~3 combos). Knockback: 180 / 220 / 420 px/s, decai por `KNOCKBACK_FRICTION =
+1500 px/s²` no boneco (≈300ms até parar com knockback do finisher).
+
+**Dedup por attackId**: cada chamada de `startAttack` incrementa
+`Player.currentAttackId`. O boneco mantém `Set<attackId>` dos golpes que já
+recebeu, então a mesma swing não causa dano múltiplo mesmo se a hitbox ficar
+ativa por vários frames sobrepondo a hurtbox. Cada novo hit do combo (chain)
+gera um novo attackId, então o boneco pode ser atingido pelos 3 hits da
+sequência.
+
+**Hitlag não implementado** — fica pra Phase 5 (polish). Adicionar agora geraria
+ruído no tuning de timing window do combo.
+
+### Sub-fase 2.C (próxima)
 
 ### Sub-fase 2.C
 

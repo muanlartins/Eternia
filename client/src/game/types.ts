@@ -19,6 +19,21 @@ export type Vec2 = { x: number; y: number };
 
 export type Facing = -1 | 1;
 
+export interface AABB {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface ActiveHit {
+  bbox: AABB;
+  damage: number;
+  knockback: number;
+  attackId: number;
+  facing: Facing;
+}
+
 export const STATE_COLOR: Record<PlayerState, number> = {
   [PlayerState.Idle]: 0x4a8eff,
   [PlayerState.Walk]: 0x4ade80,
