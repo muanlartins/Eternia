@@ -16,7 +16,8 @@ export const PlayerState = {
   Skill3: 'skill_3',
   DashAtk: 'dash_atk',
   JumpAtk: 'jump_atk',
-  Dodge: 'dodge',
+  DodgeStand: 'dodge_stand',
+  DodgeRoll: 'dodge_roll',
 } as const;
 
 export type PlayerState = (typeof PlayerState)[keyof typeof PlayerState];
@@ -58,5 +59,6 @@ export const STATE_COLOR: Record<PlayerState, number> = {
   [PlayerState.Skill3]: 0x88ddff,
   [PlayerState.DashAtk]: 0xff6633,
   [PlayerState.JumpAtk]: 0xffaa44,
-  [PlayerState.Dodge]: 0x66ddaa,
+  [PlayerState.DodgeStand]: 0x88eecc,
+  [PlayerState.DodgeRoll]: 0x44bb88,
 };

@@ -18,7 +18,8 @@ const KEY_MAP: Record<string, InputKey> = {
   KeyA: 'skill1',
   KeyS: 'skill2',
   KeyD: 'skill3',
-  KeyQ: 'dodge',
+  AltLeft: 'dodge',
+  AltRight: 'dodge',
 };
 
 type DoubleTapState = {

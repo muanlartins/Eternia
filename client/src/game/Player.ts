@@ -146,8 +146,11 @@ export class Player {
       case PlayerState.JumpAtk:
         this.tickJumpAtk(dtMs);
         break;
-      case PlayerState.Dodge:
-        this.tickDodge(dtMs);
+      case PlayerState.DodgeStand:
+        this.tickDodgeStand(dtMs, input);
+        break;
+      case PlayerState.DodgeRoll:
+        this.tickDodgeRoll(dtMs, input);
         break;
     }
 
@@ -202,10 +205,9 @@ export class Player {
   }
 
   isInvincible(): boolean {
-    if (this.state !== PlayerState.Dodge) return false;
     return (
-      this.stateTimeMs >= this.spec.dodgeIframeStart &&
-      this.stateTimeMs <= this.spec.dodgeIframeEnd
+      this.state === PlayerState.DodgeStand ||
+      this.state === PlayerState.DodgeRoll
     );
   }
 
@@ -215,7 +217,7 @@ export class Player {
 
   private tickGround(_dtMs: number, input: Input, ax: number) {
     if (input.justPressed('dodge') && this.dodgeCooldownMs <= 0) {
-      this.startDodge(input);
+      this.startDodgeStand();
       return;
     }
 
@@ -346,6 +348,11 @@ export class Player {
   private tickDash(dtMs: number, input: Input, ax: number) {
     this.vy = 0;
 
+    if (input.justPressed('dodge') && this.dodgeCooldownMs <= 0) {
+      this.startDodgeStand();
+      return;
+    }
+
     if (input.justPressed('attack')) {
       this.startDashAtk();
       return;
@@ -474,9 +481,28 @@ export class Player {
     }
   }
 
-  private tickDodge(_dtMs: number) {
+  private tickDodgeStand(_dtMs: number, input: Input) {
+    this.vx = 0;
     this.vy = 0;
-    if (this.stateTimeMs >= this.spec.dodgeDurationMs) {
+
+    const dt = input.consumeDoubleTap();
+    if (dt !== 0) {
+      this.startDodgeRoll(dt);
+      return;
+    }
+
+    if (this.stateTimeMs >= this.spec.dodgeStandDurationMs) {
+      this.dodgeCooldownMs = this.spec.dodgeStandCooldownMs;
+      this.setState(PlayerState.Idle);
+    }
+  }
+
+  private tickDodgeRoll(_dtMs: number, input: Input) {
+    this.vy = 0;
+    input.consumeDoubleTap();
+
+    if (this.stateTimeMs >= this.spec.dodgeRollDurationMs) {
+      this.dodgeCooldownMs = this.spec.dodgeRollCooldownMs;
       this.setState(PlayerState.Idle);
     }
   }
@@ -549,14 +575,17 @@ export class Player {
     this.setState(PlayerState.DashAtk);
   }
 
-  private startDodge(input: Input) {
-    const ax = input.axisX();
-    const dir: -1 | 1 = ax !== 0 ? (ax as -1 | 1) : this.facing;
-    this.facing = dir;
-    this.vx = dir * this.spec.dodgeSpeed;
+  private startDodgeStand() {
+    this.vx = 0;
     this.vy = 0;
-    this.dodgeCooldownMs = this.spec.dodgeCooldownMs;
-    this.setState(PlayerState.Dodge);
+    this.setState(PlayerState.DodgeStand);
+  }
+
+  private startDodgeRoll(dir: -1 | 1) {
+    this.facing = dir;
+    this.vx = dir * this.spec.dodgeRollSpeed;
+    this.vy = 0;
+    this.setState(PlayerState.DodgeRoll);
   }
 
   private startJumpAtk() {
@@ -631,7 +660,7 @@ export class Player {
       this.state === PlayerState.Skill3 ||
       this.state === PlayerState.DashAtk ||
       this.state === PlayerState.JumpAtk ||
-      this.state === PlayerState.Dodge
+      this.state === PlayerState.DodgeRoll
     );
   }
 

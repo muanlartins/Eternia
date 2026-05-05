@@ -256,20 +256,51 @@ em JumpAtk cobre "running jump → Z mid-air". Ambos sentiam-se buffados demais.
 - **Pulado durante iframes**: se `player.isInvincible()`, o loop de colisão
   é skipado — jogador atravessa o mob durante a janela de iframes do dodge
 
-#### Dodge
+#### Dodge (two-stage: stand → roll)
 
-- Tecla `Q`. Trigger de `Idle/Walk/Run` apenas (não cancela combo nem skill
-  na primeira iteração)
-- Direção: input atual `axisX()` se houver, senão segue `facing`. Permite
-  dodge pra trás (Q + ←/→ contra o facing)
-- Constants: `dodgeSpeed: 480`, `dodgeDurationMs: 280`, `dodgeIframeStart: 40`,
-  `dodgeIframeEnd: 240`, `dodgeCooldownMs: 500`
-- Iframes: estado `Dodge` + `stateTimeMs ∈ [40, 240]`. Janela de 200ms protegida
-  dentro do dodge de 280ms — startup e recovery curtos sem proteção
-- `Player.isInvincible()` checa estado + janela. `redraw` aplica `alpha 0.4` no
-  body durante iframes pra deixar visualmente óbvio
-- Sem barra ainda — `dodgeCooldownMs: 500` impede spam direto. Bar com 3
-  segments fica pra 2.E.2
+Trigger: tecla **Alt** (ou ⌥ no Mac). `AltLeft` e `AltRight` mapeados pra
+input `'dodge'`. Pode ser disparado de `Idle/Walk/Run` ou de `Dash` ground
+(cancela o dash em standing dodge).
+
+##### Estágio 1: DodgeStand
+
+- Aperta Alt → entra em `DodgeStand` imediatamente. Player fica parado
+  (vx = vy = 0), facing NÃO trava (dá pra olhar pros lados pra escolher onde
+  rolar)
+- Duration `360ms`. Durante esse tempo, double-tap em ← ou → triggera
+  o estágio 2 (DodgeRoll naquela direção)
+- Se nenhum double-tap durante a janela, retorna a Idle e seta cooldown 250ms
+- Cost (futuro): X de barra de dodge
+
+##### Estágio 2: DodgeRoll
+
+- Triggered pelo double-tap durante DodgeStand. `consumeDoubleTap` retorna
+  ±1 (direção do tap)
+- `vx = dir * dodgeRollSpeed (500)`, facing trava pra direção do roll
+- Duration `280ms`. Não pode ser cancelado, modificado nem invertido
+- Após terminar → Idle, com cooldown 500ms (~2× do stand) e o player livre
+  pra atacar/skill/movimentar imediatamente
+- Cost (futuro): adicional 1-2X (total 2-3X do stand)
+
+##### Pass-through total durante dodge
+
+- `Player.isInvincible()` agora retorna true enquanto em `DodgeStand` OU
+  `DodgeRoll` (estado inteiro, sem janela startup/recovery). `main.ts` skipa
+  o `resolvePlayerVsBox` quando invincible, então o player atravessa qualquer
+  mob durante o dodge inteiro — incluindo standing colado num mob (fix do
+  bug onde a iframe-window restrita travava a separação AABB)
+- Body alpha 0.4 durante iframes (renderizado igual antes)
+
+##### Por que two-stage
+
+- **Standing como parry-de-dodge**: input rápido pra "iframe defensivo
+  estacionário". Útil pra esquivar de hit no lugar sem comprometer posição
+- **Roll como reposicionamento**: extensão da decisão. Player paga mais barra
+  pra mover, mas ganha distância e sai vivo do outro lado
+- **Roll committed**: depois que entra no roll, fica preso até o fim. Isso
+  força o jogador a decidir o que fará DEPOIS antes de iniciar (próximo dodge,
+  ataque, skill, etc), o que é uma decisão skill-expressive em situações
+  apertadas
 
 ### Sub-fase 2.E.2 (pendente)
 
