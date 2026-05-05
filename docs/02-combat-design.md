@@ -53,11 +53,17 @@ A regra é: comprometer com sprite quando o frame-data estiver tunado. Não ante
 
 ### Frame data atual
 
-| Hit | duration | active | nextWindow | hitbox (cx, y, w, h) |
-|---|---|---|---|---|
-| Attack1 | 280ms | 80–180ms | 120–280ms | (28, 18, 36, 28) |
-| Attack2 | 320ms | 100–220ms | 160–320ms | (30, 14, 42, 34) |
-| Attack3 | 420ms | 140–280ms | — | (32, 8, 52, 44) |
+| Hit | duration | active | nextWindow | vxPush | hitbox (cx, y, w, h) |
+|---|---|---|---|---|---|
+| Attack1 | 280ms | 80–180ms | 120–280ms | 90 px/s | (28, 18, 36, 28) |
+| Attack2 | 320ms | 100–220ms | 160–320ms | 130 px/s | (30, 14, 42, 34) |
+| Attack3 | 420ms | 140–280ms | — | 240 px/s | (32, 8, 52, 44) |
+
+`vxPush` aplicado durante a janela `active` do hit (player desliza pra frente
+no momento do golpe). Fora do active, vx zera. Avanço por hit:
+~9 / 16 / 34 px (acompanha o knockback do dummy: 11 / 16 / 59 px),
+mantendo o alvo dentro do alcance da próxima fase do combo sem precisar
+correr atrás.
 
 A janela de chain começa um pouco depois do active e vai até o final do hit.
 Isso permite encadeamento mesmo durante o recovery, mantendo o combo fluido.

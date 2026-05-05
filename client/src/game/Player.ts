@@ -394,8 +394,14 @@ export class Player {
   }
 
   private tickAttack(_dtMs: number, input: Input, comboIdx: number) {
-    this.vx = 0;
     const spec = this.spec.comboZ[comboIdx]!;
+
+    if (this.stateTimeMs >= spec.active[0] && this.stateTimeMs <= spec.active[1]) {
+      this.vx = this.facing * spec.vxPush;
+    } else {
+      this.vx = 0;
+    }
+
     const nw = spec.nextWindow;
 
     if (

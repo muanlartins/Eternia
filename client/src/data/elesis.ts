@@ -33,9 +33,9 @@ export const ELESIS = {
   landDurationMs: 60,
 
   comboZ: [
-    { duration: 280, active: [80, 180], nextWindow: [120, 280], damage: 8, knockback: 180, hitbox: { cx: 28, y: 18, w: 36, h: 28 } },
-    { duration: 320, active: [100, 220], nextWindow: [160, 320], damage: 12, knockback: 220, hitbox: { cx: 30, y: 14, w: 42, h: 34 } },
-    { duration: 420, active: [140, 280], nextWindow: null, damage: 22, knockback: 420, hitbox: { cx: 32, y: 8, w: 52, h: 44 } },
+    { duration: 280, active: [80, 180], nextWindow: [120, 280], damage: 8, knockback: 180, vxPush: 90, hitbox: { cx: 28, y: 18, w: 36, h: 28 } },
+    { duration: 320, active: [100, 220], nextWindow: [160, 320], damage: 12, knockback: 220, vxPush: 130, hitbox: { cx: 30, y: 14, w: 42, h: 34 } },
+    { duration: 420, active: [140, 280], nextWindow: null, damage: 22, knockback: 420, vxPush: 240, hitbox: { cx: 32, y: 8, w: 52, h: 44 } },
   ],
 
   maxMp: 100,
