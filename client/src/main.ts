@@ -20,6 +20,37 @@ function intersectionCenter(a: AABB, b: AABB): { x: number; y: number } {
   return { x: (left + right) / 2, y: (top + bottom) / 2 };
 }
 
+function resolvePlayerVsBox(player: Player, box: AABB) {
+  const p = player.aabb();
+  if (!rectsOverlap(p, box)) return;
+
+  const overlapL = p.x + p.w - box.x;
+  const overlapR = box.x + box.w - p.x;
+  const overlapT = p.y + p.h - box.y;
+  const overlapB = box.y + box.h - p.y;
+
+  const minH = Math.min(overlapL, overlapR);
+  const minV = Math.min(overlapT, overlapB);
+
+  if (minH < minV) {
+    if (overlapL < overlapR) {
+      player.x -= overlapL;
+      if (player.vx > 0) player.vx = 0;
+    } else {
+      player.x += overlapR;
+      if (player.vx < 0) player.vx = 0;
+    }
+  } else {
+    if (overlapT < overlapB) {
+      player.y -= overlapT;
+      if (player.vy > 0) player.vy = 0;
+    } else {
+      player.y += overlapB;
+      if (player.vy < 0) player.vy = 0;
+    }
+  }
+}
+
 const GAME_W = 1024;
 const GAME_H = 576;
 const GROUND_Y = 480;
@@ -94,7 +125,7 @@ async function main() {
     text:
       'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
       'Z = attack (combo Z→Z→Z; ground dash + Z = dash-atk; air + Z = jump-atk 1×/cycle). ' +
-      'A = S1 (25 MP), S = S2 (50 MP), D = S3 (80 MP). ' +
+      'A = S1 (25 MP), S = S2 (50 MP), D = S3 (80 MP). Q = dodge (iframes). ' +
       '↑ during ground dash = jump out, ↓ during air dash = drop, opposite hold mid-dash = decelerate.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
@@ -124,6 +155,13 @@ async function main() {
     const dtMs = app.ticker.deltaMS;
 
     player.update(dtMs, input);
+
+    if (!player.isInvincible()) {
+      for (const d of dummies) {
+        if (!d.alive) continue;
+        resolvePlayerVsBox(player, d.hurtbox());
+      }
+    }
 
     const hit = player.getActiveHit();
     if (hit !== null) {

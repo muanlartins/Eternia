@@ -52,6 +52,7 @@ export class Player {
   private activeHit: ActiveHit | null = null;
 
   private airAtkUsed = false;
+  private dodgeCooldownMs = 0;
 
   readonly view = new Container();
   private body: Graphics;
@@ -75,6 +76,7 @@ export class Player {
     this.jumpBufferMs = Math.max(0, this.jumpBufferMs - dtMs);
     this.dashCooldownMs = Math.max(0, this.dashCooldownMs - dtMs);
     this.airDashBufferedMs = Math.max(0, this.airDashBufferedMs - dtMs);
+    this.dodgeCooldownMs = Math.max(0, this.dodgeCooldownMs - dtMs);
 
     this.mp = Math.min(this.spec.maxMp, this.mp + (this.spec.mpRegenPerSec * dtMs) / 1000);
 
@@ -144,6 +146,9 @@ export class Player {
       case PlayerState.JumpAtk:
         this.tickJumpAtk(dtMs);
         break;
+      case PlayerState.Dodge:
+        this.tickDodge(dtMs);
+        break;
     }
 
     const dt = dtMs / 1000;
@@ -196,7 +201,24 @@ export class Player {
     return this.activeHit;
   }
 
+  isInvincible(): boolean {
+    if (this.state !== PlayerState.Dodge) return false;
+    return (
+      this.stateTimeMs >= this.spec.dodgeIframeStart &&
+      this.stateTimeMs <= this.spec.dodgeIframeEnd
+    );
+  }
+
+  aabb() {
+    return { x: this.x, y: this.y, w: this.spec.width, h: this.spec.height };
+  }
+
   private tickGround(_dtMs: number, input: Input, ax: number) {
+    if (input.justPressed('dodge') && this.dodgeCooldownMs <= 0) {
+      this.startDodge(input);
+      return;
+    }
+
     for (let i = 0; i < SKILL_KEYS.length; i++) {
       if (input.justPressed(SKILL_KEYS[i]!)) {
         if (this.startSkill(i)) return;
@@ -452,6 +474,13 @@ export class Player {
     }
   }
 
+  private tickDodge(_dtMs: number) {
+    this.vy = 0;
+    if (this.stateTimeMs >= this.spec.dodgeDurationMs) {
+      this.setState(PlayerState.Idle);
+    }
+  }
+
   private startGroundJump() {
     if (this.onGround || this.coyoteMs > 0) {
       this.vy = this.spec.jumpInitialVy;
@@ -518,6 +547,16 @@ export class Player {
   private startDashAtk() {
     this.vx = this.facing * this.spec.dashAtk.vxInitial;
     this.setState(PlayerState.DashAtk);
+  }
+
+  private startDodge(input: Input) {
+    const ax = input.axisX();
+    const dir: -1 | 1 = ax !== 0 ? (ax as -1 | 1) : this.facing;
+    this.facing = dir;
+    this.vx = dir * this.spec.dodgeSpeed;
+    this.vy = 0;
+    this.dodgeCooldownMs = this.spec.dodgeCooldownMs;
+    this.setState(PlayerState.Dodge);
   }
 
   private startJumpAtk() {
@@ -591,7 +630,8 @@ export class Player {
       this.state === PlayerState.Skill2 ||
       this.state === PlayerState.Skill3 ||
       this.state === PlayerState.DashAtk ||
-      this.state === PlayerState.JumpAtk
+      this.state === PlayerState.JumpAtk ||
+      this.state === PlayerState.Dodge
     );
   }
 
@@ -622,9 +662,10 @@ export class Player {
 
   private redraw() {
     this.body.clear();
+    const bodyAlpha = this.isInvincible() ? 0.4 : 0.95;
     this.body
       .rect(0, 0, this.spec.width, this.spec.height)
-      .fill({ color: STATE_COLOR[this.state], alpha: 0.95 })
+      .fill({ color: STATE_COLOR[this.state], alpha: bodyAlpha })
       .stroke({ color: 0xffffff, width: 1, alpha: 0.6 });
 
     this.facingMarker.clear();

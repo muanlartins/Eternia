@@ -10,9 +10,10 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.A** | Combo Z básico (3 hits encadeáveis) com hitbox visual e timing window | implementado |
 | **2.B** | Boneco-alvo + dano + knockback + popup de dano + hit spark | implementado |
 | **2.C** | Skills S1/S2/S3 com custo de MP | implementado |
-| **2.D** | DashAtk (Z em corrida/dash) + JumpAtk (Z no ar) | implementado parcial |
+| **2.D** | DashAtk (ground dash + Z) + JumpAtk (Z no ar) | implementado |
 | **2.D.2** | GROUND_DOWN_DASH (slam vindo do air dash) | pendente |
-| **2.E** | Dodge (barra + iframes) | pendente |
+| **2.E** | Dodge (iframes) + colisão player↔mob | implementado |
+| **2.E.2** | Dodge bar (3 segments com refill) substituindo cooldown único | pendente |
 | **2.F** | Parry (timing window + reflect) | pendente |
 
 ## Por que primitivas (não sprites) na Phase 2
@@ -242,7 +243,36 @@ em JumpAtk cobre "running jump → Z mid-air". Ambos sentiam-se buffados demais.
   e vy alto, gera AoE no impacto com o chão.
 - Talvez Phase 2.E (dodge) seja prioridade maior antes do slam.
 
-### Sub-fase 2.E (próxima)
+### Sub-fase 2.E (implementada)
 
-- Dodge: barra de dodge (3 segments?), input dedicado, animação roll, iframes
-  durante o roll. Ainda decidir tecla — possivelmente Shift ou tecla extra.
+#### Colisão player ↔ mob
+
+- `Player.aabb()` retorna `{ x, y, w, h }` do bounding box do jogador
+- `resolvePlayerVsBox` em `main.ts` faz separação AABB padrão: calcula overlap
+  em cada eixo, empurra o jogador no eixo de menor penetração e zera o
+  componente da velocidade no sentido da colisão
+- Loop em `main.ts` aplica colisão contra todos os bonecos vivos depois do
+  `player.update()`
+- **Pulado durante iframes**: se `player.isInvincible()`, o loop de colisão
+  é skipado — jogador atravessa o mob durante a janela de iframes do dodge
+
+#### Dodge
+
+- Tecla `Q`. Trigger de `Idle/Walk/Run` apenas (não cancela combo nem skill
+  na primeira iteração)
+- Direção: input atual `axisX()` se houver, senão segue `facing`. Permite
+  dodge pra trás (Q + ←/→ contra o facing)
+- Constants: `dodgeSpeed: 480`, `dodgeDurationMs: 280`, `dodgeIframeStart: 40`,
+  `dodgeIframeEnd: 240`, `dodgeCooldownMs: 500`
+- Iframes: estado `Dodge` + `stateTimeMs ∈ [40, 240]`. Janela de 200ms protegida
+  dentro do dodge de 280ms — startup e recovery curtos sem proteção
+- `Player.isInvincible()` checa estado + janela. `redraw` aplica `alpha 0.4` no
+  body durante iframes pra deixar visualmente óbvio
+- Sem barra ainda — `dodgeCooldownMs: 500` impede spam direto. Bar com 3
+  segments fica pra 2.E.2
+
+### Sub-fase 2.E.2 (pendente)
+
+- Dodge bar com 3 segments visíveis no HUD
+- Refill: 1 segment a cada 1.5s? Tunar com playtest
+- Dodge consome 1 segment, falha silencioso quando vazio
