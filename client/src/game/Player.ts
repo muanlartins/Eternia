@@ -203,16 +203,12 @@ export class Player {
       }
     }
 
-    const wantsRun = this.dirHoldMs >= this.spec.walkToRunHoldMs;
-
     if (input.justPressed('attack')) {
-      if (wantsRun && ax !== 0) {
-        this.startDashAtk();
-      } else {
-        this.startAttack(0);
-      }
+      this.startAttack(0);
       return;
     }
+
+    const wantsRun = this.dirHoldMs >= this.spec.walkToRunHoldMs;
 
     const dt = input.consumeDoubleTap();
 
@@ -457,6 +453,7 @@ export class Player {
   }
 
   private startDoubleJump() {
+    this.clampVxToWalkSpeed();
     this.vy = this.spec.doubleJumpInitialVy;
     this.jumpsUsed = 2;
     this.jumpBufferMs = 0;
@@ -514,7 +511,14 @@ export class Player {
 
   private startJumpAtk() {
     this.airAtkUsed = true;
+    this.clampVxToWalkSpeed();
     this.setState(PlayerState.JumpAtk);
+  }
+
+  private clampVxToWalkSpeed() {
+    const walk = this.spec.walkSpeed;
+    if (this.vx > walk) this.vx = walk;
+    else if (this.vx < -walk) this.vx = -walk;
   }
 
   private skillByIdx(idx: number) {

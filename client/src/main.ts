@@ -93,7 +93,7 @@ async function main() {
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
-      'Z = attack (combo Z→Z→Z; running = dash-atk; air = jump-atk 1×/cycle). ' +
+      'Z = attack (combo Z→Z→Z; ground dash + Z = dash-atk; air + Z = jump-atk 1×/cycle). ' +
       'A = S1 (25 MP), S = S2 (50 MP), D = S3 (80 MP). ' +
       '↑ during ground dash = jump out, ↓ during air dash = drop, opposite hold mid-dash = decelerate.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },

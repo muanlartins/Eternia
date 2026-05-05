@@ -169,8 +169,7 @@ Z agora funciona em qualquer estado de movimento. Z dispatch:
 
 | Estado de origem | Comportamento |
 |---|---|
-| Idle / Walk | Attack1 (combo) |
-| Run | DashAtk |
+| Idle / Walk / Run | Attack1 (combo). Em Run, vx zera no tickAttack — a corrida para no momento do golpe. |
 | Dash (ground) | DashAtk (cancela dash) |
 | JumpRise / Fall | JumpAtk (1× por ciclo aéreo) |
 | DoubleJump | JumpAtk (1× por ciclo aéreo, compartilhado com primeiro pulo) |
@@ -202,16 +201,29 @@ Z agora funciona em qualquer estado de movimento. Z dispatch:
   automaticamente. JumpAtk não bloqueia esse pipeline.
 - Após duration, transita pra Fall
 
-#### Decisão: Z em Run = DashAtk (não Attack1)
+#### Decisão: DashAtk só do Dash, não do Run
 
-Trade-off: jogador correndo que aperta Z pra atacar inimigo parado pode esperar
-combo simples. Mas o "feel GC" é exatamente esse — o ataque-corrida é a
-assinatura da movimentação. Se ele quer combo simples, anda devagar (Walk) e
-aperta Z. Se quer dash-atk, segura direção forte e Z. Skill expression.
+Iter inicial 2.D: Run + Z disparava DashAtk. Playtest descartou — Run + Z deve
+ser combo Attack1 normal. O `tickAttack` zera vx por frame, então o player
+para visualmente no momento do golpe (a corrida "interrompe pro combo"). É o
+fluxo natural quando o jogador quer atacar um inimigo parado durante o trajeto.
 
-Detecção: `wantsRun = dirHoldMs >= walkToRunHoldMs`. Verificada no momento do
-press, antes de a transição Walk→Run completar formalmente, então não tem
-edge case de "primeiro frame de Run não dispara DashAtk".
+DashAtk continua disponível via Ground Dash + Z (double-tap → Z) — exige
+intenção explícita, mantém skill expression.
+
+#### Penalidade de momentum em ações aéreas
+
+Iter inicial 2.D: JumpAtk e DoubleJump preservavam vx integral. Resultado:
+chain dash + air dash + double-jump (ou + jump-atk) carregava 630 px/s
+horizontal pro pulo seguinte, dando uma sensação de "deslize" exagerado.
+
+Iter ajustada: `clampVxToWalkSpeed()` aplicada em `startJumpAtk()` e
+`startDoubleJump()`. Se `|vx| > walkSpeed`, clampa pra ±270 (walk speed).
+Não zera (vy continua intacto, drift horizontal continua), só reduz pra um
+valor "natural" de movimento aéreo. Se `|vx|` já é ≤ walkSpeed, nada muda.
+
+Aplicar em DoubleJump cobre o caso "air dash → ↑ pra double jump"; aplicar
+em JumpAtk cobre "running jump → Z mid-air". Ambos sentiam-se buffados demais.
 
 ### Sub-fase 2.D.2 (pendente)
 
