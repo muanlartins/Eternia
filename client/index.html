@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eternia</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #ddd;
+        }
+        #game-container {
+            border: 2px solid #333;
+            box-shadow: 0 0 40px rgba(120, 80, 200, 0.2);
+        }
+        #status {
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            font-size: 12px;
+            font-family: ui-monospace, monospace;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div id="status">Eternia v0.0.1 - Phase 0</div>
+    <div id="game-container"></div>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "@eternia/client",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@eternia/shared": "workspace:*",
+    "howler": "^2.2.4",
+    "pixi.js": "^8.6.4"
+  },
+  "devDependencies": {
+    "@types/howler": "^2.2.12",
+    "vite": "^5.4.10"
+  }
+}
