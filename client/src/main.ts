@@ -1,11 +1,17 @@
-// Phase 0 — Foundation: hello-world Pixi v8 + WebSocket connection.
-// No gameplay yet. Just proves the stack is alive.
+// Phase 1 — Movement: Elesis state machine + input + camera.
+// No combat, no mobs, no networked game logic yet.
 
-import { Application, Graphics, Text } from 'pixi.js';
+import { Application, Container, Graphics, Text } from 'pixi.js';
 import type { ClientMessage, ServerMessage } from '@eternia/shared';
+import { ELESIS } from './data/elesis.js';
+import { Input } from './game/Input.js';
+import { Player } from './game/Player.js';
+import { Camera } from './game/Camera.js';
+import { PlayerState } from './game/types.js';
 
 const GAME_W = 1024;
 const GAME_H = 576;
+const GROUND_Y = 480;
 
 async function main() {
   const app = new Application();
@@ -20,67 +26,101 @@ async function main() {
   if (!container) throw new Error('#game-container missing');
   container.appendChild(app.canvas);
 
-  // Visual: simple animated logo + status text
-  const logo = new Graphics();
-  logo.circle(0, 0, 40).fill({ color: 0x9080ff, alpha: 0.9 });
-  logo.x = GAME_W / 2;
-  logo.y = GAME_H / 2 - 40;
-  app.stage.addChild(logo);
+  // ─── Layers ─────────────────────────────────────────────────────
+  // World stage moves with camera. UI stage stays fixed.
+  const worldStage = new Container();
+  const uiStage = new Container();
+  app.stage.addChild(worldStage);
+  app.stage.addChild(uiStage);
 
-  const title = new Text({
-    text: 'ETERNIA',
-    style: { fontFamily: 'sans-serif', fontSize: 48, fill: 0xddddff, letterSpacing: 8 },
+  // ─── World: ground + parallax markers (so motion is visible) ───
+  const ground = new Graphics();
+  ground
+    .rect(-5000, GROUND_Y, 10000, 200)
+    .fill({ color: 0x1f2937 });
+  worldStage.addChild(ground);
+
+  // Vertical reference lines every 200px so we can SEE motion.
+  for (let x = -4000; x <= 4000; x += 200) {
+    const line = new Graphics();
+    const isMajor = x % 1000 === 0;
+    line
+      .rect(x, GROUND_Y - 20, 2, 20)
+      .fill({ color: isMajor ? 0x6b7280 : 0x374151 });
+    worldStage.addChild(line);
+    if (isMajor) {
+      const label = new Text({
+        text: `${x}`,
+        style: { fontFamily: 'monospace', fontSize: 10, fill: 0x6b7280 },
+      });
+      label.x = x + 4;
+      label.y = GROUND_Y - 18;
+      worldStage.addChild(label);
+    }
+  }
+
+  // ─── Player + Input + Camera ───────────────────────────────────
+  const input = new Input({ doubleTapWindowMs: ELESIS.doubleTapWindowMs });
+  const player = new Player(ELESIS);
+  worldStage.addChild(player.view);
+
+  const camera = new Camera(worldStage, GAME_W, GAME_H);
+
+  // ─── UI: state HUD ──────────────────────────────────────────────
+  const hud = new Text({
+    text: '',
+    style: { fontFamily: 'monospace', fontSize: 13, fill: 0xddddee },
   });
-  title.anchor.set(0.5);
-  title.x = GAME_W / 2;
-  title.y = GAME_H / 2 + 30;
-  app.stage.addChild(title);
+  hud.x = 12;
+  hud.y = 12;
+  uiStage.addChild(hud);
 
-  const status = new Text({
-    text: 'connecting...',
-    style: { fontFamily: 'monospace', fontSize: 14, fill: 0x777788 },
+  const controls = new Text({
+    text:
+      'controls: arrows/WASD = move, double-tap left/right = dash, ' +
+      'space/X = jump (hold for higher, double-jump in air)',
+    style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
-  status.anchor.set(0.5);
-  status.x = GAME_W / 2;
-  status.y = GAME_H / 2 + 80;
-  app.stage.addChild(status);
+  controls.x = 12;
+  controls.y = GAME_H - 24;
+  uiStage.addChild(controls);
 
-  // Simple animation loop
-  app.ticker.add((time) => {
-    logo.rotation += 0.005 * time.deltaTime;
-  });
-
-  // WebSocket hello
+  // ─── WebSocket (kept from Phase 0) ─────────────────────────────
   const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
   const ws = new WebSocket(wsUrl);
-
+  let serverInfo = 'connecting…';
   ws.addEventListener('open', () => {
-    console.log('[ws] connected');
     const hello: ClientMessage = { t: 'hello', v: '0.0.1' };
     ws.send(JSON.stringify(hello));
   });
-
   ws.addEventListener('message', (e) => {
     try {
       const msg: ServerMessage = JSON.parse(e.data);
-      console.log('[ws]', msg);
-      if (msg.t === 'hello') {
-        status.text = `server: ${msg.v} (t=${msg.serverTime})`;
-      }
-    } catch (err) {
-      console.error('[ws] parse error', err, e.data);
+      if (msg.t === 'hello') serverInfo = `server ${msg.v}`;
+    } catch {
+      /* ignore */
     }
   });
+  ws.addEventListener('close', () => (serverInfo = 'disconnected'));
+  ws.addEventListener('error', () => (serverInfo = 'ws error'));
 
-  ws.addEventListener('close', () => {
-    status.text = 'disconnected';
-    status.style.fill = 0xff7777;
-  });
+  // ─── Game loop ──────────────────────────────────────────────────
+  app.ticker.add(() => {
+    const dtMs = app.ticker.deltaMS;
 
-  ws.addEventListener('error', (e) => {
-    console.error('[ws] error', e);
-    status.text = 'connection error - is server running on :8080?';
-    status.style.fill = 0xff7777;
+    player.update(dtMs, input);
+    camera.follow(player.x + ELESIS.width / 2, player.y + ELESIS.height / 2);
+    camera.update(dtMs);
+
+    // HUD: state + position + velocity
+    hud.text =
+      `state: ${player.state.padEnd(12, ' ')}  ` +
+      `pos: (${player.x.toFixed(0)}, ${player.y.toFixed(0)})  ` +
+      `vel: (${player.vx.toFixed(0)}, ${player.vy.toFixed(0)})  ` +
+      `face: ${player.facing > 0 ? '→' : '←'}  ` +
+      `${serverInfo}`;
+
+    input.endFrame();
   });
 }
 
@@ -88,3 +128,6 @@ main().catch((err) => {
   console.error(err);
   document.body.innerHTML = `<pre style="color:#f88">${err.stack ?? err}</pre>`;
 });
+
+// Help TS that PlayerState is referenced (for tree-shake hints during dev).
+void PlayerState;
