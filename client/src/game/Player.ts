@@ -28,6 +28,9 @@ export class Player {
   private dashCooldownMs = 0;
   private dashDir: -1 | 1 = 1;
 
+  private airDashBufferedDir: -1 | 0 | 1 = 0;
+  private airDashBufferedMs = 0;
+
   readonly view = new Container();
   private body: Graphics;
   private facingMarker: Graphics;
@@ -45,6 +48,7 @@ export class Player {
     this.coyoteMs = Math.max(0, this.coyoteMs - dtMs);
     this.jumpBufferMs = Math.max(0, this.jumpBufferMs - dtMs);
     this.dashCooldownMs = Math.max(0, this.dashCooldownMs - dtMs);
+    this.airDashBufferedMs = Math.max(0, this.airDashBufferedMs - dtMs);
 
     const ax = input.axisX();
 
@@ -183,9 +187,29 @@ export class Player {
       this.setState(PlayerState.Fall);
     }
 
+    const heightAboveGround = (GROUND_Y - this.spec.height) - this.y;
+
     const dtap = input.consumeDoubleTap();
     if (dtap !== 0 && !this.airDashUsed && ax === dtap) {
-      this.startAirDash(dtap);
+      if (heightAboveGround >= this.spec.airDashMinHeight) {
+        this.startAirDash(dtap);
+        return;
+      }
+      this.airDashBufferedDir = dtap;
+      this.airDashBufferedMs = this.spec.airDashBufferMs;
+    }
+
+    if (
+      this.airDashBufferedMs > 0 &&
+      this.airDashBufferedDir !== 0 &&
+      !this.airDashUsed &&
+      heightAboveGround >= this.spec.airDashMinHeight &&
+      ax === this.airDashBufferedDir
+    ) {
+      const dir = this.airDashBufferedDir as -1 | 1;
+      this.airDashBufferedMs = 0;
+      this.airDashBufferedDir = 0;
+      this.startAirDash(dir);
       return;
     }
 
@@ -313,6 +337,8 @@ export class Player {
   private onLand() {
     this.jumpsUsed = 0;
     this.airDashUsed = false;
+    this.airDashBufferedDir = 0;
+    this.airDashBufferedMs = 0;
     this.setState(PlayerState.Land);
   }
 

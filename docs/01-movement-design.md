@@ -36,7 +36,7 @@ Estados (cor no debug):
 - `AirDash` 🟠 — air dash, 1× por ciclo aéreo
 - `Land` ⚪ — recuperação curta ao tocar o solo (60ms)
 
-## Tabela de tuning (Phase 1, iteração 3)
+## Tabela de tuning (Phase 1, iteração 4)
 
 | Constante | Valor | Justificativa |
 |---|---|---|
@@ -54,6 +54,8 @@ Estados (cor no debug):
 | `dashCooldownMs` | 350 | Curto o suficiente para chain dash no chão; longo o suficiente para não ser spam infinito. |
 | `airDashSpeed` × `airDashDurationMs` | 630 × 200ms | Iter1 720 (buff demais, ~250) → Iter2 500 (distância correta, mas velocidade visualmente lenta vs ground 700) → Iter3 630. A distância fica em ~200, um pouco maior que o ground (140), mas a sensação de velocidade horizontal aproxima do ground dash. Compromisso: visual de speed importa tanto quanto distância pura. |
 | `airDashDropVy` | 520 | Impulso vertical aplicado quando o jogador pressiona ↓ DURANTE o air dash. Permite "diagonal-down dash" como finisher fluido do chain dash, sem engessar a trajetória inicial. Ver "Regras especiais 1.4". |
+| `airDashMinHeight` | 20 | Altura mínima (px acima do chão) para o air dash executar. Igual ao tamanho do "pininho" de referência no mapa. Evita o air dash "preso ao chão" — visualmente o dash precisa de ar para parecer um dash. |
+| `airDashBufferMs` | 200 | Janela de buffer: se o jogador faz double-tap antes de atingir `airDashMinHeight`, o input é guardado e executa assim que cruzar o threshold (desde que ainda esteja segurando a direção). |
 | `coyoteTimeMs` / `jumpBufferMs` | 90 / 90 | Modernization windows. Padrão de plataformers atuais. |
 | `landDurationMs` | 60 | Lock muito breve ao aterrissar. Não zera vx (preserva momentum aéreo na transição para walk/run). |
 
@@ -133,7 +135,7 @@ para combate futuro (ataques mid-dash respeitam direção do input, não do dash
 - Adicionado jump-out de ground dash, drop-out de air dash (sem impulso),
   reverse-decel em ambos.
 
-### Iter 3 (atual)
+### Iter 3
 - Walk 280 → 270 (toque fino).
 - Air dash speed 500 → 630: a distância de 500 era correta, mas a velocidade
   visualmente lenta comparada ao ground 700 quebrava a coerência. 630 mantém o
@@ -142,6 +144,17 @@ para combate futuro (ataques mid-dash respeitam direção do input, não do dash
   vertical fluido (`Math.max` com vy atual), permitindo o "diagonal-down dash"
   como finisher do chain dash. Crítico: usa `justPressed`, não `isHeld` — o
   impulso é decisão de timing do jogador, não modificador estático.
+
+### Iter 4 (atual)
+- Adicionado threshold + buffer para air dash: o input é aceito mesmo se o
+  jogador estiver muito perto do chão, mas só executa quando atingir
+  `airDashMinHeight` (20px = altura do pininho de referência).
+- `airDashBufferMs: 200` — janela do buffer. Se o jogador soltar a direção ou
+  reverter antes do threshold, o buffer expira sem disparar.
+- Buffer também limpa em `onLand()` para não vazar entre ciclos aéreos.
+- Por que: evitar a sensação de "air dash preso ao chão" quando o jogador
+  encadeia ground dash → ↑ jump → double-tap muito rápido. Sem o threshold, o
+  air dash disparava praticamente colado ao chão e parecia um glitch visual.
 
 ## Próximos passos para Phase 2 (Combat)
 

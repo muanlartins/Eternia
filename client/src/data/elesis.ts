@@ -24,6 +24,8 @@ export const ELESIS = {
   airDashSpeed: 630,
   airDashDurationMs: 200,
   airDashDropVy: 520,
+  airDashMinHeight: 20,
+  airDashBufferMs: 200,
 
   coyoteTimeMs: 90,
   jumpBufferMs: 90,
