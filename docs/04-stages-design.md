@@ -8,6 +8,7 @@
 | **4.A.2** | Mob facing marker + hitbox preview no telegraph + skill iframes + dodge/parry cancel + teleport stage transition | implementado |
 | **4.A.3** | Telegraphs estendidos + dodge bar 5 + plataformas one-way no stage 2 | implementado |
 | **4.A.4** | Walk-off-platform fall fix + 3 vidas (GC-style) + telegraph/dodgeStand re-tuning | implementado |
+| **4.A.5** | Mob attack flow committed + dodge regen 0.4 + mobs persist progress on death + post-parry cooldown | implementado |
 | **4.B** | Buff offer scene entre stages (Hades cards) | pendente |
 | **4.C** | Effects de buffs aplicados ao player | pendente |
 | **4.D** | Run record / save no servidor | pendente |
@@ -198,6 +199,56 @@ Banner phases: `playing | clearAnnounce | nextAnnounce | gameOver`.
 Slim telegraph 460→420, Racoon 580→540 (boss intacto: 440/600/540 — boss é
 pra ser desafiador). DodgeStand 460→400. Dodge regen continua só por tempo
 (0.8/seg, confirmado bom pelo user).
+
+## 4.A.5 — Mob attack flow committed + persistencia de progresso
+
+### Mob attack flow committed (não-interrompível)
+
+Antes: hits do player durante Telegraph/Active/Recover do mob colocavam o mob
+em Hurt, interrompendo o swing. Combo break re-orientava facing baseado em
+knockback. Resultado: boss "cancelando" ataques mid-Telegraph e "virando" pro
+outro lado quando o player rolava — playervisão muito confusa.
+
+Agora em `Mob.receiveHit`:
+- Estado **Telegraph/Active/Recover**: hits aplicam dano mas **não mudam o
+  estado**. Mob completa o swing comprometido. `consecutiveHits` não
+  incrementa nesses estados (combo break só fora do attack flow).
+- Combo break não re-orienta facing — mob retalia com facing existente.
+  Player que está atrás do mob ganha um free dodge (recompensa pelo
+  posicionamento).
+
+Resultado: telegraphs viram contratos. Player vê preview, comita dodge ou
+parry, mob completa o que prometeu. Sem "cancela e troca de ataque".
+
+### Post-parry cooldown
+
+Antes: parry stuna o mob mas attackCooldownMs não era afetado, então o mob
+podia atacar imediatamente após o stun terminar. Sentia injusto — o player
+ganhou o parry e a recompensa foi outro ataque cara-a-cara em 800ms.
+
+Agora `parried()` seta `attackCooldownMs = max(current, attackCooldownMs)`
+(1600ms pro boss). Stun de 800ms + cooldown remanescente de 800ms = 1600ms
+de breathing room pós-parry.
+
+### Mobs persistem progresso no death
+
+Antes: `prevPlayerState === Dead` triggerava `stage.destroy()` + recriação,
+zerando HP de todos os mobs. Boss boss em 100/360 → respawnar e voltar pra
+360/360 dentro do mesmo stage. Pune o player duplamente.
+
+Agora: ao perder uma vida (lives > 0), **stage não é destruído**. Player só
+respawna em x=0 com HP/MP/dodge full. Mobs mortos continuam mortos, mobs
+vivos preservam HP. Apenas `parriedBuff/armorActive/consecutiveHits` são
+limpos via `resetTransientBuffs()` (combat state transient não deve carregar
+através de morte).
+
+Game over (lives=0) ainda destroi stage e volta pro stage 0 com 3 vidas.
+
+### Dodge regen 0.4
+
+Antes 0.8/seg → bar de 5 cheia em 6.25s, sustentava spam. Agora 0.4/seg →
+bar cheia em 12.5s, 2.5s por dodge. Força mais decisões de parry pra
+recursos defensivos.
 
 ## Próximas sub-fases
 

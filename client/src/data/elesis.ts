@@ -63,7 +63,7 @@ export const ELESIS = {
   dodgeRollSpeed: 500,
   dodgeRollDurationMs: 280,
   dodgeBarMax: 5,
-  dodgeBarRegenPerSec: 0.8,
+  dodgeBarRegenPerSec: 0.4,
   dodgeStandCost: 1,
   dodgeRollCost: 1,
 

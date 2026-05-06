@@ -253,9 +253,7 @@ async function main() {
         stageTransitionTimerMs = 2000;
         stageBanner.text = 'GAME OVER';
       } else {
-        stage.destroy();
-        stage = new Stage(STAGES[currentStageIdx]!, worldStage);
-        stage.spawn();
+        for (const m of stage.getMobs()) m.resetTransientBuffs();
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
         stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;

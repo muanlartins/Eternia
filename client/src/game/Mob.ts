@@ -101,7 +101,12 @@ export class Mob {
       return { applied, bonus };
     }
 
-    if (this.armorActive) {
+    const inAttackFlow =
+      this.state === MobState.Telegraph ||
+      this.state === MobState.Active ||
+      this.state === MobState.Recover;
+
+    if (inAttackFlow || this.armorActive) {
       return { applied, bonus };
     }
 
@@ -110,8 +115,6 @@ export class Mob {
     }
 
     if (this.consecutiveHits >= this.spec.comboBreakThreshold && !bonus) {
-      if (knockbackVx > 0) this.facing = -1;
-      else if (knockbackVx < 0) this.facing = 1;
       this.consecutiveHits = 0;
       this.armorActive = true;
       this.currentAttackIdx = this.pickAttack();
@@ -131,7 +134,16 @@ export class Mob {
     this.parriedBuff = true;
     this.consecutiveHits = 0;
     this.armorActive = false;
+    this.attackCooldownMs = Math.max(this.attackCooldownMs, this.spec.attackCooldownMs);
     this.setState(MobState.Hurt);
+  }
+
+  resetTransientBuffs() {
+    if (!this.alive) return;
+    this.consecutiveHits = 0;
+    this.parriedBuff = false;
+    this.armorActive = false;
+    this.hitFlashMs = 0;
   }
 
   getActiveHit(): ActiveHit | null {
