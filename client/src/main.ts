@@ -261,6 +261,7 @@ async function main() {
         stage.destroy();
         stage = new Stage(STAGES[currentStageIdx]!, worldStage);
         stage.spawn();
+        player.teleportToStart();
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
         stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;

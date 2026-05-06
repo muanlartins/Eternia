@@ -50,6 +50,8 @@ export class Mob {
   readonly view = new Container();
   private body: Graphics;
   private hpBar: Graphics;
+  private facingMarker: Graphics;
+  private previewMarker: Graphics;
 
   private readonly autoRespawn: boolean;
 
@@ -67,7 +69,11 @@ export class Mob {
     this.autoRespawn = options?.autoRespawn ?? true;
     this.body = new Graphics();
     this.hpBar = new Graphics();
+    this.facingMarker = new Graphics();
+    this.previewMarker = new Graphics();
     this.view.addChild(this.body);
+    this.view.addChild(this.facingMarker);
+    this.view.addChild(this.previewMarker);
     this.view.addChild(this.hpBar);
     this.view.x = x;
     this.view.y = y;
@@ -269,6 +275,8 @@ export class Mob {
   private redraw() {
     this.body.clear();
     this.hpBar.clear();
+    this.facingMarker.clear();
+    this.previewMarker.clear();
 
     if (!this.alive) {
       this.body
@@ -289,6 +297,29 @@ export class Mob {
       .rect(0, 0, this.spec.width, this.spec.height)
       .fill({ color, alpha: 0.95 })
       .stroke({ color: strokeColor, width: strokeWidth, alpha: 0.95 });
+
+    const fx = this.spec.width / 2;
+    const fy = this.spec.height * 0.35;
+    const tipX = fx + this.facing * (this.spec.width * 0.55);
+    this.facingMarker
+      .moveTo(fx, fy)
+      .lineTo(tipX, fy)
+      .stroke({ color: 0xffffff, width: 2 });
+    this.facingMarker
+      .circle(tipX, fy, 3)
+      .fill({ color: 0xffffff, alpha: 0.9 });
+
+    if (this.state === MobState.Telegraph) {
+      const atk = this.currentAttack();
+      const hb = atk.hitbox;
+      const localX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
+      const t = Math.min(1, this.stateTimeMs / atk.telegraphMs);
+      const pulse = 0.5 + 0.5 * Math.sin(this.stateTimeMs / 60);
+      this.previewMarker
+        .rect(localX, hb.y, hb.w, hb.h)
+        .fill({ color: 0xff0033, alpha: 0.06 + 0.18 * t * pulse })
+        .stroke({ color: 0xff3355, width: 2, alpha: 0.45 + 0.5 * t });
+    }
 
     const barW = this.spec.width;
     const barH = 4;

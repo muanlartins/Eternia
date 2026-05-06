@@ -141,16 +141,16 @@ export class Player {
         this.tickAttack(dtMs, input, 2);
         break;
       case PlayerState.Skill1:
-        this.tickSkill(dtMs, 0);
+        this.tickSkill(dtMs, input, 0);
         break;
       case PlayerState.Skill2:
-        this.tickSkill(dtMs, 1);
+        this.tickSkill(dtMs, input, 1);
         break;
       case PlayerState.Skill3:
-        this.tickSkill(dtMs, 2);
+        this.tickSkill(dtMs, input, 2);
         break;
       case PlayerState.DashAtk:
-        this.tickDashAtk(dtMs);
+        this.tickDashAtk(dtMs, input);
         break;
       case PlayerState.JumpAtk:
         this.tickJumpAtk(dtMs);
@@ -229,7 +229,10 @@ export class Player {
       this.state === PlayerState.DodgeStand ||
       this.state === PlayerState.DodgeRoll ||
       this.state === PlayerState.Hurt ||
-      this.state === PlayerState.Dead
+      this.state === PlayerState.Dead ||
+      this.state === PlayerState.Skill1 ||
+      this.state === PlayerState.Skill2 ||
+      this.state === PlayerState.Skill3
     );
   }
 
@@ -472,7 +475,21 @@ export class Player {
     }
   }
 
+  private tryDefensiveCancel(input: Input): boolean {
+    if (input.justPressed('parry') && this.parryCooldownMs <= 0) {
+      this.startParry();
+      return true;
+    }
+    if (input.justPressed('dodge') && this.dodgeBar >= this.spec.dodgeStandCost) {
+      this.dodgeBar -= this.spec.dodgeStandCost;
+      this.startDodgeStand();
+      return true;
+    }
+    return false;
+  }
+
   private tickAttack(_dtMs: number, input: Input, comboIdx: number) {
+    if (this.tryDefensiveCancel(input)) return;
     const spec = this.spec.comboZ[comboIdx]!;
 
     if (this.stateTimeMs >= spec.active[0] && this.stateTimeMs <= spec.active[1]) {
@@ -499,7 +516,8 @@ export class Player {
     }
   }
 
-  private tickSkill(_dtMs: number, skillIdx: number) {
+  private tickSkill(_dtMs: number, input: Input, skillIdx: number) {
+    if (this.tryDefensiveCancel(input)) return;
     this.vx = 0;
     const skill = this.skillByIdx(skillIdx);
     if (this.stateTimeMs >= skill.duration) {
@@ -507,7 +525,8 @@ export class Player {
     }
   }
 
-  private tickDashAtk(dtMs: number) {
+  private tickDashAtk(dtMs: number, input: Input) {
+    if (this.tryDefensiveCancel(input)) return;
     const dt = dtMs / 1000;
     const decel = this.spec.groundFriction * dt;
     if (this.vx > 0) this.vx = Math.max(0, this.vx - decel);
@@ -597,19 +616,23 @@ export class Player {
     }
   }
 
-  private respawn() {
+  teleportToStart() {
     this.x = 0;
     this.y = GROUND_Y - this.spec.height;
     this.vx = 0;
     this.vy = 0;
-    this.hp = this.spec.maxHp;
-    this.mp = this.spec.maxMp;
     this.airAtkUsed = false;
     this.airDashUsed = false;
     this.jumpsUsed = 0;
-    this.dodgeBar = this.spec.dodgeBarMax;
     this.parryCooldownMs = 0;
     this.setState(PlayerState.Idle);
+  }
+
+  private respawn() {
+    this.teleportToStart();
+    this.hp = this.spec.maxHp;
+    this.mp = this.spec.maxMp;
+    this.dodgeBar = this.spec.dodgeBarMax;
   }
 
   private startGroundJump() {
