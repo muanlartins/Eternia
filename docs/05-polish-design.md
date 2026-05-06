@@ -8,9 +8,9 @@ forte com primitivas que já temos.
 | Sub-fase | Escopo | Status |
 |---|---|---|
 | **5.A** | Hit pause + screen shake + KO flash | implementado |
+| **5.A.2** | Parry buff redesign (mob → player) + boss death epic + parry radial burst | implementado |
 | **5.B** | Audio (SFX hit/parry/death/footstep, BGM) | pendente — precisa assets |
-| **5.C** | Particles avançadas (radial burst no parry, dust no dash, leaf trail) | pendente |
-| **5.D** | Damage number juiciness (scale, color tier, crit visual no parry) | pendente |
+| **5.C** | Damage number juiciness (scale, color tier, crit visual no parry) | pendente |
 
 ## 5.A — Hit pause + screen shake + KO flash
 
@@ -83,6 +83,56 @@ você matou algo, especialmente útil quando há vários mobs ativos.
   temos.
 - **Chromatic aberration / vignette**: muito caro pra primitivas, fica pra
   Phase 7 com shader real.
+
+## 5.A.2 — Parry buff redesign + boss epic
+
+### Parry buff: mob → player
+
+**Antes**: parry success setava `parriedBuff` no Mob, e o próximo hit naquele mob
+recebia `× spec.parriedDamageMultiplier` (1.7×). Recompensa morria com o mob.
+
+**Depois**: parry success ativa `parryBuffMs` no Player (3000ms). Durante essa
+janela, **TODOS os hits do player** (combo Z, skills, dash atk, jump atk)
+recebem `× parryBuffDamageMul` (1.5×). Aplicado em `Player.computeActiveHit`:
+
+```ts
+let damage = h.damage;
+if (isCombo) damage *= modifiers.comboDamageMul;
+if (parryBuffMs > 0) damage *= spec.parryBuffDamageMul;
+```
+
+Mudança fundamental: parry vira **investimento ofensivo**. Você parry um
+slim e usa S3 buffado no boss próximo (60 base × 1.5 = 90). Decisões
+táticas ricas: parry → cast S3 imediatamente vs guardar pra parry no boss.
+
+**Mob.parriedBuff** continua existindo apenas como indicador visual (gold
+outline durante stun). `parriedDamageMultiplier` permanece no spec mas não
+é mais usado (futura limpeza).
+
+**Visual no Player**: stroke gold (0xffd700) 3px com alpha 0.95 enquanto
+buff ativo, em vez do branco padrão 1px. Fácil de ver mid-combat.
+
+**HUD**: linha extra `★PARRY×1.5 2.3s` quando ativo.
+
+### Boss death epic
+
+Antes: shake 18 / 500ms, pause 140ms, KO flash 220ms.
+
+Depois:
+- Shake 26 / 700ms (mais longo, mais agressivo)
+- Pause 220ms (sente o golpe final)
+- KO flash 500ms (boss permanece branco brilhante 2× mais tempo)
+- **Spark ring**: 14 sparks num anel de raio 60 + 8 sparks em anel interno
+  de raio 28 com offset angular (22 sparks total no centro do boss)
+
+Mob comum (slim/racoon) mantém shake 8 / 200ms, pause 50ms, sem ring.
+
+### Parry success radial burst
+
+Adicionado: 8 sparks em ring de raio 28 ao redor do player no momento do
+parry. Antes: 3 sparks no centro do impact. Agora: 3 sparks no impact + 8
+sparks circulares no player. Reforça que o parry é o player que estourou
+o ataque.
 
 ## Próximas sub-fases
 

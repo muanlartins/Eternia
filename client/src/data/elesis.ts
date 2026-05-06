@@ -75,6 +75,8 @@ export const ELESIS = {
   parryActiveStartMs: 30,
   parryActiveEndMs: 180,
   parryCooldownMs: 600,
+  parryBuffDurationMs: 3000,
+  parryBuffDamageMul: 1.5,
 
   skills: {
     s1: {

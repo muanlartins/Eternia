@@ -225,7 +225,7 @@ async function main() {
             const c = intersectionCenter(hit.bbox, hb);
             hitFx.popup(c.x, c.y, result.applied);
             hitFx.spark(c.x, c.y);
-            if (result.bonus) {
+            if (player.hasParryBuff()) {
               hitFx.spark(c.x + 10, c.y - 4);
               hitFx.spark(c.x - 10, c.y + 4);
             }
@@ -237,8 +237,22 @@ async function main() {
 
             if (!m.alive) {
               const isBoss = m.isBoss();
-              camera.shake(isBoss ? 18 : 8, isBoss ? 500 : 200);
-              hitPauseMs = Math.max(hitPauseMs, isBoss ? 140 : 50);
+              camera.shake(isBoss ? 26 : 8, isBoss ? 700 : 200);
+              hitPauseMs = Math.max(hitPauseMs, isBoss ? 220 : 50);
+              if (isBoss) {
+                const bb = m.hurtbox();
+                const bcx = bb.x + bb.w / 2;
+                const bcy = bb.y + bb.h / 2;
+                const ringR = 60;
+                for (let i = 0; i < 14; i++) {
+                  const ang = (i / 14) * Math.PI * 2;
+                  hitFx.spark(bcx + Math.cos(ang) * ringR, bcy + Math.sin(ang) * ringR);
+                }
+                for (let i = 0; i < 8; i++) {
+                  const ang = (i / 8) * Math.PI * 2 + Math.PI / 8;
+                  hitFx.spark(bcx + Math.cos(ang) * 28, bcy + Math.sin(ang) * 28);
+                }
+              }
             }
           }
         }
@@ -256,9 +270,17 @@ async function main() {
           const c = intersectionCenter(mobHit.bbox, playerBox);
           if (player.isParryActive()) {
             m.parried(-mobHit.facing * 240);
+            player.activateParryBuff();
             hitFx.spark(c.x, c.y);
             hitFx.spark(c.x + 8, c.y - 4);
             hitFx.spark(c.x - 8, c.y + 4);
+            const playerBox = player.aabb();
+            const pcx = playerBox.x + playerBox.w / 2;
+            const pcy = playerBox.y + playerBox.h / 2;
+            for (let i = 0; i < 8; i++) {
+              const ang = (i / 8) * Math.PI * 2;
+              hitFx.spark(pcx + Math.cos(ang) * 28, pcy + Math.sin(ang) * 28);
+            }
             camera.shake(14, 280);
             hitPauseMs = Math.max(hitPauseMs, 90);
           } else if (!player.isInvincible()) {
@@ -358,6 +380,9 @@ async function main() {
       player.acquiredBuffs.length === 0
         ? ''
         : `  buffs: ${player.acquiredBuffs.map((b) => b.name).join(', ')}`;
+    const parryBuffLine = player.hasParryBuff()
+      ? `  ★PARRY×${ELESIS.parryBuffDamageMul.toFixed(1)} ${(player.parryBuffMs / 1000).toFixed(1)}s`
+      : '';
     hud.text =
       `stage ${currentStageIdx + 1}/${STAGES.length}  ` +
       `lives: ${livesDisplay}  ` +
@@ -365,7 +390,7 @@ async function main() {
       `state: ${player.state.padEnd(12, ' ')}  ` +
       `hp: ${player.hp.toFixed(0).padStart(3, ' ')}/${player.getMaxHp()}  ` +
       `mp: ${player.mp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxMp}  ` +
-      `dodge: ${dodgeSegments}  ` +
+      `dodge: ${dodgeSegments}${parryBuffLine}  ` +
       `${serverInfo}${buffsLine}`;
 
     input.endFrame();

@@ -34,6 +34,7 @@ export class Mob {
   stateTimeMs = 0;
   facing: -1 | 1 = 1;
   koFlashMs = 0;
+  private koFlashTotalMs = 220;
 
   private readonly originalX: number;
   private readonly originalY: number;
@@ -89,22 +90,22 @@ export class Mob {
     return { x: this.x, y: this.y, w: this.spec.width, h: this.spec.height };
   }
 
-  receiveHit(attackId: number, damage: number, knockbackVx: number): { applied: number; bonus: boolean } | null {
+  receiveHit(attackId: number, damage: number, knockbackVx: number): { applied: number } | null {
     if (!this.alive) return null;
     if (this.receivedAttackIds.has(attackId)) return null;
     this.receivedAttackIds.add(attackId);
-    const bonus = this.parriedBuff;
-    const applied = bonus ? Math.round(damage * this.spec.parriedDamageMultiplier) : damage;
+    const applied = damage;
     this.hp = Math.max(0, this.hp - applied);
     this.vx += knockbackVx;
-    this.hitFlashMs = bonus ? 160 : 90;
+    this.hitFlashMs = 90;
 
     if (this.hp === 0) {
       this.alive = false;
       this.deadTimerMs = this.spec.respawnMs;
-      this.koFlashMs = 220;
+      this.koFlashMs = this.isBoss() ? 500 : 220;
+      this.koFlashTotalMs = this.koFlashMs;
       this.setState(MobState.Dead);
-      return { applied, bonus };
+      return { applied };
     }
 
     const inAttackFlow =
@@ -113,14 +114,12 @@ export class Mob {
       this.state === MobState.Recover;
 
     if (inAttackFlow || this.armorActive) {
-      return { applied, bonus };
+      return { applied };
     }
 
-    if (!bonus) {
-      this.consecutiveHits++;
-    }
+    this.consecutiveHits++;
 
-    if (this.consecutiveHits >= this.spec.comboBreakThreshold && !bonus) {
+    if (this.consecutiveHits >= this.spec.comboBreakThreshold) {
       this.consecutiveHits = 0;
       this.armorActive = true;
       this.currentAttackIdx = this.pickAttack();
@@ -129,7 +128,7 @@ export class Mob {
       this.hurtDurationMs = this.spec.hurtStunMs;
       this.setState(MobState.Hurt);
     }
-    return { applied, bonus };
+    return { applied };
   }
 
   parried(knockbackVx: number) {
@@ -299,7 +298,7 @@ export class Mob {
 
     if (!this.alive) {
       const flashing = this.koFlashMs > 0;
-      const t = flashing ? this.koFlashMs / 220 : 0;
+      const t = flashing && this.koFlashTotalMs > 0 ? this.koFlashMs / this.koFlashTotalMs : 0;
       this.body
         .rect(0, 0, this.spec.width, this.spec.height)
         .fill({

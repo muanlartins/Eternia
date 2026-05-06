@@ -58,6 +58,7 @@ export class Player {
   private airAtkUsed = false;
   private respawnTimerMs = 0;
   private parryCooldownMs = 0;
+  parryBuffMs = 0;
 
   modifiers: PlayerModifiers = { ...DEFAULT_MODIFIERS };
   acquiredBuffs: BuffSpec[] = [];
@@ -87,6 +88,7 @@ export class Player {
     this.dashCooldownMs = Math.max(0, this.dashCooldownMs - dtMs);
     this.airDashBufferedMs = Math.max(0, this.airDashBufferedMs - dtMs);
     this.parryCooldownMs = Math.max(0, this.parryCooldownMs - dtMs);
+    this.parryBuffMs = Math.max(0, this.parryBuffMs - dtMs);
 
     this.mp = Math.min(
       this.spec.maxMp,
@@ -279,6 +281,14 @@ export class Player {
       this.stateTimeMs >= this.spec.parryActiveStartMs &&
       this.stateTimeMs <= this.spec.parryActiveEndMs
     );
+  }
+
+  activateParryBuff() {
+    this.parryBuffMs = this.spec.parryBuffDurationMs;
+  }
+
+  hasParryBuff(): boolean {
+    return this.parryBuffMs > 0;
   }
 
   takeDamage(damage: number, knockbackVx: number) {
@@ -816,7 +826,10 @@ export class Player {
       this.state === PlayerState.Attack1 ||
       this.state === PlayerState.Attack2 ||
       this.state === PlayerState.Attack3;
-    const damage = isCombo ? Math.round(h.damage * this.modifiers.comboDamageMul) : h.damage;
+    let damage = h.damage;
+    if (isCombo) damage *= this.modifiers.comboDamageMul;
+    if (this.parryBuffMs > 0) damage *= this.spec.parryBuffDamageMul;
+    damage = Math.round(damage);
     return {
       bbox: { x: this.x + localX, y: this.y + hb.y, w: hb.w, h: hb.h },
       damage,
@@ -869,10 +882,14 @@ export class Player {
   private redraw() {
     this.body.clear();
     const bodyAlpha = this.isInvincible() ? 0.4 : 0.95;
+    const buffActive = this.parryBuffMs > 0;
+    const strokeColor = buffActive ? 0xffd700 : 0xffffff;
+    const strokeWidth = buffActive ? 3 : 1;
+    const strokeAlpha = buffActive ? 0.95 : 0.6;
     this.body
       .rect(0, 0, this.spec.width, this.spec.height)
       .fill({ color: STATE_COLOR[this.state], alpha: bodyAlpha })
-      .stroke({ color: 0xffffff, width: 1, alpha: 0.6 });
+      .stroke({ color: strokeColor, width: strokeWidth, alpha: strokeAlpha });
 
     this.facingMarker.clear();
     const cx = this.spec.width / 2;
