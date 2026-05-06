@@ -16,6 +16,7 @@ import { Background } from './game/Background.js';
 import { RunModifierOffer } from './game/RunModifierOffer.js';
 import { pickRandomModifiers } from './data/modifiers.js';
 import { MiniMap } from './game/MiniMap.js';
+import { SettingsMenu } from './game/SettingsMenu.js';
 import {
   applyGameOverToRecords,
   applyVictoryToRecords,
@@ -178,11 +179,14 @@ async function main() {
   uiStage.addChild(miniMap.container);
   miniMap.setStages(STAGES.map((s) => ({ id: s.id, name: s.name })));
 
+  const settingsMenu = new SettingsMenu(GAME_W, GAME_H);
+  uiStage.addChild(settingsMenu.container);
+
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump, ↓ = drop through platform / enter portal. double-tap ← / → = dash. ' +
       'Z = attack (tap = combo, hold = charge). A/S/D = direct cast skill. ' +
-      'Alt = dodge. Space = parry. Tab = stages map. M = mute.',
+      'Alt = dodge. Space = parry. Tab = stages map. M = mute. O = audio settings.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
   controls.x = 12;
@@ -307,6 +311,19 @@ async function main() {
 
   app.ticker.add(() => {
     const realDtMs = app.ticker.deltaMS;
+
+    if (input.justPressed('options')) {
+      settingsMenu.toggle();
+    }
+    if (input.justPressed('mute')) {
+      audio.setMuted(!audio.isMuted());
+    }
+    if (settingsMenu.isOpen()) {
+      settingsMenu.update(audio, input);
+      input.endFrame();
+      return;
+    }
+
     const isCinematic =
       stagePhase === 'modifierPick' ||
       stagePhase === 'clearAnnounce' ||
@@ -317,10 +334,6 @@ async function main() {
     const gameDtMs = isCinematic ? 0 : realDtMs;
     const dtMs = hitPauseMs > 0 ? 0 : gameDtMs;
     hitPauseMs = Math.max(0, hitPauseMs - realDtMs);
-
-    if (input.justPressed('mute')) {
-      audio.setMuted(!audio.isMuted());
-    }
 
     player.update(dtMs, input, stage.getPlatforms());
 

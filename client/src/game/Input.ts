@@ -13,7 +13,8 @@ export type InputKey =
   | 'pick2'
   | 'pick3'
   | 'mute'
-  | 'minimap';
+  | 'minimap'
+  | 'options';
 
 const KEY_MAP: Record<string, InputKey> = {
   ArrowLeft: 'left',
@@ -32,6 +33,8 @@ const KEY_MAP: Record<string, InputKey> = {
   Digit3: 'pick3',
   KeyM: 'mute',
   Tab: 'minimap',
+  KeyO: 'options',
+  Escape: 'options',
 };
 
 type DoubleTapState = {

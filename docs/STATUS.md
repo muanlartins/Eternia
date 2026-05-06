@@ -15,7 +15,7 @@
 | **2 — Combat** | Combo Z, S1/S2/S3, dash atk, dodge, parry, charge-Z, counter | ✅ done (2.A → 2.I) | `02-combat-design.md` |
 | **3 — Mobs/AI** | 5 mob types (slim, racoon, archer, brute, insectivorous boss) + gravity | ✅ done (3.A → 3.G) | `03-mobs-design.md` |
 | **4 — Stage flow + buffs** | 4 stages, buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.J) | `04-stages-design.md` |
-| **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM | ✅ done (5.A → 5.F) | `05-polish-design.md` |
+| **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
 | **6 — Auth + persistence** | Login, save state per user, server-side records | ⏳ não iniciado | (futuro) |
 | **7 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (futuro, ~50-100h) |
 | **8 — Tailscale alpha** | Multiplayer co-op via Tailscale | ⏳ não iniciado | (V1.1) |

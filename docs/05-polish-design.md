@@ -15,6 +15,7 @@ forte com primitivas que já temos.
 | **5.E** | HUD redesign — Pixi bars (HP/MP/Dodge/Skills) + run timer + stage banner | implementado |
 | **5.F** | Parallax backgrounds (3 layers, palette per stage) | implementado |
 | **5.D** | BGM sintético via Web Audio API (3 perfis: forest / deep / boss) | implementado |
+| **5.D.2** | Audio settings UI (Master / BGM / SFX volumes + mute), persistente em localStorage, toggled por O / Esc | implementado |
 
 ## 5.A — Hit pause + screen shake + KO flash
 
@@ -432,6 +433,57 @@ restart. Tecla M alterna.
 - **Variação dentro de uma run**: cada BGM é loop fixo de 16 beats. Boss
   podia ter Phase 2 com BGM mais agressivo, mas isso entra junto com a
   feature de multi-phase boss (próximo).
+
+## 5.D.2 — Audio settings UI
+
+`SettingsMenu` overlay (Pixi container) toggled por `O` ou `Esc`. Pausa o jogo
+enquanto aberto (early return no app.ticker antes do game logic).
+
+### Estrutura de áudio
+
+Refactor de `GameAudio`: passou de `masterGain` único para 3 buses:
+
+```
+ctx.destination
+  └── masterGain (settings.master, default 0.4) [muta com setMuted]
+       ├── bgmBus (settings.bgm, default 0.7)
+       │    └── bgmGain (per-track fade) → osc/melody/bass
+       └── sfxBus (settings.sfx, default 1.0)
+            └── osc/filter/gain (per-SFX node graph)
+```
+
+Cada bus controla seu volume independentemente. Mute força `masterGain` pra 0
+(silencia tudo). Settings persistem em `localStorage` (`eternia.audio.v1`)
+e carregam no constructor de `GameAudio`.
+
+### UI
+
+Painel 420×340 centrado, gold border consistent com BuffOffer / VictoryStats.
+4 linhas selecionáveis:
+- **Master** — slider 0-100%, ±5% por seta horizontal
+- **BGM** — idem
+- **SFX** — idem
+- **Mute** — toggle ON/off (← / → ou tecla M global)
+
+Navegação: ↑↓ entre linhas, ←→ ajusta valor da linha selecionada. Mute (M)
+funciona dentro e fora do menu. `O` ou `Esc` abre/fecha.
+
+### Por que separar buses
+
+- Player podia querer BGM baixo (música ambiente discreta) mas SFX alto
+  (sentir os hits). Volume único não permite.
+- Boss death drama é dramaticamente mais forte se BGM já estiver baixo
+  ao default.
+- Mute é independent — se o cara muta, depois desmuta, volumes ajustados
+  são preservados.
+
+### Trade-offs / não feito
+
+- **Sliders por mouse**: não suportados — requer Pixi pointer events +
+  drag. Teclado-only suficiente pra alpha.
+- **Per-bus mute**: não tem (só master mute). Pode-se zerar o slider
+  individual.
+- **Master keyboard hotkeys** (e.g., `[` / `]` global): explorável depois.
 
 ## Próximas sub-fases
 

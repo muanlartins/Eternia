@@ -11,7 +11,42 @@ interface BgmSpec {
   bassDurBeats: number;
 }
 
-const BGM_VOLUME = 0.55;
+const SETTINGS_KEY = 'eternia.audio.v1';
+
+interface AudioSettings {
+  master: number;
+  bgm: number;
+  sfx: number;
+  muted: boolean;
+}
+
+const DEFAULT_SETTINGS: AudioSettings = { master: 0.4, bgm: 0.7, sfx: 1.0, muted: false };
+
+function loadAudioSettings(): AudioSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return { ...DEFAULT_SETTINGS };
+    const parsed = JSON.parse(raw) as Partial<AudioSettings>;
+    const clamp01 = (v: unknown) =>
+      typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : null;
+    return {
+      master: clamp01(parsed.master) ?? DEFAULT_SETTINGS.master,
+      bgm: clamp01(parsed.bgm) ?? DEFAULT_SETTINGS.bgm,
+      sfx: clamp01(parsed.sfx) ?? DEFAULT_SETTINGS.sfx,
+      muted: parsed.muted === true,
+    };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+function saveAudioSettings(s: AudioSettings) {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
 
 const BGM_SPECS: Record<BgmId, BgmSpec> = {
   forest: {
@@ -43,11 +78,18 @@ const BGM_SPECS: Record<BgmId, BgmSpec> = {
 export class GameAudio {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
-  private muted = false;
+  private bgmBus: GainNode | null = null;
+  private sfxBus: GainNode | null = null;
   private bgmGain: GainNode | null = null;
   private bgmSpecId: BgmId | null = null;
   private bgmStep = 0;
   private bgmTimerId: number | null = null;
+
+  private settings: AudioSettings;
+
+  constructor() {
+    this.settings = loadAudioSettings();
+  }
 
   private ensureCtx() {
     if (!this.ctx) {
@@ -56,36 +98,93 @@ export class GameAudio {
         AudioContext;
       this.ctx = new Ctor();
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.value = 0.4;
+      this.masterGain.gain.value = this.settings.muted ? 0 : this.settings.master;
       this.masterGain.connect(this.ctx.destination);
+
+      this.bgmBus = this.ctx.createGain();
+      this.bgmBus.gain.value = this.settings.bgm;
+      this.bgmBus.connect(this.masterGain);
+
+      this.sfxBus = this.ctx.createGain();
+      this.sfxBus.gain.value = this.settings.sfx;
+      this.sfxBus.connect(this.masterGain);
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume();
   }
 
+  private persist() {
+    saveAudioSettings(this.settings);
+  }
+
   setMuted(muted: boolean) {
-    this.muted = muted;
-    if (this.bgmGain && this.ctx) {
+    this.settings.muted = muted;
+    this.persist();
+    if (this.masterGain && this.ctx) {
       const ctx = this.ctx;
-      const target = muted ? 0 : BGM_VOLUME;
-      this.bgmGain.gain.cancelScheduledValues(ctx.currentTime);
-      this.bgmGain.gain.setValueAtTime(this.bgmGain.gain.value, ctx.currentTime);
-      this.bgmGain.gain.linearRampToValueAtTime(target, ctx.currentTime + 0.2);
+      const target = muted ? 0 : this.settings.master;
+      this.masterGain.gain.cancelScheduledValues(ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, ctx.currentTime);
+      this.masterGain.gain.linearRampToValueAtTime(target, ctx.currentTime + 0.15);
     }
   }
 
   isMuted(): boolean {
-    return this.muted;
+    return this.settings.muted;
+  }
+
+  setMasterVolume(v: number) {
+    this.settings.master = Math.max(0, Math.min(1, v));
+    this.persist();
+    if (this.masterGain && this.ctx && !this.settings.muted) {
+      const ctx = this.ctx;
+      this.masterGain.gain.cancelScheduledValues(ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, ctx.currentTime);
+      this.masterGain.gain.linearRampToValueAtTime(this.settings.master, ctx.currentTime + 0.05);
+    }
+  }
+
+  setBgmVolume(v: number) {
+    this.settings.bgm = Math.max(0, Math.min(1, v));
+    this.persist();
+    if (this.bgmBus && this.ctx) {
+      const ctx = this.ctx;
+      this.bgmBus.gain.cancelScheduledValues(ctx.currentTime);
+      this.bgmBus.gain.setValueAtTime(this.bgmBus.gain.value, ctx.currentTime);
+      this.bgmBus.gain.linearRampToValueAtTime(this.settings.bgm, ctx.currentTime + 0.05);
+    }
+  }
+
+  setSfxVolume(v: number) {
+    this.settings.sfx = Math.max(0, Math.min(1, v));
+    this.persist();
+    if (this.sfxBus && this.ctx) {
+      const ctx = this.ctx;
+      this.sfxBus.gain.cancelScheduledValues(ctx.currentTime);
+      this.sfxBus.gain.setValueAtTime(this.sfxBus.gain.value, ctx.currentTime);
+      this.sfxBus.gain.linearRampToValueAtTime(this.settings.sfx, ctx.currentTime + 0.05);
+    }
+  }
+
+  getMasterVolume(): number {
+    return this.settings.master;
+  }
+
+  getBgmVolume(): number {
+    return this.settings.bgm;
+  }
+
+  getSfxVolume(): number {
+    return this.settings.sfx;
   }
 
   setVolume(v: number) {
-    this.ensureCtx();
-    if (this.masterGain) this.masterGain.gain.value = Math.max(0, Math.min(1, v));
+    this.setMasterVolume(v);
   }
 
   playBgm(specId: BgmId) {
     if (this.bgmSpecId === specId) return;
     this.ensureCtx();
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.bgmBus) return;
     const ctx = this.ctx;
 
     if (this.bgmGain) {
@@ -111,11 +210,8 @@ export class GameAudio {
 
     this.bgmGain = ctx.createGain();
     this.bgmGain.gain.setValueAtTime(0, ctx.currentTime);
-    this.bgmGain.gain.linearRampToValueAtTime(
-      this.muted ? 0 : BGM_VOLUME,
-      ctx.currentTime + 1.0,
-    );
-    this.bgmGain.connect(this.masterGain);
+    this.bgmGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.0);
+    this.bgmGain.connect(this.bgmBus);
 
     this.scheduleBgmStep();
   }
@@ -211,9 +307,9 @@ export class GameAudio {
   }
 
   playHit(intensity: HitIntensity) {
-    if (this.muted) return;
+    if (this.settings.muted) return;
     this.ensureCtx();
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.sfxBus) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
@@ -239,15 +335,15 @@ export class GameAudio {
     gain.gain.linearRampToValueAtTime(params.gain, now + 0.005);
     gain.gain.exponentialRampToValueAtTime(0.001, now + params.dur);
 
-    osc.connect(filter).connect(gain).connect(this.masterGain);
+    osc.connect(filter).connect(gain).connect(this.sfxBus);
     osc.start(now);
     osc.stop(now + params.dur + 0.05);
   }
 
   playParrySuccess() {
-    if (this.muted) return;
+    if (this.settings.muted) return;
     this.ensureCtx();
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.sfxBus) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
@@ -268,7 +364,7 @@ export class GameAudio {
 
     osc1.connect(gain);
     osc2.connect(gain);
-    gain.connect(this.masterGain);
+    gain.connect(this.sfxBus);
     osc1.start(now);
     osc1.stop(now + 0.5);
     osc2.start(now);
@@ -276,9 +372,9 @@ export class GameAudio {
   }
 
   playPlayerHurt() {
-    if (this.muted) return;
+    if (this.settings.muted) return;
     this.ensureCtx();
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.sfxBus) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
@@ -296,15 +392,15 @@ export class GameAudio {
     gain.gain.linearRampToValueAtTime(0.22, now + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
 
-    osc.connect(filter).connect(gain).connect(this.masterGain);
+    osc.connect(filter).connect(gain).connect(this.sfxBus);
     osc.start(now);
     osc.stop(now + 0.32);
   }
 
   playMobDeath(isBoss: boolean) {
-    if (this.muted) return;
+    if (this.settings.muted) return;
     this.ensureCtx();
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.sfxBus) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
@@ -333,7 +429,7 @@ export class GameAudio {
 
       osc1.connect(filter);
       osc2.connect(filter);
-      filter.connect(gain).connect(this.masterGain);
+      filter.connect(gain).connect(this.sfxBus);
       osc1.start(now);
       osc1.stop(now + 1.4);
       osc2.start(now);
@@ -349,16 +445,16 @@ export class GameAudio {
       gain.gain.linearRampToValueAtTime(0.18, now + 0.005);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
 
-      osc.connect(gain).connect(this.masterGain);
+      osc.connect(gain).connect(this.sfxBus);
       osc.start(now);
       osc.stop(now + 0.3);
     }
   }
 
   playSkillCast(tier: number) {
-    if (this.muted) return;
+    if (this.settings.muted) return;
     this.ensureCtx();
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.sfxBus) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
@@ -387,7 +483,7 @@ export class GameAudio {
 
     osc.connect(filter);
     osc2.connect(filter);
-    filter.connect(gain).connect(this.masterGain);
+    filter.connect(gain).connect(this.sfxBus);
     osc.start(now);
     osc.stop(now + dur + 0.05);
     osc2.start(now);
@@ -395,9 +491,9 @@ export class GameAudio {
   }
 
   playJump() {
-    if (this.muted) return;
+    if (this.settings.muted) return;
     this.ensureCtx();
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.sfxBus) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
@@ -411,15 +507,15 @@ export class GameAudio {
     gain.gain.linearRampToValueAtTime(0.08, now + 0.005);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
 
-    osc.connect(gain).connect(this.masterGain);
+    osc.connect(gain).connect(this.sfxBus);
     osc.start(now);
     osc.stop(now + 0.12);
   }
 
   playDash() {
-    if (this.muted) return;
+    if (this.settings.muted) return;
     this.ensureCtx();
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.sfxBus) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
@@ -442,7 +538,7 @@ export class GameAudio {
     gain.gain.setValueAtTime(0.18, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
-    noise.connect(filter).connect(gain).connect(this.masterGain);
+    noise.connect(filter).connect(gain).connect(this.sfxBus);
     noise.start(now);
     noise.stop(now + 0.13);
   }
