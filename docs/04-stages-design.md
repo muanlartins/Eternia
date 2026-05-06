@@ -18,6 +18,7 @@
 | **4.H** | Closed rectangular maps + portal advance + boss-kill ends stage + minimap (Tab) + more platforms | implementado |
 | **4.I** | Portal requires onGround + 6 new buffs + 3 new modifiers | implementado |
 | **4.J** | Boss death drama phase (game continues ticking enquanto boss completa fade antes do VICTORY!) | implementado |
+| **4.L** | Boss intro banner ("★ BOSS ★ NAME") + persistent boss HP bar no topo do HUD com Phase 2 indicator | implementado |
 | **4.K** | Run record / save no servidor | pendente (parte da Phase 6) |
 
 ## 4.A — Stage system
@@ -542,6 +543,69 @@ Timeline (com 2 racoons + boss):
 
 Total: ~6s do kill ao stats screen, mas a maioria do tempo o player vê a
 animação completa do boss desaparecendo. Sem freeze.
+
+## 4.L — Boss intro + dedicated HP bar
+
+Reforça presença do boss na luta final.
+
+### Stage banner
+
+`stageBannerText(idx)` — helper em main.ts. Itera spawns do stage, se algum
+spec tem `isBoss && bossName`, retorna `★ BOSS ★ INSECTIVOROUS`. Senão,
+fallback `STAGE N: name`.
+
+Aplicado em todos os 3 sites de banner pra stage entry: modifierPick pick,
+buffOffer pick, death (lives>0).
+
+### Boss HP bar (`BossHpBar.ts`)
+
+Componente Pixi (uiStage):
+- Posição: top-center, x=(GAME_W - 540)/2, y=64
+- Size: 540×18 com border gold 2px
+- Boss name acima do bar (gold, 13px bold com black stroke)
+- HP text centralizado dentro do bar (`HP / maxHp`, 11px white)
+- Phase 2 tag (vermelho, "PHASE 2") aparece à direita quando phase=2
+
+Fill color:
+- Phase 1: `0xee5566` (red)
+- Phase 2: `0xff2244` (darker red, pulsa em alpha 0.85↔1.0)
+
+### Visibility
+
+main.ts cada frame:
+```ts
+const boss = stage.getBoss(); // returns first alive boss mob, or null
+if (boss && stagePhase === 'playing') {
+  bossHpBar.show(boss.getBossName() ?? 'BOSS');
+  bossHpBar.update(boss.hp, boss.getMaxHp(), boss.getPhase());
+} else {
+  bossHpBar.hide();
+}
+```
+
+Hide automaticamente em:
+- bossDeathDrama (boss.alive=false → getBoss returns null)
+- modifierPick / buffOffer / victoryAnnounce / etc (stagePhase !== 'playing')
+- Stages 1-3 (sem boss)
+
+### MobSpec.bossName
+
+Optional field. Só INSECTIVOROUS tem. Outros mobs (incluindo bosses futuros
+sem display name customizado) caem no fallback "BOSS" string.
+
+### Stage.getBoss() helper
+
+Retorna `mobs.find((m) => m.isBoss() && m.alive) ?? null`. Suporta múltiplos
+bosses no mesmo stage (raro), retorna o primeiro vivo.
+
+### Não feito (intencional)
+
+- **Slide-in animation**: bar aparece instantaneamente. Animação seria
+  polish marginal, fica pra Phase 5+.
+- **Damage flash em hit**: barra não pisca quando boss leva dano. Pode
+  adicionar depois se feedback for fraco.
+- **Stagger bar**: alguns jogos têm uma barra de "stagger" que enche com
+  hits rápidos. Não tem aqui. Pode entrar com sistema de poise futuro.
 
 ## Próximas sub-fases
 

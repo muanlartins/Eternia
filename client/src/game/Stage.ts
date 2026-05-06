@@ -133,6 +133,10 @@ export class Stage {
     return this.mobs.some((m) => m.isBoss());
   }
 
+  getBoss(): Mob | null {
+    return this.mobs.find((m) => m.isBoss() && m.alive) ?? null;
+  }
+
   bossKilled(): boolean {
     return this.hasBoss() && this.mobs.every((m) => !m.isBoss() || !m.alive);
   }

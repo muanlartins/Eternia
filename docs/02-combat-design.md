@@ -27,6 +27,7 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.H.7** | Counter explicit countdown (5500ms) + parry window 220ms + parry cd 400ms | implementado |
 | **2.H.8** | Counter onLand bug fix + counter requires ≥S1 charge + 2000ms duration | implementado |
 | **2.I** | Air parry/dodge + spawn invincibility + cinematic phase pause | implementado |
+| **2.J** | Aerial bonus (×1.3 dmg + blue popup) + backstab bonus (×1.3 dmg + purple popup), multiplicativos | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 
@@ -901,3 +902,79 @@ Quando entrarmos em arte (Phase 7), considerar:
 
 Por enquanto, deixar como está — playtest validou que é skill gap legítimo,
 mas a curva de aprendizado é mais íngreme do que precisaria com cue melhor.
+
+## 2.J — Aerial + backstab bonuses
+
+Dois bônus de dano contextuais, multiplicativos entre si e stack com parry buff.
+
+### Aerial bonus
+
+**Trigger**: hit do player em mob com `mob.onGround === false`.
+- Multiplier: ×1.3 (30% mais dano)
+- Popup color: azul (`0x44aaff`)
+- Popup font: 21px
+
+**Quando dispara hoje**: mobs caindo de plataforma (gravity), mobs knockback
+vertical (futuro launcher Z+up), mobs aéreos (futuro Wisp). Atualmente raro
+mas pago bem quando acontece.
+
+### Backstab bonus
+
+**Trigger**: hit do player onde `hit.facing === mob.facing` (mesma direção =
+player tá atrás do mob, batendo nas costas).
+- Multiplier: ×1.3
+- Popup color: roxo (`0xb060ff`)
+- Popup font: 21px
+
+**Quando dispara**: mob committed em telegraph/active/recover (não pode girar
+pra encarar player), e player se posiciona atrás. Per 4.A.5: mob attack flow
+é committed = não interrompe pra reorientar. Player que dodge-roll passa
+direto pelo mob durante telegraph e bate de trás → backstab.
+
+### Stacking
+
+| Cenário | Multiplier | Popup color |
+|---|---|---|
+| Normal | 1.0 | dmg-tier color |
+| Aerial | ×1.3 | blue |
+| Backstab | ×1.3 | purple |
+| Aerial + Backstab | ×1.69 | purple (prioridade) |
+| Parry buff | ×1.5 | gold |
+| Parry + aerial + backstab | ×2.535 | gold |
+| Parry + combo Z3 modifier mul | up to ×3+ | gold |
+
+Ordem visual: parry > backstab > aerial > damage tier. Cor única, sem
+prefixo extra (parry mantém "!" suffix existente).
+
+### Implementação
+
+- `Mob.onGround` virou public (era private).
+- `main.ts` hit detection:
+  ```ts
+  const aerial = !m.onGround;
+  const backstab = hit.facing === m.facing;
+  let dmg = hit.damage;
+  if (aerial) dmg *= 1.3;
+  if (backstab) dmg *= 1.3;
+  m.receiveHit(hit.attackId, dmg, ...);
+  hitFx.popup(c.x, c.y, Math.round(result.applied), { aerial, backstab, parryBuff });
+  ```
+- `HitFx.popupStyle` recebe `aerial` e `backstab` flags, retorna cor/tamanho.
+
+### Por que multiplicativo
+
+Hades faz aditivo (cada buff = +X% damage somado). DMC e jogos de luta fazem
+multiplicativo (cada multiplier compõe). Escolhi multiplicativo aqui porque
+incentiva builds especializadas — empilhar parry + posicionamento dá payoff
+exponencial, não linear. Combo Z3 (22) com parry × backstab × Berserker
+modifier dá ~80 dmg, justificando o setup.
+
+### Não feito (intencional)
+
+- **Z+up launcher attack**: usuário mencionou contextualmente, mas o bonus
+  já funciona com mobs naturalmente caídos. Launcher pode entrar como 2.K
+  futuro se for útil.
+- **SFX diferente**: aerial/backstab usam o regular `playHit`. Cor única
+  já transmite a info. Adicionar SFX seria polish marginal.
+- **Knockback diferenciado**: não — só dano. Mob continua com mesmo vx
+  knockback. Mantém consistência física.

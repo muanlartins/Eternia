@@ -70,9 +70,10 @@ Sequência: **1 → 2 → 3 → 4 → 5 → 6 → 7**.
    ×0.7. Visual: red tint + pulse + red HP bar. Audio: sting + BGM crossfade
    pra `bossRage` (130 BPM). Trigger FX: dual spark ring + screen shake +
    PHASE 2! popup.
-3. ⏳ **Boss intro + healthbar dedicada** — banner "BOSS: NAME" ao entrar
-   no stage 4 + barra de HP do boss persistente no topo da tela. Reforça
-   presença do boss. ~2-3h.
+3. ✅ **Boss intro + healthbar dedicada** (feito 2026-05-06) — banner
+   "★ BOSS ★ INSECTIVOROUS" + BossHpBar persistente no topo do HUD com
+   Phase 2 indicator. Plus aerial bonus (×1.3 + popup azul) e backstab
+   bonus (×1.3 + popup roxo) — ambos multiplicativos.
 4. ⏳ **Novo mob aéreo (Wisp)** — primeiro mob que voa (sem gravidade,
    mecânica nova). Adiciona variedade ao stage 3. ~3-4h.
 5. ⏳ **Phase 6 — Auth + persistence** — login, server-side leaderboard,

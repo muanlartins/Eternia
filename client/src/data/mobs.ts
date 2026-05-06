@@ -37,6 +37,7 @@ export interface MobSpec {
   readonly id: string;
   readonly displayName: string;
   readonly isBoss?: boolean;
+  readonly bossName?: string;
   readonly width: number;
   readonly height: number;
   readonly maxHp: number;
@@ -182,6 +183,7 @@ export const INSECTIVOROUS: MobSpec = {
   id: 'insectivorous',
   displayName: 'Bosses',
   isBoss: true,
+  bossName: 'Insectivorous',
   width: 80,
   height: 70,
   maxHp: 360,

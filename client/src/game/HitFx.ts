@@ -19,10 +19,19 @@ interface SparkItem {
 
 interface PopupOpts {
   parryBuff?: boolean;
+  aerial?: boolean;
+  backstab?: boolean;
 }
 
-function popupStyle(value: number, parryBuff: boolean): { color: number; fontSize: number; stroke: number } {
+function popupStyle(
+  value: number,
+  parryBuff: boolean,
+  aerial: boolean,
+  backstab: boolean,
+): { color: number; fontSize: number; stroke: number } {
   if (parryBuff) return { color: 0xffd700, fontSize: 22, stroke: 0x553300 };
+  if (backstab) return { color: 0xb060ff, fontSize: 21, stroke: 0x2a0a44 };
+  if (aerial) return { color: 0x44aaff, fontSize: 21, stroke: 0x002244 };
   if (value >= 60) return { color: 0xff5544, fontSize: 24, stroke: 0x000000 };
   if (value >= 30) return { color: 0xffaa44, fontSize: 21, stroke: 0x000000 };
   if (value >= 12) return { color: 0xffe066, fontSize: 18, stroke: 0x000000 };
@@ -36,8 +45,10 @@ export class HitFx {
 
   popup(x: number, y: number, value: number, opts: PopupOpts = {}) {
     const parryBuff = opts.parryBuff ?? false;
-    const { color, fontSize, stroke } = popupStyle(value, parryBuff);
-    const baseScale = parryBuff ? 1.15 : 1.0;
+    const aerial = opts.aerial ?? false;
+    const backstab = opts.backstab ?? false;
+    const { color, fontSize, stroke } = popupStyle(value, parryBuff, aerial, backstab);
+    const baseScale = parryBuff ? 1.15 : aerial || backstab ? 1.08 : 1.0;
     const jitterX = (Math.random() - 0.5) * 14;
     const jitterY = (Math.random() - 0.5) * 6;
     const text = new Text({

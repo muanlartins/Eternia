@@ -36,7 +36,7 @@ export class Mob {
   vy = 0;
   hp: number;
   alive = true;
-  private onGround = true;
+  onGround = true;
   private phase: 1 | 2 = 1;
   private justEnteredPhase2 = false;
 
@@ -105,6 +105,14 @@ export class Mob {
 
   getDisplayName(): string {
     return this.spec.displayName;
+  }
+
+  getBossName(): string | null {
+    return this.spec.bossName ?? null;
+  }
+
+  getMaxHp(): number {
+    return this.spec.maxHp;
   }
 
   getPhase(): 1 | 2 {

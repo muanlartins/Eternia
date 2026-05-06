@@ -17,6 +17,8 @@ import { RunModifierOffer } from './game/RunModifierOffer.js';
 import { pickRandomModifiers } from './data/modifiers.js';
 import { MiniMap } from './game/MiniMap.js';
 import { SettingsMenu } from './game/SettingsMenu.js';
+import { BossHpBar } from './game/BossHpBar.js';
+import { MOB_SPECS } from './data/stages.js';
 import {
   applyGameOverToRecords,
   applyVictoryToRecords,
@@ -30,6 +32,18 @@ function bgmIdForStage(stageId: string): BgmId {
   if (stageId === 'forest-1-4') return 'boss';
   if (stageId === 'forest-1-3') return 'deep';
   return 'forest';
+}
+
+function stageBannerText(idx: number): string {
+  const stage = STAGES[idx];
+  if (!stage) return '';
+  for (const sp of stage.spawns) {
+    const spec = MOB_SPECS[sp.type];
+    if (spec.isBoss && spec.bossName) {
+      return `★ BOSS ★  ${spec.bossName.toUpperCase()}`;
+    }
+  }
+  return `STAGE ${idx + 1}: ${stage.name}`;
 }
 
 function rectsOverlap(a: AABB, b: AABB): boolean {
@@ -181,6 +195,9 @@ async function main() {
 
   const settingsMenu = new SettingsMenu(GAME_W, GAME_H);
   uiStage.addChild(settingsMenu.container);
+
+  const bossHpBar = new BossHpBar(GAME_W);
+  uiStage.addChild(bossHpBar.container);
 
   const controls = new Text({
     text:
@@ -352,11 +369,20 @@ async function main() {
         if (!m.alive) continue;
         const hb = m.hurtbox();
         if (rectsOverlap(hit.bbox, hb)) {
-          const result = m.receiveHit(hit.attackId, hit.damage, hit.knockback * hit.facing);
+          const aerial = !m.onGround;
+          const backstab = hit.facing === m.facing;
+          let dmg = hit.damage;
+          if (aerial) dmg *= 1.3;
+          if (backstab) dmg *= 1.3;
+          const result = m.receiveHit(hit.attackId, dmg, hit.knockback * hit.facing);
           if (result !== null) {
             const c = intersectionCenter(hit.bbox, hb);
             runStats.damageDealt += result.applied;
-            hitFx.popup(c.x, c.y, result.applied, { parryBuff: player.hasParryBuff() });
+            hitFx.popup(c.x, c.y, Math.round(result.applied), {
+              parryBuff: player.hasParryBuff(),
+              aerial,
+              backstab,
+            });
             hitFx.spark(c.x, c.y);
             if (player.hasParryBuff()) {
               hitFx.spark(c.x + 10, c.y - 4);
@@ -548,7 +574,7 @@ async function main() {
         for (const m of stage.getMobs()) m.resetTransientBuffs();
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
-        stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+        stageBanner.text = stageBannerText(currentStageIdx);
       }
       stageBanner.visible = true;
     }
@@ -629,7 +655,7 @@ async function main() {
         player.teleportToStart();
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
-        stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+        stageBanner.text = stageBannerText(currentStageIdx);
         stageBanner.visible = true;
         audio.playBgm(bgmIdForStage(STAGES[currentStageIdx]!.id));
       }
@@ -667,7 +693,7 @@ async function main() {
         modifierOffer.hide();
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
-        stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+        stageBanner.text = stageBannerText(currentStageIdx);
         stageBanner.visible = true;
         runStats.startedAtMs = performance.now();
         audio.playBgm(bgmIdForStage(STAGES[currentStageIdx]!.id));
@@ -739,6 +765,14 @@ async function main() {
       miniMap.show(currentStageIdx);
     } else {
       miniMap.hide();
+    }
+
+    const boss = stage.getBoss();
+    if (boss && stagePhase === 'playing') {
+      bossHpBar.show(boss.getBossName() ?? 'BOSS');
+      bossHpBar.update(boss.hp, boss.getMaxHp(), boss.getPhase());
+    } else {
+      bossHpBar.hide();
     }
 
     const aliveCount = stage.getMobs().filter((m) => m.alive).length;
