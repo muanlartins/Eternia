@@ -286,10 +286,10 @@ export class Hud {
       this.skillKeyLabels[i]!.alpha = isReady ? 1.0 : 0.45;
     }
 
-    this.buffsLabel.text =
-      player.acquiredBuffs.length === 0
-        ? ''
-        : `buffs: ${player.acquiredBuffs.map((b) => b.name).join(', ')}`;
+    const modName = player.acquiredModifier?.name;
+    const buffNames = player.acquiredBuffs.map((b) => b.name);
+    const all = modName ? [`★ ${modName}`, ...buffNames] : buffNames;
+    this.buffsLabel.text = all.length === 0 ? '' : `path: ${all.join(', ')}`;
 
     this.stageInfoLabel.text = `STAGE ${stageIdx + 1}/${totalStages} — ${stageName}   ${aliveCount} mobs`;
 

@@ -14,6 +14,7 @@
 | **4.D** | Run completion + victory screen + run stats tracking | implementado |
 | **4.E** | Personal records via localStorage + new-record indicators | implementado |
 | **4.F** | Stage 3 nova "Floresta Profunda" (brute + archer mix) entre archer e boss | implementado |
+| **4.G** | Run start modifier choice (3 cards, big tradeoffs, persists per run) | implementado |
 | **4.D** | Run record / save no servidor | pendente |
 
 ## 4.A — Stage system

@@ -13,6 +13,8 @@ import { GameAudio, type HitIntensity } from './game/Audio.js';
 import { VictoryStats, type RunStatsView } from './game/VictoryStats.js';
 import { Hud } from './game/Hud.js';
 import { Background } from './game/Background.js';
+import { RunModifierOffer } from './game/RunModifierOffer.js';
+import { pickRandomModifiers } from './data/modifiers.js';
 import {
   applyGameOverToRecords,
   applyVictoryToRecords,
@@ -162,6 +164,9 @@ async function main() {
   const victoryStats = new VictoryStats(GAME_W, GAME_H);
   uiStage.addChild(victoryStats.container);
 
+  const modifierOffer = new RunModifierOffer(GAME_W, GAME_H);
+  uiStage.addChild(modifierOffer.container);
+
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
@@ -199,11 +204,12 @@ async function main() {
     | 'nextAnnounce'
     | 'gameOver'
     | 'victoryAnnounce'
-    | 'victoryStats';
-  let stagePhase: StagePhase = 'nextAnnounce';
-  let stageTransitionTimerMs = 1500;
-  stageBanner.text = `STAGE 1: ${STAGES[currentStageIdx]!.name}`;
-  stageBanner.visible = true;
+    | 'victoryStats'
+    | 'modifierPick';
+  let stagePhase: StagePhase = 'modifierPick';
+  let stageTransitionTimerMs = 0;
+  stageBanner.visible = false;
+  modifierOffer.show(pickRandomModifiers(3));
   let prevPlayerState: PlayerState = player.state;
 
   const MAX_LIVES = 3;
@@ -266,10 +272,10 @@ async function main() {
     pendingFlags = { newBestTime: false, newBestDamage: false, newFewestDeaths: false };
     victoryStats.hide();
     buffOffer.hide();
-    stagePhase = 'nextAnnounce';
-    stageTransitionTimerMs = 1500;
-    stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
-    stageBanner.visible = true;
+    modifierOffer.show(pickRandomModifiers(3));
+    stagePhase = 'modifierPick';
+    stageTransitionTimerMs = 0;
+    stageBanner.visible = false;
   }
 
   let hitPauseMs = 0;
@@ -550,9 +556,10 @@ async function main() {
       stageTransitionTimerMs -= dtMs;
       if (stageTransitionTimerMs <= 0) {
         player.teleportToStart();
-        stagePhase = 'nextAnnounce';
-        stageTransitionTimerMs = 1500;
-        stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+        modifierOffer.show(pickRandomModifiers(3));
+        stagePhase = 'modifierPick';
+        stageTransitionTimerMs = 0;
+        stageBanner.visible = false;
       }
     } else if (stagePhase === 'victoryAnnounce') {
       stageTransitionTimerMs -= dtMs;
@@ -560,6 +567,22 @@ async function main() {
         stageBanner.visible = false;
         victoryStats.show(statsView());
         stagePhase = 'victoryStats';
+      }
+    } else if (stagePhase === 'modifierPick') {
+      let pickIdx = -1;
+      if (input.justPressed('pick1')) pickIdx = 0;
+      else if (input.justPressed('pick2')) pickIdx = 1;
+      else if (input.justPressed('pick3')) pickIdx = 2;
+      if (pickIdx >= 0) {
+        const offers = modifierOffer.getOffers();
+        const mod = offers[pickIdx];
+        if (mod) player.applyModifier(mod);
+        modifierOffer.hide();
+        stagePhase = 'nextAnnounce';
+        stageTransitionTimerMs = 1500;
+        stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+        stageBanner.visible = true;
+        runStats.startedAtMs = performance.now();
       }
     } else if (stagePhase === 'victoryStats') {
       const anyAction =

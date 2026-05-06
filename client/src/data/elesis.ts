@@ -31,7 +31,7 @@ export const ELESIS = {
   jumpBufferMs: 90,
   skillBufferMs: 400,
   chargeMinHoldMs: 250,
-  counterHurtMs: 5000,
+  counterHurtMs: 5500,
 
   landDurationMs: 60,
 
@@ -76,8 +76,8 @@ export const ELESIS = {
 
   parryDurationMs: 360,
   parryActiveStartMs: 30,
-  parryActiveEndMs: 180,
-  parryCooldownMs: 600,
+  parryActiveEndMs: 220,
+  parryCooldownMs: 400,
   parryBuffDurationMs: 3000,
   parryBuffDamageMul: 1.5,
 

@@ -2,6 +2,7 @@ import { Container, Graphics } from 'pixi.js';
 import type { ElesisSpec } from '../data/elesis.js';
 import type { BuffSpec, PlayerModifiers } from '../data/buffs.js';
 import { DEFAULT_MODIFIERS } from '../data/buffs.js';
+import type { RunModifier } from '../data/modifiers.js';
 import type { Input } from './Input.js';
 import { PlayerState, STATE_COLOR, type AABB, type ActiveHit, type Facing } from './types.js';
 
@@ -72,6 +73,7 @@ export class Player {
 
   modifiers: PlayerModifiers = { ...DEFAULT_MODIFIERS };
   acquiredBuffs: BuffSpec[] = [];
+  acquiredModifier: RunModifier | null = null;
 
   readonly view = new Container();
   private body: Graphics;
@@ -313,9 +315,16 @@ export class Player {
     if (buff.id === 'tempered-body') this.hp = Math.min(this.getMaxHp(), this.hp + 10);
   }
 
+  applyModifier(mod: RunModifier) {
+    mod.apply(this.modifiers);
+    this.acquiredModifier = mod;
+    this.hp = Math.max(1, Math.min(this.hp, this.getMaxHp()));
+  }
+
   resetBuffs() {
     this.modifiers = { ...DEFAULT_MODIFIERS };
     this.acquiredBuffs = [];
+    this.acquiredModifier = null;
     this.hp = this.spec.maxHp;
     this.mp = this.spec.maxMp;
     this.dodgeBar = this.spec.dodgeBarMax;
@@ -807,9 +816,12 @@ export class Player {
         : this.spec.gravity;
     this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
 
-    const stunMs = this.counterHurtMs > 0 ? this.counterHurtMs : this.spec.hurtStunMs;
-    if (this.stateTimeMs >= stunMs) {
-      this.counterHurtMs = 0;
+    if (this.counterHurtMs > 0) {
+      this.counterHurtMs = Math.max(0, this.counterHurtMs - dtMs);
+      if (this.counterHurtMs <= 0) {
+        this.setState(PlayerState.Idle);
+      }
+    } else if (this.stateTimeMs >= this.spec.hurtStunMs) {
       this.setState(PlayerState.Idle);
     }
   }
