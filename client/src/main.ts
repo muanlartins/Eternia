@@ -231,6 +231,9 @@ async function main() {
               hitFx.spark(c.x - 10, c.y + 4);
             }
             player.giveMp(ELESIS.mpPerHit);
+            if (hit.isCombo && player.modifiers.comboLifestealPct > 0) {
+              player.heal(result.applied * player.modifiers.comboLifestealPct);
+            }
 
             const impact = impactFromDamage(result.applied);
             camera.shake(impact.shake, impact.shakeDur);

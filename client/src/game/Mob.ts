@@ -170,6 +170,7 @@ export class Mob {
       knockback: atk.knockback,
       attackId: this.currentAttackId,
       facing: this.facing,
+      isCombo: false,
     };
   }
 

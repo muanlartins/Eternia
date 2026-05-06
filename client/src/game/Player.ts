@@ -109,6 +109,9 @@ export class Player {
       this.spec.dodgeBarMax,
       this.dodgeBar + (this.spec.dodgeBarRegenPerSec * this.modifiers.dodgeRegenMul * dtMs) / 1000,
     );
+    if (this.modifiers.hpRegenPerSec > 0 && this.state !== PlayerState.Dead && this.hp > 0) {
+      this.hp = Math.min(this.getMaxHp(), this.hp + (this.modifiers.hpRegenPerSec * dtMs) / 1000);
+    }
 
     const ax = input.axisX();
 
@@ -295,7 +298,11 @@ export class Player {
   }
 
   activateParryBuff() {
-    this.parryBuffMs = this.spec.parryBuffDurationMs;
+    this.parryBuffMs = this.spec.parryBuffDurationMs * this.modifiers.parryBuffDurationMul;
+  }
+
+  heal(amount: number) {
+    this.hp = Math.min(this.getMaxHp(), this.hp + amount);
   }
 
   hasParryBuff(): boolean {
@@ -867,6 +874,7 @@ export class Player {
       knockback: h.knockback,
       attackId: this.currentAttackId,
       facing: this.facing,
+      isCombo,
     };
   }
 

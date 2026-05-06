@@ -42,6 +42,7 @@ export interface ActiveHit {
   knockback: number;
   attackId: number;
   facing: Facing;
+  isCombo: boolean;
 }
 
 export const STATE_COLOR: Record<PlayerState, number> = {

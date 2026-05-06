@@ -10,6 +10,7 @@
 | **4.A.4** | Walk-off-platform fall fix + 3 vidas (GC-style) + telegraph/dodgeStand re-tuning | implementado |
 | **4.A.5** | Mob attack flow committed + dodge regen 0.4 + mobs persist progress on death + post-parry cooldown | implementado |
 | **4.B** | Buff offer scene entre stages (Hades cards) + effects aplicados | implementado |
+| **4.C** | Buff rarity tiers + behavioral rares (lifesteal, parry duration) | implementado |
 | **4.D** | Run record / save no servidor | pendente |
 
 ## 4.A — Stage system
@@ -313,16 +314,53 @@ Linha de buffs anexada quando `acquiredBuffs.length > 0`:
 
 ## Próximas sub-fases
 
-### 4.C — Buffs raros + ativos especiais
+## 4.C — Rarity tiers + behavioral rares
 
-Adicionar tier raro com efeitos comportamentais:
-- **Flame Burst**: após combo Z3, explosão AoE secundária
-- **Time Hold**: parry stuna mob 1.5× mais tempo
-- **Vampiric Edge**: 10% lifesteal no combo Z
-- **Echo Strike**: 25% chance de dano extra após hit
+### Rarity field
 
-Esses precisam de mais que mutação de modifiers — requerem novos
-behaviors (callbacks no Mob.receiveHit, hooks no parry).
+`BuffSpec` ganha `rarity: 'common' | 'rare'`. Pool atual:
+- 7 commons (existing 6 + Endurance Breath)
+- 2 rares (Vampiric Edge, Time Hold)
+
+### Weighted random (RARE_PICK_CHANCE = 0.25)
+
+Para cada slot do offer:
+1. Roll 25% chance de querer rare
+2. Se quer rare e tem rare disponível (não usado neste offer) → pick rare
+3. Senão fallback pra qualquer não usado
+4. Mesmo offer não repete buff (used set)
+
+Resultado: ~75% slots common, ~25% slots rare. Players verão rare em ~58%
+dos offers de 3 cards (1 - 0.75³).
+
+### Novos buffs
+
+**Endurance Breath** (common): `hpRegenPerSec += 1`. Continuous heal during
+combat. Não regen quando dead/hp=0 (`Player.update` checa state).
+
+**Vampiric Edge** (rare): `comboLifestealPct += 0.12`. Combo Z hits healam
+12% do dano causado. Lifesteal NÃO se aplica a skills/dash atk/jump atk
+(target específico do combo Z pra não trivializar S3).
+
+`ActiveHit` ganha `isCombo: boolean` (Player marca true em
+Attack1/2/3). main.ts checa: `if (hit.isCombo && comboLifestealPct > 0)
+player.heal(applied * pct)`.
+
+**Time Hold** (rare): `parryBuffDurationMul *= 1.6`. Parry buff dura 4.8s
+em vez de 3s. Stack com Vampiric: parry → S3 buffed → combo Z healing
+durante o parry buff window.
+
+### Visual
+
+Cards de rare:
+- Border laranja (`0xff9933`) 4px em vez de gold (`0xfff066`) 3px
+- Tag `★ RARE` em laranja sob o `[N]`
+- Nome desce 10px pra acomodar a tag
+
+`[N]` cor matches border (gold pra common, orange pra rare). Diferença óbvia
+visualmente sem ser overwhelming.
+
+## Próximas sub-fases
 
 ### 4.D — Run records
 

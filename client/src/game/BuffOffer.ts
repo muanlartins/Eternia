@@ -5,6 +5,9 @@ const CARD_W = 220;
 const CARD_H = 280;
 const CARD_GAP = 28;
 
+const COMMON_BORDER = 0xfff066;
+const RARE_BORDER = 0xff9933;
+
 export class BuffOffer {
   readonly container = new Container();
   private cards: Container[] = [];
@@ -57,9 +60,6 @@ export class BuffOffer {
   private makeCard(): Container {
     const c = new Container();
     const bg = new Graphics();
-    bg.roundRect(0, 0, CARD_W, CARD_H, 14)
-      .fill({ color: 0x1f2937, alpha: 0.95 })
-      .stroke({ color: 0xfff066, width: 3, alpha: 0.85 });
     c.addChild(bg);
     return c;
   }
@@ -75,18 +75,43 @@ export class BuffOffer {
       const offer = offers[i];
       if (!offer) continue;
 
+      const isRare = offer.rarity === 'rare';
+      const borderColor = isRare ? RARE_BORDER : COMMON_BORDER;
+      const borderWidth = isRare ? 4 : 3;
+
+      const bg = card.children[0] as Graphics;
+      bg.clear();
+      bg.roundRect(0, 0, CARD_W, CARD_H, 14)
+        .fill({ color: 0x1f2937, alpha: 0.95 })
+        .stroke({ color: borderColor, width: borderWidth, alpha: 0.95 });
+
       const num = new Text({
         text: `[${i + 1}]`,
         style: {
           fontFamily: 'monospace',
           fontSize: 26,
-          fill: 0xfff066,
+          fill: borderColor,
           fontWeight: 'bold',
         },
       });
       num.x = 14;
       num.y = 14;
       card.addChild(num);
+
+      if (isRare) {
+        const rareTag = new Text({
+          text: '★ RARE',
+          style: {
+            fontFamily: 'monospace',
+            fontSize: 12,
+            fill: RARE_BORDER,
+            fontWeight: 'bold',
+          },
+        });
+        rareTag.x = 14;
+        rareTag.y = 56;
+        card.addChild(rareTag);
+      }
 
       const name = new Text({
         text: offer.name,
@@ -100,7 +125,7 @@ export class BuffOffer {
         },
       });
       name.x = 14;
-      name.y = 90;
+      name.y = isRare ? 90 : 80;
       card.addChild(name);
 
       const desc = new Text({
