@@ -1,3 +1,12 @@
+export interface ProjectileSpec {
+  readonly speed: number;
+  readonly lifetimeMs: number;
+  readonly hitboxW: number;
+  readonly hitboxH: number;
+  readonly originDx: number;
+  readonly originDy: number;
+}
+
 export interface AttackVariant {
   readonly telegraphMs: number;
   readonly activeMs: number;
@@ -12,6 +21,7 @@ export interface AttackVariant {
   };
   readonly weight: number;
   readonly moveDuringActiveVx?: number;
+  readonly projectile?: ProjectileSpec;
 }
 
 export interface MobSpec {
@@ -83,6 +93,41 @@ export const RACOON: MobSpec = {
   parriedDamageMultiplier: 1.7,
   comboBreakThreshold: 4,
   respawnMs: 4000,
+};
+
+export const ARCHER: MobSpec = {
+  width: 36,
+  height: 56,
+  maxHp: 90,
+  walkSpeed: 70,
+  aggroRange: 380,
+  attackRange: 280,
+  attacks: [
+    {
+      telegraphMs: 540,
+      activeMs: 100,
+      recoveryMs: 600,
+      damage: 14,
+      knockback: 280,
+      hitbox: { cx: 0, y: 0, w: 0, h: 0 },
+      weight: 1,
+      projectile: {
+        speed: 480,
+        lifetimeMs: 1500,
+        hitboxW: 18,
+        hitboxH: 6,
+        originDx: 22,
+        originDy: 22,
+      },
+    },
+  ],
+  attackCooldownMs: 2000,
+  knockbackFriction: 1500,
+  hurtStunMs: 280,
+  parriedStunMs: 1000,
+  parriedDamageMultiplier: 1.7,
+  comboBreakThreshold: 3,
+  respawnMs: 4500,
 };
 
 export const INSECTIVOROUS: MobSpec = {

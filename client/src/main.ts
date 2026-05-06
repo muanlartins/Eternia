@@ -273,6 +273,41 @@ async function main() {
 
     stage.update(dtMs, player.x + ELESIS.width / 2);
 
+    for (const proj of stage.getProjectiles()) {
+      if (!proj.alive) continue;
+      const playerBox = player.aabb();
+      const projBox = proj.hurtbox();
+      if (rectsOverlap(projBox, playerBox)) {
+        const c = intersectionCenter(projBox, playerBox);
+        if (player.isParryActive()) {
+          proj.alive = false;
+          player.activateParryBuff();
+          if (proj.onParried) proj.onParried();
+          hitFx.spark(c.x, c.y);
+          hitFx.spark(c.x + 8, c.y - 4);
+          hitFx.spark(c.x - 8, c.y + 4);
+          const playerBoxCenter = player.aabb();
+          const pcx2 = playerBoxCenter.x + playerBoxCenter.w / 2;
+          const pcy2 = playerBoxCenter.y + playerBoxCenter.h / 2;
+          for (let i = 0; i < 8; i++) {
+            const ang = (i / 8) * Math.PI * 2;
+            hitFx.spark(pcx2 + Math.cos(ang) * 28, pcy2 + Math.sin(ang) * 28);
+          }
+          camera.shake(14, 280);
+          hitPauseMs = Math.max(hitPauseMs, 90);
+          audio.playParrySuccess();
+        } else if (!player.isInvincible()) {
+          player.takeDamage(proj.damage, proj.facing * proj.knockback);
+          hitFx.popup(c.x, c.y, proj.damage);
+          hitFx.spark(c.x, c.y);
+          camera.shake(6, 140);
+          hitPauseMs = Math.max(hitPauseMs, 30);
+          audio.playPlayerHurt();
+          proj.alive = false;
+        }
+      }
+    }
+
     for (const m of stageMobs) {
       if (!m.alive) continue;
       const mobHit = m.getActiveHit();

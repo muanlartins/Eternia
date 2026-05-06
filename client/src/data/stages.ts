@@ -1,12 +1,13 @@
 import type { MobSpec } from './mobs.js';
-import { SLIM, RACOON, INSECTIVOROUS } from './mobs.js';
+import { SLIM, RACOON, INSECTIVOROUS, ARCHER } from './mobs.js';
 
-export type MobType = 'slim' | 'racoon' | 'insectivorous';
+export type MobType = 'slim' | 'racoon' | 'insectivorous' | 'archer';
 
 export const MOB_SPECS: Record<MobType, MobSpec> = {
   slim: SLIM,
   racoon: RACOON,
   insectivorous: INSECTIVOROUS,
+  archer: ARCHER,
 };
 
 export interface MobSpawn {
@@ -42,6 +43,21 @@ export const STAGES: readonly StageSpec[] = [
   },
   {
     id: 'forest-1-2',
+    name: 'Floresta dos Elfos — 2',
+    spawns: [
+      { type: 'slim', x: 320 },
+      { type: 'archer', x: 600 },
+      { type: 'slim', x: 820 },
+      { type: 'archer', x: 1080 },
+      { type: 'racoon', x: 1300 },
+    ],
+    platforms: [
+      { x: 460, y: 360, w: 160, h: 12 },
+      { x: 940, y: 360, w: 160, h: 12 },
+    ],
+  },
+  {
+    id: 'forest-1-3',
     name: 'Floresta dos Elfos — Boss',
     spawns: [
       { type: 'racoon', x: 380 },

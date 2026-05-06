@@ -1,5 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { AttackVariant, MobSpec } from '../data/mobs.js';
+import { Projectile } from './Projectile.js';
 import type { AABB, ActiveHit } from './types.js';
 
 export const MobState = {
@@ -58,6 +59,7 @@ export class Mob {
   private previewMarker: Graphics;
 
   private readonly autoRespawn: boolean;
+  private pendingProjectiles: Projectile[] = [];
 
   constructor(
     private readonly spec: MobSpec,
@@ -162,6 +164,7 @@ export class Mob {
   getActiveHit(): ActiveHit | null {
     if (this.state !== MobState.Active) return null;
     const atk = this.currentAttack();
+    if (atk.projectile) return null;
     const hb = atk.hitbox;
     const localX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
     return {
@@ -172,6 +175,12 @@ export class Mob {
       facing: this.facing,
       isCombo: false,
     };
+  }
+
+  flushPendingProjectiles(): Projectile[] {
+    const out = this.pendingProjectiles;
+    this.pendingProjectiles = [];
+    return out;
   }
 
   private currentAttack(): AttackVariant {
@@ -298,8 +307,32 @@ export class Mob {
       this.stateTimeMs = 0;
       if (s === MobState.Active) {
         this.currentAttackId++;
+        this.spawnProjectileIfNeeded();
       }
     }
+  }
+
+  private spawnProjectileIfNeeded() {
+    const atk = this.currentAttack();
+    const proj = atk.projectile;
+    if (!proj) return;
+    const dir = this.facing;
+    const startX = this.x + this.spec.width / 2 + dir * proj.originDx - proj.hitboxW / 2;
+    const startY = this.y + proj.originDy - proj.hitboxH / 2;
+    this.pendingProjectiles.push(
+      new Projectile(
+        startX,
+        startY,
+        dir * proj.speed,
+        atk.damage,
+        atk.knockback,
+        proj.hitboxW,
+        proj.hitboxH,
+        proj.lifetimeMs,
+        dir,
+        () => this.parried(-dir * 220),
+      ),
+    );
   }
 
   private redraw() {

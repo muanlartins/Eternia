@@ -9,6 +9,7 @@
 | **3.B.2** | Combo break threshold + armor durante counter | implementado |
 | **3.C** | Mob spawning data-driven (replicar quest_zero stage_mon) | pendente |
 | **3.D** | Insectivorous boss com 3 ataques (bite / stomp AoE / charge) | implementado |
+| **3.E** | Goblin Archer + sistema de projétil (parryable + sourceMob stun) | implementado |
 
 ## 3.A — Slim com AI
 
@@ -337,3 +338,78 @@ inimigos cada vez mais difíceis.
 
 - Boss Insectivorous com 5 ataques distintos (port de `AIInsectivorous.stg`)
 - Multiple hitboxes, fases de HP, projetéis
+
+## Sub-fase 3.E — Goblin Archer + projétil
+
+### ARCHER spec
+
+```ts
+{
+  width: 36, height: 56, maxHp: 90, walkSpeed: 70,
+  aggroRange: 380, attackRange: 280,
+  attackCooldownMs: 2000,
+  attacks: [{
+    telegraphMs: 540, activeMs: 100, recoveryMs: 600,
+    damage: 14, knockback: 280,
+    hitbox: { cx: 0, y: 0, w: 0, h: 0 },  // unused
+    weight: 1,
+    projectile: { speed: 480, lifetimeMs: 1500, hitboxW: 18, hitboxH: 6, originDx: 22, originDy: 22 },
+  }],
+}
+```
+
+attackRange 280 = 5× racoon's 68. Para distante, atira, recupera. Sem
+kiting v1 — fica no lugar quando entra em range.
+
+### Projectile.ts
+
+Class simples: x/y/vx, AABB hurtbox, lifetimeMs decrementing. Visual: rect
+18×6 laranja com tip mais clara mostrando direção, alpha pulse 0.85→1.0.
+`update(dtMs)` move horizontalmente sem gravidade. Auto-destroy quando
+lifetime expira.
+
+### Mob spawna projetil
+
+`Mob.setState(Active)` chama `spawnProjectileIfNeeded()` se atk tem
+`projectile`. Cria Projectile em
+`mobCenter + facing × originDx, mobY + originDy`. Velocidade =
+`facing × speed`.
+
+`Mob.getActiveHit()` retorna null se atk tem projectile (mob não dá dano
+direto, projectile cuida).
+
+`Mob.flushPendingProjectiles()` retorna lista pendente (Stage drena).
+
+### Stage rastreia projéteis
+
+`Stage.update`: drena projéteis pendentes de cada mob, adiciona ao
+worldStage, atualiza posição, remove os mortos. `getProjectiles()`
+exposta pra main.ts checar collision.
+
+### Player vs projétil em main.ts
+
+- **Parry active**: projectile destruído, parry buff player ativado,
+  `proj.onParried()` callback dispara `archer.parried(-dir × 220)` —
+  archer fica stunado mesmo sem contato direto. Sparks + 8-spark ring +
+  shake 14/280 + pause 90 + audio.playParrySuccess.
+- **Player vulnerable**: takeDamage, projectile destruído, popup + spark +
+  shake 6/140 + pause 30 + audio.playPlayerHurt.
+- **Player invincible** (dodge/skill iframes): projétil passa, continua
+  vivo (não destruido). Pode acertar depois quando iframe acabar.
+
+### onParried callback evita coupling
+
+`Projectile` tem `onParried?: () => void`. Mob seta no construtor:
+`() => this.parried(-dir * 220)`. Permite parry distante stun o source
+mob sem precisar de import circular nem registry de mobs.
+
+### Stage 2 nova: Floresta dos Elfos — 2
+
+Inserido entre stage 1 e o boss:
+- 2 archers + 2 slims + 1 racoon
+- 2 plataformas baixas (y=360) pra reposicionamento
+- Player escolhe: aproxima (chega rápido pra interromper) ou parry/dodge
+  flecha à distância
+
+Run: Stage 1 (melee intro) → Stage 2 (ranged intro + buff offer) → Stage 3
+(boss). 3 buffs por loop em vez de 2.
