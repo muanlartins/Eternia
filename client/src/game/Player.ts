@@ -365,7 +365,7 @@ export class Player {
       for (let i = 0; i < this.skillCooldowns.length; i++) {
         this.skillCooldowns[i] = Math.max(this.skillCooldowns[i]!, 10000);
       }
-      this.counterHurtMs = 1500;
+      this.counterHurtMs = this.spec.counterHurtMs;
     } else {
       this.counterHurtMs = 0;
     }

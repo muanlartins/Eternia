@@ -597,7 +597,7 @@ async function main() {
     camera.follow(player.x + ELESIS.width / 2, player.y + ELESIS.height / 2);
     camera.update(realDtMs);
 
-    background.update(camera.getOffsetX());
+    background.update(camera.getOffsetX(), camera.getOffsetY());
 
     const aliveCount = stage.getMobs().filter((m) => m.alive).length;
     const elapsedMs =

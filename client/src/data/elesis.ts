@@ -31,6 +31,7 @@ export const ELESIS = {
   jumpBufferMs: 90,
   skillBufferMs: 400,
   chargeMinHoldMs: 250,
+  counterHurtMs: 5000,
 
   landDurationMs: 60,
 

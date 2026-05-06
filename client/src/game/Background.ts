@@ -23,6 +23,13 @@ const PALETTES: Record<string, Palette> = {
     mid: 0x1f3326,
     accent: 0x3d6446,
   },
+  deep: {
+    skyTop: 0x070a0e,
+    skyBottom: 0x121e18,
+    far: 0x0e1614,
+    mid: 0x172319,
+    accent: 0x2a4a32,
+  },
   boss: {
     skyTop: 0x180810,
     skyBottom: 0x301420,
@@ -65,8 +72,10 @@ export class Background {
   }
 
   private paletteIdFor(stageId: string): string {
-    if (stageId.includes('1-3') || stageId.toLowerCase().includes('boss')) return 'boss';
-    if (stageId.includes('forest')) return 'forest';
+    const lower = stageId.toLowerCase();
+    if (lower.includes('1-4') || lower.includes('boss')) return 'boss';
+    if (lower.includes('1-3') || lower.includes('profunda')) return 'deep';
+    if (lower.includes('forest')) return 'forest';
     return 'default';
   }
 
@@ -96,47 +105,53 @@ export class Background {
     }
 
     this.farLayer.clear();
-    const farY = this.gameH - 110;
+    const horizonY = 380;
     const farSeed = mulberry32(8675309);
-    let cx = -200;
+    let cx = -400;
     while (cx < 4000) {
       const w = 80 + farSeed() * 120;
       const h = 50 + farSeed() * 60;
       const peakX = cx + w / 2;
-      const peakY = farY - h;
+      const peakY = horizonY - h;
       this.farLayer
-        .poly([cx, farY + 40, peakX, peakY, cx + w, farY + 40])
+        .poly([cx, horizonY + 40, peakX, peakY, cx + w, horizonY + 40])
         .fill({ color: palette.far, alpha: 0.95 });
       cx += w * 0.6;
     }
 
     this.midLayer.clear();
+    const groundY = 480;
     const midSeed = mulberry32(13371337);
-    let mx = -100;
+    let mx = -200;
     while (mx < 4000) {
-      const treeW = 6 + midSeed() * 4;
-      const treeH = 50 + midSeed() * 35;
-      const treeY = this.gameH - 70 - treeH;
+      const trunkW = 6 + midSeed() * 4;
+      const trunkH = 30 + midSeed() * 20;
+      const trunkTopY = groundY - trunkH;
       this.midLayer
-        .rect(mx, treeY + treeH * 0.55, treeW, treeH * 0.5)
+        .rect(mx, trunkTopY, trunkW, trunkH)
         .fill({ color: 0x1a1010, alpha: 0.9 });
       const crownR = 14 + midSeed() * 10;
+      const crownCY = trunkTopY - crownR * 0.4;
       this.midLayer
-        .circle(mx + treeW / 2, treeY + crownR * 0.6, crownR)
+        .circle(mx + trunkW / 2, crownCY, crownR)
         .fill({ color: palette.mid, alpha: 0.95 });
       const detailR = crownR * 0.55;
       this.midLayer
-        .circle(mx + treeW / 2 - 4, treeY + crownR * 0.7, detailR)
+        .circle(mx + trunkW / 2 - 4, crownCY + 3, detailR)
         .fill({ color: palette.accent, alpha: 0.4 });
-      mx += treeW + 18 + midSeed() * 22;
+      mx += trunkW + 18 + midSeed() * 22;
     }
   }
 
-  update(cameraOffsetX: number) {
+  update(cameraOffsetX: number, cameraOffsetY: number) {
     this.skyLayer.x = 0;
+    this.skyLayer.y = 0;
     this.starLayer.x = 0;
+    this.starLayer.y = 0;
     this.farLayer.x = cameraOffsetX * 0.18;
+    this.farLayer.y = cameraOffsetY * 0.5;
     this.midLayer.x = cameraOffsetX * 0.5;
+    this.midLayer.y = cameraOffsetY;
   }
 }
 

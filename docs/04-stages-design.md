@@ -13,6 +13,7 @@
 | **4.C** | Buff rarity tiers + behavioral rares (lifesteal, parry duration) | implementado |
 | **4.D** | Run completion + victory screen + run stats tracking | implementado |
 | **4.E** | Personal records via localStorage + new-record indicators | implementado |
+| **4.F** | Stage 3 nova "Floresta Profunda" (brute + archer mix) entre archer e boss | implementado |
 | **4.D** | Run record / save no servidor | pendente |
 
 ## 4.A — Stage system

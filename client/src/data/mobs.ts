@@ -138,6 +138,35 @@ export const ARCHER: MobSpec = {
   respawnMs: 4500,
 };
 
+export const BRUTE: MobSpec = {
+  id: 'brute',
+  displayName: 'Brutes',
+  width: 56,
+  height: 70,
+  maxHp: 220,
+  walkSpeed: 50,
+  aggroRange: 280,
+  attackRange: 92,
+  attacks: [
+    {
+      telegraphMs: 720,
+      activeMs: 240,
+      recoveryMs: 740,
+      damage: 26,
+      knockback: 480,
+      hitbox: { cx: 46, y: -6, w: 76, h: 70 },
+      weight: 1,
+    },
+  ],
+  attackCooldownMs: 2200,
+  knockbackFriction: 1900,
+  hurtStunMs: 220,
+  parriedStunMs: 1100,
+  parriedDamageMultiplier: 1.6,
+  comboBreakThreshold: 8,
+  respawnMs: 6000,
+};
+
 export const INSECTIVOROUS: MobSpec = {
   id: 'insectivorous',
   displayName: 'Bosses',
