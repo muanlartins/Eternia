@@ -55,7 +55,11 @@ export class Stage {
 
     for (const s of this.spec.spawns) {
       const spec = MOB_SPECS[s.type];
-      const y = s.y ?? GROUND_Y - spec.height;
+      const defaultY =
+        spec.hasGravity === false && spec.hoverY !== undefined
+          ? spec.hoverY
+          : GROUND_Y - spec.height;
+      const y = s.y ?? defaultY;
       const mob = new Mob(spec, s.x, y, { autoRespawn: false });
       this.mobs.push(mob);
       this.worldStage.addChild(mob.view);

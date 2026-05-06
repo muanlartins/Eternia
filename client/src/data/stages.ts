@@ -1,7 +1,7 @@
 import type { MobSpec } from './mobs.js';
-import { SLIM, RACOON, INSECTIVOROUS, ARCHER, BRUTE } from './mobs.js';
+import { SLIM, RACOON, INSECTIVOROUS, ARCHER, BRUTE, WISP } from './mobs.js';
 
-export type MobType = 'slim' | 'racoon' | 'insectivorous' | 'archer' | 'brute';
+export type MobType = 'slim' | 'racoon' | 'insectivorous' | 'archer' | 'brute' | 'wisp';
 
 export const MOB_SPECS: Record<MobType, MobSpec> = {
   slim: SLIM,
@@ -9,6 +9,7 @@ export const MOB_SPECS: Record<MobType, MobSpec> = {
   insectivorous: INSECTIVOROUS,
   archer: ARCHER,
   brute: BRUTE,
+  wisp: WISP,
 };
 
 export interface MobSpawn {
@@ -60,6 +61,7 @@ export const STAGES: readonly StageSpec[] = [
       { type: 'archer', x: 660, y: 284 },
       { type: 'archer', x: 1020 },
       { type: 'racoon', x: 1200 },
+      { type: 'wisp', x: 880 },
     ],
     platforms: [
       { x: 200, y: 400, w: 200, h: 12 },
@@ -77,6 +79,8 @@ export const STAGES: readonly StageSpec[] = [
       { type: 'archer', x: 880 },
       { type: 'brute', x: 1140 },
       { type: 'archer', x: 1240, y: 244 },
+      { type: 'wisp', x: 540 },
+      { type: 'wisp', x: 1280 },
     ],
     platforms: [
       { x: 220, y: 400, w: 180, h: 12 },

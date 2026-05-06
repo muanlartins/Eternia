@@ -13,7 +13,7 @@
 | **0 — Foundation** | Monorepo (client+server+shared), pnpm, Vite, hello-world WS | ✅ done | inicial |
 | **1 — Movement** | walk/run/jump/double_jump/dash/dash_jump, camera, parallax | ✅ done | `01-movement-design.md` |
 | **2 — Combat** | Combo Z, S1/S2/S3, dash atk, dodge, parry, charge-Z, counter | ✅ done (2.A → 2.I) | `02-combat-design.md` |
-| **3 — Mobs/AI** | 5 mob types (slim, racoon, archer, brute, insectivorous boss) + gravity + multi-phase boss | ✅ done (3.A → 3.H) | `03-mobs-design.md` |
+| **3 — Mobs/AI** | 6 mob types (slim, racoon, archer, brute, wisp aerial, insectivorous boss) + gravity + multi-phase boss | ✅ done (3.A → 3.I) | `03-mobs-design.md` |
 | **4 — Stage flow + buffs** | 4 stages, buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.J) | `04-stages-design.md` |
 | **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
 | **6 — Auth + persistence** | Login, save state per user, server-side records | ⏳ não iniciado | (futuro) |
@@ -33,7 +33,7 @@
 | Categoria | Quantidade | Detalhe |
 |---|---|---|
 | Stages | 4 | forest-1-1 → forest-1-4 (boss) |
-| Mob types | 5 | slim, racoon, archer, brute, insectivorous (boss) |
+| Mob types | 6 | slim, racoon, archer, brute, wisp (aerial), insectivorous (boss multi-phase) |
 | Buffs (run-pickup) | 15 | 11 common + 4 rare |
 | Modifiers (run-start) | 9 | tradeoffs grandes (glass cannon, tank, berserker, etc.) |
 | Skills | 3 | S1 (light), S2 (medium), S3 (heavy) — todas com MP cost + cooldown |
@@ -74,8 +74,10 @@ Sequência: **1 → 2 → 3 → 4 → 5 → 6 → 7**.
    "★ BOSS ★ INSECTIVOROUS" + BossHpBar persistente no topo do HUD com
    Phase 2 indicator. Plus aerial bonus (×1.3 + popup azul) e backstab
    bonus (×1.3 + popup roxo) — ambos multiplicativos.
-4. ⏳ **Novo mob aéreo (Wisp)** — primeiro mob que voa (sem gravidade,
-   mecânica nova). Adiciona variedade ao stage 3. ~3-4h.
+4. ✅ **Wisp aéreo** (feito 2026-05-06) — `hasGravity: false`, hoverY=380,
+   bobbing 6px senoidal, dive attack vy=320 + vx=60 horizontal, lerp de
+   volta pra hoverY em recover. Palette roxa + glow circles pulsantes.
+   Spawnado em stages 2 e 3. Sempre aerial = bonus ×1.3 garantido.
 5. ⏳ **Phase 6 — Auth + persistence** — login, server-side leaderboard,
    sync de records. Backend Go já existe parcialmente. ~10-15h.
 6. ⏳ **Stage 5 / novo bioma** — sair de Floresta, ir para

@@ -13,6 +13,7 @@
 | **3.F** | Brute (heavy melee) — slow telegraph, big damage, high combo break threshold | implementado |
 | **3.G** | Mob gravity (vy + platform/ground collision; mobs fall when knocked off platforms) | implementado |
 | **3.H** | Multi-phase boss (Insectivorous Phase 2 < 50% HP: ×0.55 cooldown, ×0.7 telegraph, ×1.2 dmg, ×1.4 walk, red tint, audio sting, BGM swap to bossRage) | implementado |
+| **3.I** | Wisp — primeiro mob aéreo (`hasGravity: false` + `hoverY`); dive attack com vy=320 + bobbing; purple palette + glow circles | implementado |
 
 ## 3.A — Slim com AI
 
@@ -494,3 +495,93 @@ Quando player perde uma vida na fase 4, `stage.destroy()` NÃO é chamado
 (per 4.A.5: mobs persistem progresso). Boss continua em phase 2 com HP
 preservado. Player respawna em x=80 com full HP/MP. Justa: o phase
 transition aconteceu, deve continuar.
+
+## 3.I — Wisp (primeiro mob aéreo)
+
+Mob roxo flutuante. Sem gravidade. Faz dive attack descendente quando o
+player se aproxima horizontalmente.
+
+### Stats
+
+| Field | Value |
+|---|---|
+| `id` | `wisp` |
+| `displayName` | `Wisps` |
+| `width / height` | 32×32 |
+| `maxHp` | 70 (frágil) |
+| `walkSpeed` | 130 (rápido, mas não tanto) |
+| `aggroRange` | 360 |
+| `attackRange` | 90 (horizontal) |
+| `hasGravity` | `false` |
+| `hoverY` | 380 (~36px acima do ground das outras mobs) |
+
+### Dive attack
+
+Único ataque. Telegraph 480ms (preview hitbox abaixo do wisp), active 220ms
+com `moveDuringActiveVx = 60` + `moveDuringActiveVy = 320` (mergulha
+diagonalmente em direção ao chão), recover 520ms.
+
+Durante recover, `tickHover` lerpa `y` de volta pra `hoverY` (lerpRate=6).
+Wisp sobe de volta em ~520ms, suave.
+
+### MobSpec extensions
+
+- `MobSpec.hasGravity?: boolean` — default true; false ignora gravidade e
+  collision com plataformas/ground.
+- `MobSpec.hoverY?: number` — Y target quando flutuando (idle/chase/recover).
+- `AttackVariant.moveDuringActiveVy?: number` — vy aplicado durante active
+  (positive = down). Já existia `moveDuringActiveVx`.
+
+### Implementação no `Mob.update`
+
+```ts
+if (this.alive) {
+  if (this.spec.hasGravity === false) {
+    this.tickHover(dt);
+  } else {
+    // gravity + ground/platform collision
+  }
+}
+```
+
+`tickHover`:
+- Em Active: aplica `vy` setado pelo attack (mergulha)
+- Senão: lerpa `y` em direção a `hoverY + sin(time/600) * 6` (bobbing 6px)
+- `onGround = false` sempre
+
+### Sempre aerial
+
+Como `onGround = false` SEMPRE, todo hit em wisp recebe aerial bonus
+(×1.3 dmg + popup azul). Isso é intencional — wisps são glass cannons
+recompensadores.
+
+### Visual
+
+Palette própria (`WISP_COLOR`):
+- Idle: roxo escuro (0x6644bb)
+- Chase: roxo médio (0x8855dd)
+- Telegraph: pink (0xff66dd)
+- Active: magenta (0xee44aa)
+- Recover/Hurt/Dead: variações roxas
+
+Renderização especial:
+- 2 circles concêntricos atrás do body (glow effect com pulse 1Hz)
+- Body alpha 0.82 (vs 0.95 normal) — dá ar etéreo
+
+### Spawn em stages
+
+- Stage 2 (Floresta dos Elfos — 2): +1 wisp em x=880, intro do mob
+- Stage 3 (Floresta Profunda): +2 wisps em x=540 e x=1280
+
+### Aspectos não cobertos
+
+- **AI vertical**: wisp não persegue verticalmente. Player que pula alto
+  fica fora de range — wisp não levanta. OK por design (wisp = ameaça em
+  uma altura específica).
+- **Projétil mágico**: wisp só tem dive melee. Versão ranged ficou pra
+  futuro mob (e.g., Mage).
+- **Death physics**: wisp morto NÃO cai. koFlash/koFade usam current y.
+  Funciona porque alive=false skipa o `tickHover`. Visual se dissolve
+  no ar — combina com aesthetic.
+- **Phase transition**: wisp não tem `phase2`. Pode ser adicionado depois
+  se quisermos elite wisps.

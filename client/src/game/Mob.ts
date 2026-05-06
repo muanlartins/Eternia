@@ -24,6 +24,16 @@ const MOB_COLOR: Record<MobState, number> = {
   dead: 0x4b5563,
 };
 
+const WISP_COLOR: Record<MobState, number> = {
+  idle: 0x6644bb,
+  chase: 0x8855dd,
+  telegraph: 0xff66dd,
+  active: 0xee44aa,
+  recover: 0x554488,
+  hurt: 0xff88cc,
+  dead: 0x33223e,
+};
+
 const MOB_GRAVITY = 2200;
 const MOB_FALL_GRAVITY_MULTIPLIER = 1.4;
 const MOB_MAX_FALL_SPEED = 1400;
@@ -312,6 +322,9 @@ export class Mob {
         if (atk.moveDuringActiveVx !== undefined) {
           this.vx = this.facing * atk.moveDuringActiveVx;
         }
+        if (atk.moveDuringActiveVy !== undefined) {
+          this.vy = atk.moveDuringActiveVy;
+        }
         if (this.stateTimeMs >= atk.activeMs) {
           this.setState(MobState.Recover);
         }
@@ -342,34 +355,52 @@ export class Mob {
     this.x += this.vx * dt;
 
     if (this.alive) {
-      const g =
-        this.vy >= 0 ? MOB_GRAVITY * MOB_FALL_GRAVITY_MULTIPLIER : MOB_GRAVITY;
-      this.vy = Math.min(MOB_MAX_FALL_SPEED, this.vy + g * dt);
-      this.y += this.vy * dt;
-
-      let effectiveGroundY = GROUND_Y - this.spec.height;
-      const mobCenterX = this.x + this.spec.width / 2;
-      for (const p of platforms) {
-        if (mobCenterX < p.x || mobCenterX > p.x + p.w) continue;
-        const lastFeetY = this.y + this.spec.height - this.vy * dt;
-        const platformTop = p.y - this.spec.height;
-        if (this.vy >= 0 && lastFeetY <= p.y + 4 && platformTop < effectiveGroundY) {
-          effectiveGroundY = platformTop;
-        }
-      }
-
-      if (this.y >= effectiveGroundY) {
-        this.y = effectiveGroundY;
-        if (this.vy > 0) this.vy = 0;
-        this.onGround = true;
+      if (this.spec.hasGravity === false) {
+        this.tickHover(dt);
       } else {
-        this.onGround = false;
+        const g =
+          this.vy >= 0 ? MOB_GRAVITY * MOB_FALL_GRAVITY_MULTIPLIER : MOB_GRAVITY;
+        this.vy = Math.min(MOB_MAX_FALL_SPEED, this.vy + g * dt);
+        this.y += this.vy * dt;
+
+        let effectiveGroundY = GROUND_Y - this.spec.height;
+        const mobCenterX = this.x + this.spec.width / 2;
+        for (const p of platforms) {
+          if (mobCenterX < p.x || mobCenterX > p.x + p.w) continue;
+          const lastFeetY = this.y + this.spec.height - this.vy * dt;
+          const platformTop = p.y - this.spec.height;
+          if (this.vy >= 0 && lastFeetY <= p.y + 4 && platformTop < effectiveGroundY) {
+            effectiveGroundY = platformTop;
+          }
+        }
+
+        if (this.y >= effectiveGroundY) {
+          this.y = effectiveGroundY;
+          if (this.vy > 0) this.vy = 0;
+          this.onGround = true;
+        } else {
+          this.onGround = false;
+        }
       }
     }
 
     this.view.x = this.x;
     this.view.y = this.y;
     this.redraw();
+  }
+
+  private tickHover(dt: number) {
+    const hoverY = this.spec.hoverY ?? GROUND_Y - this.spec.height - 100;
+    if (this.state === MobState.Active) {
+      this.y += this.vy * dt;
+    } else {
+      const targetY = hoverY + Math.sin(performance.now() / 600) * 6;
+      const dy = targetY - this.y;
+      const lerpRate = 6;
+      this.y += dy * Math.min(1, lerpRate * dt);
+      this.vy = 0;
+    }
+    this.onGround = false;
   }
 
   private tickIdleOrChase(playerCenterX: number) {
@@ -476,7 +507,8 @@ export class Mob {
       return;
     }
 
-    const baseColor = MOB_COLOR[this.state];
+    const palette = this.spec.id === 'wisp' ? WISP_COLOR : MOB_COLOR;
+    const baseColor = palette[this.state];
     const color = this.hitFlashMs > 0 ? 0xff8866 : baseColor;
     const strokeColor = this.parriedBuff
       ? 0xffd700
@@ -486,9 +518,23 @@ export class Mob {
           ? 0xff2244
           : 0xffffff;
     const strokeWidth = this.parriedBuff || this.armorActive || this.phase === 2 ? 3 : 1;
+
+    if (this.spec.id === 'wisp') {
+      const t = (Date.now() % 1000) / 1000;
+      const pulse = 0.5 + 0.5 * Math.sin(t * Math.PI * 2);
+      const cx = this.spec.width / 2;
+      const cy = this.spec.height / 2;
+      this.body
+        .circle(cx, cy, this.spec.width * 0.85)
+        .fill({ color: baseColor, alpha: 0.12 + 0.08 * pulse });
+      this.body
+        .circle(cx, cy, this.spec.width * 0.55)
+        .fill({ color: baseColor, alpha: 0.25 + 0.1 * pulse });
+    }
+
     this.body
       .rect(0, 0, this.spec.width, this.spec.height)
-      .fill({ color, alpha: 0.95 })
+      .fill({ color, alpha: this.spec.id === 'wisp' ? 0.82 : 0.95 })
       .stroke({ color: strokeColor, width: strokeWidth, alpha: 0.95 });
 
     if (this.phase === 2) {

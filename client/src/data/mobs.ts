@@ -21,6 +21,7 @@ export interface AttackVariant {
   };
   readonly weight: number;
   readonly moveDuringActiveVx?: number;
+  readonly moveDuringActiveVy?: number;
   readonly projectile?: ProjectileSpec;
 }
 
@@ -53,6 +54,8 @@ export interface MobSpec {
   readonly comboBreakThreshold: number;
   readonly respawnMs: number;
   readonly phase2?: Phase2Spec;
+  readonly hasGravity?: boolean;
+  readonly hoverY?: number;
 }
 
 export const SLIM: MobSpec = {
@@ -177,6 +180,39 @@ export const BRUTE: MobSpec = {
   parriedDamageMultiplier: 1.6,
   comboBreakThreshold: 8,
   respawnMs: 6000,
+};
+
+export const WISP: MobSpec = {
+  id: 'wisp',
+  displayName: 'Wisps',
+  width: 32,
+  height: 32,
+  maxHp: 70,
+  walkSpeed: 130,
+  aggroRange: 360,
+  attackRange: 90,
+  hasGravity: false,
+  hoverY: 380,
+  attacks: [
+    {
+      telegraphMs: 480,
+      activeMs: 220,
+      recoveryMs: 520,
+      damage: 14,
+      knockback: 240,
+      hitbox: { cx: 0, y: 18, w: 52, h: 60 },
+      weight: 1,
+      moveDuringActiveVx: 60,
+      moveDuringActiveVy: 320,
+    },
+  ],
+  attackCooldownMs: 1500,
+  knockbackFriction: 1300,
+  hurtStunMs: 220,
+  parriedStunMs: 900,
+  parriedDamageMultiplier: 1.6,
+  comboBreakThreshold: 3,
+  respawnMs: 4000,
 };
 
 export const INSECTIVOROUS: MobSpec = {
