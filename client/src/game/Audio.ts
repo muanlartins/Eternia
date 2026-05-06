@@ -1,9 +1,53 @@
 export type HitIntensity = 'light' | 'medium' | 'heavy' | 'massive';
 
+export type BgmId = 'forest' | 'deep' | 'boss';
+
+interface BgmSpec {
+  rootHz: number;
+  bpm: number;
+  melody: readonly number[];
+  bass: readonly number[];
+  voice: 'pluck' | 'pad' | 'aggressive';
+  bassDurBeats: number;
+}
+
+const BGM_VOLUME = 0.55;
+
+const BGM_SPECS: Record<BgmId, BgmSpec> = {
+  forest: {
+    rootHz: 220,
+    bpm: 72,
+    melody: [12, 15, 19, 15, 12, 19, 17, 12, 12, 15, 19, 22, 19, 17, 15, -1],
+    bass: [-12, -1, -1, -1, -12, -1, -1, -1, -7, -1, -1, -1, -7, -1, -1, -1],
+    voice: 'pluck',
+    bassDurBeats: 4,
+  },
+  deep: {
+    rootHz: 196,
+    bpm: 60,
+    melody: [12, -1, -1, 17, -1, -1, 15, -1, 12, -1, -1, 17, -1, -1, 14, -1],
+    bass: [-12, -1, -1, -1, -1, -1, -1, -1, -10, -1, -1, -1, -1, -1, -1, -1],
+    voice: 'pad',
+    bassDurBeats: 8,
+  },
+  boss: {
+    rootHz: 146.83,
+    bpm: 110,
+    melody: [12, 14, 15, 14, 17, 15, 14, 12, 12, 14, 15, 17, 19, 17, 15, 14],
+    bass: [-12, -12, -7, -7, -12, -12, -10, -10, -12, -12, -7, -7, -12, -10, -7, -5],
+    voice: 'aggressive',
+    bassDurBeats: 1,
+  },
+};
+
 export class GameAudio {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private muted = false;
+  private bgmGain: GainNode | null = null;
+  private bgmSpecId: BgmId | null = null;
+  private bgmStep = 0;
+  private bgmTimerId: number | null = null;
 
   private ensureCtx() {
     if (!this.ctx) {
@@ -20,6 +64,13 @@ export class GameAudio {
 
   setMuted(muted: boolean) {
     this.muted = muted;
+    if (this.bgmGain && this.ctx) {
+      const ctx = this.ctx;
+      const target = muted ? 0 : BGM_VOLUME;
+      this.bgmGain.gain.cancelScheduledValues(ctx.currentTime);
+      this.bgmGain.gain.setValueAtTime(this.bgmGain.gain.value, ctx.currentTime);
+      this.bgmGain.gain.linearRampToValueAtTime(target, ctx.currentTime + 0.2);
+    }
   }
 
   isMuted(): boolean {
@@ -29,6 +80,134 @@ export class GameAudio {
   setVolume(v: number) {
     this.ensureCtx();
     if (this.masterGain) this.masterGain.gain.value = Math.max(0, Math.min(1, v));
+  }
+
+  playBgm(specId: BgmId) {
+    if (this.bgmSpecId === specId) return;
+    this.ensureCtx();
+    if (!this.ctx || !this.masterGain) return;
+    const ctx = this.ctx;
+
+    if (this.bgmGain) {
+      const old = this.bgmGain;
+      old.gain.cancelScheduledValues(ctx.currentTime);
+      old.gain.setValueAtTime(old.gain.value, ctx.currentTime);
+      old.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.7);
+      window.setTimeout(() => {
+        try {
+          old.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }, 800);
+    }
+    if (this.bgmTimerId !== null) {
+      window.clearTimeout(this.bgmTimerId);
+      this.bgmTimerId = null;
+    }
+
+    this.bgmSpecId = specId;
+    this.bgmStep = 0;
+
+    this.bgmGain = ctx.createGain();
+    this.bgmGain.gain.setValueAtTime(0, ctx.currentTime);
+    this.bgmGain.gain.linearRampToValueAtTime(
+      this.muted ? 0 : BGM_VOLUME,
+      ctx.currentTime + 1.0,
+    );
+    this.bgmGain.connect(this.masterGain);
+
+    this.scheduleBgmStep();
+  }
+
+  stopBgm() {
+    if (this.bgmTimerId !== null) {
+      window.clearTimeout(this.bgmTimerId);
+      this.bgmTimerId = null;
+    }
+    if (this.bgmGain && this.ctx) {
+      const ctx = this.ctx;
+      const old = this.bgmGain;
+      old.gain.cancelScheduledValues(ctx.currentTime);
+      old.gain.setValueAtTime(old.gain.value, ctx.currentTime);
+      old.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6);
+      window.setTimeout(() => {
+        try {
+          old.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }, 700);
+    }
+    this.bgmGain = null;
+    this.bgmSpecId = null;
+  }
+
+  private scheduleBgmStep() {
+    if (this.bgmSpecId === null || !this.ctx || !this.bgmGain) return;
+    const spec = BGM_SPECS[this.bgmSpecId];
+    const beatDur = 60 / spec.bpm;
+    const step = this.bgmStep % spec.melody.length;
+    const melodyOff = spec.melody[step];
+    const bassOff = spec.bass[step];
+
+    if (melodyOff !== undefined && melodyOff >= 0) {
+      const freq = spec.rootHz * Math.pow(2, melodyOff / 12);
+      this.playBgmMelodyNote(freq, beatDur, spec.voice);
+    }
+    if (bassOff !== undefined && bassOff >= 0) {
+      const freq = spec.rootHz * Math.pow(2, bassOff / 12);
+      this.playBgmBassNote(freq, beatDur * spec.bassDurBeats);
+    }
+
+    this.bgmStep++;
+    this.bgmTimerId = window.setTimeout(() => this.scheduleBgmStep(), beatDur * 1000);
+  }
+
+  private playBgmMelodyNote(freq: number, beatDur: number, voice: BgmSpec['voice']) {
+    if (!this.ctx || !this.bgmGain) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const dur = beatDur * (voice === 'pad' ? 1.4 : voice === 'aggressive' ? 0.5 : 0.7);
+
+    const osc = ctx.createOscillator();
+    osc.type = voice === 'pluck' ? 'triangle' : voice === 'pad' ? 'sine' : 'sawtooth';
+    osc.frequency.setValueAtTime(freq, now);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(voice === 'aggressive' ? 1900 : 1300, now);
+
+    const gain = ctx.createGain();
+    const peak = voice === 'pad' ? 0.06 : voice === 'aggressive' ? 0.09 : 0.07;
+    const attack = voice === 'pad' ? 0.15 : 0.01;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(peak, now + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    osc.connect(filter).connect(gain).connect(this.bgmGain);
+    osc.start(now);
+    osc.stop(now + dur + 0.05);
+  }
+
+  private playBgmBassNote(freq: number, dur: number) {
+    if (!this.ctx || !this.bgmGain) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const noteDur = dur * 0.95;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.13, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + noteDur);
+
+    osc.connect(gain).connect(this.bgmGain);
+    osc.start(now);
+    osc.stop(now + noteDur + 0.05);
   }
 
   playHit(intensity: HitIntensity) {

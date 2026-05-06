@@ -9,7 +9,7 @@ import { Stage } from './game/Stage.js';
 import { STAGES } from './data/stages.js';
 import { HitFx } from './game/HitFx.js';
 import { BuffOffer } from './game/BuffOffer.js';
-import { GameAudio, type HitIntensity } from './game/Audio.js';
+import { GameAudio, type BgmId, type HitIntensity } from './game/Audio.js';
 import { VictoryStats, type RunStatsView } from './game/VictoryStats.js';
 import { Hud } from './game/Hud.js';
 import { Background } from './game/Background.js';
@@ -24,6 +24,12 @@ import {
   type NewRecordFlags,
 } from './game/Records.js';
 import { PlayerState, type AABB } from './game/types.js';
+
+function bgmIdForStage(stageId: string): BgmId {
+  if (stageId === 'forest-1-4') return 'boss';
+  if (stageId === 'forest-1-3') return 'deep';
+  return 'forest';
+}
 
 function rectsOverlap(a: AABB, b: AABB): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -282,6 +288,7 @@ async function main() {
     stagePhase = 'modifierPick';
     stageTransitionTimerMs = 0;
     stageBanner.visible = false;
+    audio.stopBgm();
   }
 
   let hitPauseMs = 0;
@@ -500,6 +507,7 @@ async function main() {
         stagePhase = 'gameOver';
         stageTransitionTimerMs = 2000;
         stageBanner.text = 'GAME OVER';
+        audio.stopBgm();
       } else {
         for (const m of stage.getMobs()) m.resetTransientBuffs();
         stagePhase = 'nextAnnounce';
@@ -515,6 +523,7 @@ async function main() {
         runStats.endedAtMs = performance.now();
         stagePhase = 'bossDeathDrama';
         stageTransitionTimerMs = 2500;
+        audio.stopBgm();
       } else {
         stagePhase = 'awaitingPortal';
         stageBanner.text = `STAGE ${currentStageIdx + 1} CLEAR! → portal open`;
@@ -586,6 +595,7 @@ async function main() {
         stageTransitionTimerMs = 1500;
         stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
         stageBanner.visible = true;
+        audio.playBgm(bgmIdForStage(STAGES[currentStageIdx]!.id));
       }
     } else if (stagePhase === 'nextAnnounce') {
       stageTransitionTimerMs -= realDtMs;
@@ -624,6 +634,7 @@ async function main() {
         stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
         stageBanner.visible = true;
         runStats.startedAtMs = performance.now();
+        audio.playBgm(bgmIdForStage(STAGES[currentStageIdx]!.id));
       }
     } else if (stagePhase === 'victoryStats') {
       const anyAction =

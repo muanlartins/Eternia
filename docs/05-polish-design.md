@@ -14,7 +14,7 @@ forte com primitivas que já temos.
 | **5.B** | SFX sintéticos via Web Audio API (hit/parry/death/skill/jump/dash) | implementado |
 | **5.E** | HUD redesign — Pixi bars (HP/MP/Dodge/Skills) + run timer + stage banner | implementado |
 | **5.F** | Parallax backgrounds (3 layers, palette per stage) | implementado |
-| **5.D** | BGM + assets de áudio profissionais | pendente |
+| **5.D** | BGM sintético via Web Audio API (3 perfis: forest / deep / boss) | implementado |
 
 ## 5.A — Hit pause + screen shake + KO flash
 
@@ -375,13 +375,65 @@ aplica fração:
 Quando worldStage.x = -200 (player andou 200 pra direita), midLayer.x =
 -100, farLayer.x = -36. Sensação de profundidade.
 
+## 5.D — BGM sintético
+
+Música de fundo gerada proceduralmente via Web Audio API. Sem assets externos —
+mesmo princípio dos SFX. 3 perfis por stage:
+
+| BGM ID | Stage | Mood | Root | BPM | Voice |
+|---|---|---|---|---|---|
+| `forest` | forest-1-1, forest-1-2 | exploratório, calmo | A3 (220Hz) | 72 | pluck (triangle) |
+| `deep` | forest-1-3 (Floresta Profunda) | ominoso, esparso | G3 (196Hz) | 60 | pad (sine) |
+| `boss` | forest-1-4 (Boss) | dissonante, driving | D3 (146.83Hz) | 110 | aggressive (saw) |
+
+### Estrutura
+
+`BgmSpec` em `Audio.ts`:
+- `melody: number[]` — 16 semitones acima do root, ou -1 = silêncio
+- `bass: number[]` — 16 semitones abaixo (drone)
+- `voice` — timbre da melodia (pluck = triangle, pad = sine longo, aggressive = saw)
+- `bassDurBeats` — quantos beats o bass se sustenta (4 / 8 / 1)
+- `bpm` — beats per minute (controla velocidade)
+
+A cada beat, agendamos `playBgmMelodyNote` + `playBgmBassNote` com envelopes
+ADSR baseados no voice.
+
+### Scheduling
+
+`scheduleBgmStep()` toca o note do step atual, incrementa, agenda o próximo
+via `setTimeout(beatDur * 1000)`. Não é amostra-perfeito mas dentro de poucos
+ms — suficiente pro feel.
+
+### Integração com main.ts
+
+`bgmIdForStage(stageId)` mapeia stage → BgmId. Trigger points:
+- `modifierPick` pick → start BGM do stage 1
+- `buffOffer` pick → start BGM do próximo stage (se diferente, crossfade 0.7s)
+- `bossDeathDrama` enter → stop BGM (drama silenciosa pro boss morrer)
+- `gameOver` → stop BGM
+- `startNewRun` → stop BGM (volta pro modifier pick em silêncio)
+
+### Mute integration
+
+`setMuted(true)` rampa `bgmGain.gain` pra 0 em 0.2s. `setMuted(false)`
+rampa de volta pra `BGM_VOLUME = 0.55`. Scheduler continua rodando — sem
+restart. Tecla M alterna.
+
+### Trade-offs / não feito
+
+- **Crossfade entre BGMs do mesmo perfil**: stages 1 e 2 usam o mesmo
+  `forest` BGM, então não há mudança musical entre eles. Fica intencional
+  (continuidade de bioma).
+- **Sample-perfect timing**: `setTimeout` drift acumulado em loops longos
+  é audível em headphones críticos mas não em playtest casual.
+- **Gerar layers extras** (drum, lead, harmonia): dois layers (melody+bass)
+  já dão peso suficiente. Adicionar mais sem assets aumenta complexidade
+  sem ganho proporcional.
+- **Variação dentro de uma run**: cada BGM é loop fixo de 16 beats. Boss
+  podia ter Phase 2 com BGM mais agressivo, mas isso entra junto com a
+  feature de multi-phase boss (próximo).
+
 ## Próximas sub-fases
-
-### 5.D — Audio profissional
-
-Precisa de SFX assets (hit light/medium/heavy, parry success, mob death,
-boss roar, footstep, jump, dash). Free packs do Kenney.nl ou similar.
-Web Audio API direto (não precisa de lib). Voume mixer simples.
 
 ### 5.C — Particles
 
@@ -389,7 +441,7 @@ Radial burst de 8 sparks no parry success (não 3 lineares como atual).
 Dust kick-up no ground dash. Leaf/glow trail no air dash. Ainda
 primitivas — Pixi Graphics circles+rectangles com tweens manuais em update.
 
-### 5.D — Damage number juiciness
+### 5.G — Damage number juiciness (extra)
 
 Popup atual é texto subindo + fade. Adicionar:
 - Scale-in pop (1.4× spike depois 1.0× steady) no spawn

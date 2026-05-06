@@ -15,7 +15,7 @@
 | **2 — Combat** | Combo Z, S1/S2/S3, dash atk, dodge, parry, charge-Z, counter | ✅ done (2.A → 2.I) | `02-combat-design.md` |
 | **3 — Mobs/AI** | 5 mob types (slim, racoon, archer, brute, insectivorous boss) + gravity | ✅ done (3.A → 3.G) | `03-mobs-design.md` |
 | **4 — Stage flow + buffs** | 4 stages, buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.J) | `04-stages-design.md` |
-| **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg | ✅ mostly done; 5.D pending | `05-polish-design.md` |
+| **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM | ✅ done (5.A → 5.F) | `05-polish-design.md` |
 | **6 — Auth + persistence** | Login, save state per user, server-side records | ⏳ não iniciado | (futuro) |
 | **7 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (futuro, ~50-100h) |
 | **8 — Tailscale alpha** | Multiplayer co-op via Tailscale | ⏳ não iniciado | (V1.1) |
@@ -26,7 +26,7 @@
 - 4.K — sync de records pro servidor (depende de Phase 6)
 
 ### Phase 5 — Polish
-- 5.D — BGM (música de fundo por stage). Phase 5 está ~85% feita; só faltam BGMs.
+- ✅ tudo implementado. 5.D (BGM sintético) entregue na sessão de 2026-05-06.
 
 ## Conteúdo atual (snapshot)
 
@@ -58,28 +58,27 @@ durante iteração e foram sendo absorvidas:
 - **Boss death drama** (Phase 4.J) — phase intermediária entre boss kill e
   victory para a animação de fade do boss completar.
 
-## Próximas etapas — opções
+## Próximas etapas — sequência aprovada pelo user
 
-Em ordem de impacto user-visível e custo:
+Sequência: **1 → 2 → 3 → 4 → 5 → 6 → 7**.
 
-1. **5.D — BGM sintético** (médio escopo) — tocar música ambiente por stage,
-   fade in/out entre transições. Tudo com Web Audio API (sem assets). ~3-4h.
-   Termina Phase 5.
-2. **Multi-phase boss** (médio escopo) — boss entra em Phase 2 abaixo de 50%
-   HP com novo padrão de ataque + visual diferente. Faz a luta final sentir
-   épica em vez de "mob com mais HP". Não está no plano original mas grande
-   game-feel. ~4-6h.
-3. **Boss intro + healthbar dedicada** (pequeno escopo) — ao entrar na fase
-   4, banner "BOSS: NAME" + barra de HP do boss persistente no topo da tela.
-   Reforça presença do boss. ~2-3h.
-4. **Novo mob aéreo (Wisp)** (pequeno-médio escopo) — primeiro mob que voa
-   (sem gravidade, mecânica nova). Adiciona variedade ao stage 3. ~3-4h.
-5. **Phase 6 — Auth + persistence** (grande escopo) — login, server-side
-   leaderboard, sync de records. Backend Go já existe parcialmente. ~10-15h.
-6. **Stage 5 (novo bioma)** (médio escopo) — sair de Floresta, ir para
-   Pântano/Caverna/etc. Mais 2-3 mobs novos + boss novo. ~8-10h.
-7. **Phase 7 — Sprites/arte** (gigante) — substitui primitivas. Decisão
-   pendente: extrair do GC original vs gerar via SD. ~50-100h.
+1. ✅ **5.D — BGM sintético** (~3-4h, feito 2026-05-06) — Phase 5 fechada.
+   Web Audio API procedural com 3 perfis (forest / deep / boss) por stage.
+   Crossfade 0.7s entre stages. Stop em bossDeathDrama / gameOver / new run.
+2. ⏳ **Multi-phase boss** — boss entra em Phase 2 abaixo de 50% HP com novo
+   padrão de ataque + visual diferente. Faz a luta final sentir épica em vez
+   de "mob com mais HP". ~4-6h.
+3. ⏳ **Boss intro + healthbar dedicada** — banner "BOSS: NAME" ao entrar
+   no stage 4 + barra de HP do boss persistente no topo da tela. Reforça
+   presença do boss. ~2-3h.
+4. ⏳ **Novo mob aéreo (Wisp)** — primeiro mob que voa (sem gravidade,
+   mecânica nova). Adiciona variedade ao stage 3. ~3-4h.
+5. ⏳ **Phase 6 — Auth + persistence** — login, server-side leaderboard,
+   sync de records. Backend Go já existe parcialmente. ~10-15h.
+6. ⏳ **Stage 5 / novo bioma** — sair de Floresta, ir para
+   Pântano/Caverna. Mais 2-3 mobs novos + boss novo. ~8-10h.
+7. ⏳ **Phase 7 — Sprites/arte** — substitui primitivas. Decisão pendente:
+   extrair do GC original vs gerar via SD. ~50-100h.
 
 ## Decisões pendentes (não-bloqueantes)
 
