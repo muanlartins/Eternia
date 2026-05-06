@@ -1,7 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { ElesisSpec } from '../data/elesis.js';
 import type { Input } from './Input.js';
-import { PlayerState, STATE_COLOR, type ActiveHit, type Facing } from './types.js';
+import { PlayerState, STATE_COLOR, type AABB, type ActiveHit, type Facing } from './types.js';
 
 const GROUND_Y = 480;
 
@@ -75,7 +75,7 @@ export class Player {
     this.redraw();
   }
 
-  update(dtMs: number, input: Input) {
+  update(dtMs: number, input: Input, platforms: readonly AABB[] = []) {
     this.stateTimeMs += dtMs;
     this.coyoteMs = Math.max(0, this.coyoteMs - dtMs);
     this.jumpBufferMs = Math.max(0, this.jumpBufferMs - dtMs);
@@ -176,9 +176,19 @@ export class Player {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
+    let effectiveGroundY = GROUND_Y;
+    const playerCenterX = this.x + this.spec.width / 2;
+    for (const p of platforms) {
+      if (playerCenterX < p.x || playerCenterX > p.x + p.w) continue;
+      const lastFeetY = this.y + this.spec.height - this.vy * dt;
+      if (this.vy >= 0 && lastFeetY <= p.y + 4 && p.y < effectiveGroundY) {
+        effectiveGroundY = p.y;
+      }
+    }
+
     const feetY = this.y + this.spec.height;
-    if (feetY >= GROUND_Y) {
-      this.y = GROUND_Y - this.spec.height;
+    if (feetY >= effectiveGroundY) {
+      this.y = effectiveGroundY - this.spec.height;
       if (!this.onGround) {
         this.onLand();
       }

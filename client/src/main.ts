@@ -183,7 +183,7 @@ async function main() {
   app.ticker.add(() => {
     const dtMs = app.ticker.deltaMS;
 
-    player.update(dtMs, input);
+    player.update(dtMs, input, stage.getPlatforms());
 
     const stageMobs = stage.getMobs();
 

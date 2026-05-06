@@ -6,6 +6,7 @@
 |---|---|---|
 | **4.A** | Stages data-driven + win condition + transição com banner + restart no death | implementado |
 | **4.A.2** | Mob facing marker + hitbox preview no telegraph + skill iframes + dodge/parry cancel + teleport stage transition | implementado |
+| **4.A.3** | Telegraphs estendidos + dodge bar 5 + plataformas one-way no stage 2 | implementado |
 | **4.B** | Buff offer scene entre stages (Hades cards) | pendente |
 | **4.C** | Effects de buffs aplicados ao player | pendente |
 | **4.D** | Run record / save no servidor | pendente |

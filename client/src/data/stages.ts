@@ -14,10 +14,18 @@ export interface MobSpawn {
   readonly x: number;
 }
 
+export interface PlatformSpec {
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
 export interface StageSpec {
   readonly id: string;
   readonly name: string;
   readonly spawns: readonly MobSpawn[];
+  readonly platforms?: readonly PlatformSpec[];
 }
 
 export const STAGES: readonly StageSpec[] = [
@@ -39,6 +47,11 @@ export const STAGES: readonly StageSpec[] = [
       { type: 'racoon', x: 380 },
       { type: 'racoon', x: 640 },
       { type: 'insectivorous', x: 1080 },
+    ],
+    platforms: [
+      { x: 280, y: 380, w: 200, h: 12 },
+      { x: 700, y: 300, w: 220, h: 12 },
+      { x: 1140, y: 380, w: 200, h: 12 },
     ],
   },
 ];

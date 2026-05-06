@@ -40,7 +40,7 @@ export const SLIM: MobSpec = {
   attackRange: 54,
   attacks: [
     {
-      telegraphMs: 380,
+      telegraphMs: 460,
       activeMs: 160,
       recoveryMs: 480,
       damage: 12,
@@ -67,7 +67,7 @@ export const RACOON: MobSpec = {
   attackRange: 68,
   attacks: [
     {
-      telegraphMs: 500,
+      telegraphMs: 580,
       activeMs: 200,
       recoveryMs: 620,
       damage: 18,
@@ -94,7 +94,7 @@ export const INSECTIVOROUS: MobSpec = {
   attackRange: 220,
   attacks: [
     {
-      telegraphMs: 360,
+      telegraphMs: 440,
       activeMs: 180,
       recoveryMs: 540,
       damage: 16,
@@ -103,7 +103,7 @@ export const INSECTIVOROUS: MobSpec = {
       weight: 50,
     },
     {
-      telegraphMs: 540,
+      telegraphMs: 600,
       activeMs: 220,
       recoveryMs: 720,
       damage: 24,
@@ -112,7 +112,7 @@ export const INSECTIVOROUS: MobSpec = {
       weight: 25,
     },
     {
-      telegraphMs: 480,
+      telegraphMs: 540,
       activeMs: 380,
       recoveryMs: 640,
       damage: 22,
