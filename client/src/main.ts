@@ -534,7 +534,7 @@ async function main() {
       }
     } else if (stagePhase === 'awaitingPortal') {
       if (stageTransitionTimerMs > 0) {
-        stageTransitionTimerMs -= dtMs;
+        stageTransitionTimerMs -= realDtMs;
         if (stageTransitionTimerMs <= 0) {
           stageBanner.visible = false;
         }
@@ -550,7 +550,7 @@ async function main() {
         }
       }
     } else if (stagePhase === 'clearAnnounce') {
-      stageTransitionTimerMs -= dtMs;
+      stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
         stageBanner.visible = false;
         buffOffer.show(pickRandomBuffs(BUFFS, 3));
@@ -581,13 +581,13 @@ async function main() {
         stageBanner.visible = true;
       }
     } else if (stagePhase === 'nextAnnounce') {
-      stageTransitionTimerMs -= dtMs;
+      stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
         stageBanner.visible = false;
         stagePhase = 'playing';
       }
     } else if (stagePhase === 'gameOver') {
-      stageTransitionTimerMs -= dtMs;
+      stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
         player.teleportToStart();
         modifierOffer.show(pickRandomModifiers(3));
@@ -596,7 +596,7 @@ async function main() {
         stageBanner.visible = false;
       }
     } else if (stagePhase === 'victoryAnnounce') {
-      stageTransitionTimerMs -= dtMs;
+      stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
         stageBanner.visible = false;
         victoryStats.show(statsView());
