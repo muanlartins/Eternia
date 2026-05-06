@@ -8,7 +8,10 @@ export type InputKey =
   | 'skill2'
   | 'skill3'
   | 'dodge'
-  | 'parry';
+  | 'parry'
+  | 'pick1'
+  | 'pick2'
+  | 'pick3';
 
 const KEY_MAP: Record<string, InputKey> = {
   ArrowLeft: 'left',
@@ -22,6 +25,9 @@ const KEY_MAP: Record<string, InputKey> = {
   AltLeft: 'dodge',
   AltRight: 'dodge',
   Space: 'parry',
+  Digit1: 'pick1',
+  Digit2: 'pick2',
+  Digit3: 'pick3',
 };
 
 type DoubleTapState = {

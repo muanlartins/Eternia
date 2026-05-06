@@ -1,5 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { ElesisSpec } from '../data/elesis.js';
+import type { BuffSpec, PlayerModifiers } from '../data/buffs.js';
+import { DEFAULT_MODIFIERS } from '../data/buffs.js';
 import type { Input } from './Input.js';
 import { PlayerState, STATE_COLOR, type AABB, type ActiveHit, type Facing } from './types.js';
 
@@ -57,6 +59,9 @@ export class Player {
   private respawnTimerMs = 0;
   private parryCooldownMs = 0;
 
+  modifiers: PlayerModifiers = { ...DEFAULT_MODIFIERS };
+  acquiredBuffs: BuffSpec[] = [];
+
   readonly view = new Container();
   private body: Graphics;
   private facingMarker: Graphics;
@@ -83,10 +88,13 @@ export class Player {
     this.airDashBufferedMs = Math.max(0, this.airDashBufferedMs - dtMs);
     this.parryCooldownMs = Math.max(0, this.parryCooldownMs - dtMs);
 
-    this.mp = Math.min(this.spec.maxMp, this.mp + (this.spec.mpRegenPerSec * dtMs) / 1000);
+    this.mp = Math.min(
+      this.spec.maxMp,
+      this.mp + (this.spec.mpRegenPerSec * this.modifiers.mpRegenMul * dtMs) / 1000,
+    );
     this.dodgeBar = Math.min(
       this.spec.dodgeBarMax,
-      this.dodgeBar + (this.spec.dodgeBarRegenPerSec * dtMs) / 1000,
+      this.dodgeBar + (this.spec.dodgeBarRegenPerSec * this.modifiers.dodgeRegenMul * dtMs) / 1000,
     );
 
     const ax = input.axisX();
@@ -232,6 +240,25 @@ export class Player {
 
   getActiveHit(): ActiveHit | null {
     return this.activeHit;
+  }
+
+  getMaxHp(): number {
+    return this.spec.maxHp + this.modifiers.maxHpAdd;
+  }
+
+  applyBuff(buff: BuffSpec) {
+    buff.apply(this.modifiers);
+    this.acquiredBuffs.push(buff);
+    if (buff.id === 'iron-skin') this.hp = Math.min(this.getMaxHp(), this.hp + 15);
+    if (buff.id === 'tempered-body') this.hp = Math.min(this.getMaxHp(), this.hp + 10);
+  }
+
+  resetBuffs() {
+    this.modifiers = { ...DEFAULT_MODIFIERS };
+    this.acquiredBuffs = [];
+    this.hp = this.spec.maxHp;
+    this.mp = this.spec.maxMp;
+    this.dodgeBar = this.spec.dodgeBarMax;
   }
 
   isInvincible(): boolean {
@@ -646,7 +673,7 @@ export class Player {
 
   private respawn() {
     this.teleportToStart();
-    this.hp = this.spec.maxHp;
+    this.hp = this.getMaxHp();
     this.mp = this.spec.maxMp;
     this.dodgeBar = this.spec.dodgeBarMax;
   }
@@ -785,9 +812,14 @@ export class Player {
     const h = hits[activeIdx]!;
     const hb = h.hitbox;
     const localX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
+    const isCombo =
+      this.state === PlayerState.Attack1 ||
+      this.state === PlayerState.Attack2 ||
+      this.state === PlayerState.Attack3;
+    const damage = isCombo ? Math.round(h.damage * this.modifiers.comboDamageMul) : h.damage;
     return {
       bbox: { x: this.x + localX, y: this.y + hb.y, w: hb.w, h: hb.h },
-      damage: h.damage,
+      damage,
       knockback: h.knockback,
       attackId: this.currentAttackId,
       facing: this.facing,

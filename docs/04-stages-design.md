@@ -9,8 +9,7 @@
 | **4.A.3** | Telegraphs estendidos + dodge bar 5 + plataformas one-way no stage 2 | implementado |
 | **4.A.4** | Walk-off-platform fall fix + 3 vidas (GC-style) + telegraph/dodgeStand re-tuning | implementado |
 | **4.A.5** | Mob attack flow committed + dodge regen 0.4 + mobs persist progress on death + post-parry cooldown | implementado |
-| **4.B** | Buff offer scene entre stages (Hades cards) | pendente |
-| **4.C** | Effects de buffs aplicados ao player | pendente |
+| **4.B** | Buff offer scene entre stages (Hades cards) + effects aplicados | implementado |
 | **4.D** | Run record / save no servidor | pendente |
 
 ## 4.A — Stage system
@@ -250,29 +249,80 @@ Antes 0.8/seg → bar de 5 cheia em 6.25s, sustentava spam. Agora 0.4/seg →
 bar cheia em 12.5s, 2.5s por dodge. Força mais decisões de parry pra
 recursos defensivos.
 
+## 4.B — Buff offer scene + effects
+
+### FSM atualizada
+
+```
+playing → cleared → clearAnnounce (1500ms) → buffOffer (input) → nextAnnounce (1500ms) → playing
+```
+
+`StagePhase` ganha `'buffOffer'`. Após `clearAnnounce` decair, banner some,
+`BuffOffer.show(pickRandomBuffs(BUFFS, 3))` rola 3 cards distintos do pool.
+
+### Pool atual (`client/src/data/buffs.ts`)
+
+Buffs comuns (todos common por enquanto, raridade entra na 4.B.2 se quiser):
+- **Forge of Ardor**: combo Z damage ×1.2
+- **Sharpened Edge**: combo Z damage ×1.15 (stack diferente)
+- **Iron Skin**: +15 max HP, heal 15 on pickup
+- **Tempered Body**: +10 max HP, heal 10 on pickup
+- **Mana Surge**: MP regen ×2
+- **Quick Step**: dodge regen ×1.5
+
+Stack multiplicativo é viável (pegar Forge + Sharpened = ×1.38).
+
+### `PlayerModifiers`
+
+Player tem campo `modifiers: PlayerModifiers` inicializado em
+`DEFAULT_MODIFIERS`. Reads relevantes:
+- `update()`: MP regen × `modifiers.mpRegenMul`, dodge regen ×
+  `modifiers.dodgeRegenMul`
+- `computeActiveHit()`: dano combo Z × `modifiers.comboDamageMul` (skills/dash/jump
+  attacks NÃO escalam com esse buff por design — buffs são target-específicos)
+- `getMaxHp()`: `spec.maxHp + modifiers.maxHpAdd`
+- `respawn()` usa `getMaxHp()`
+
+`applyBuff(buff)` chama `buff.apply(modifiers)` e empilha em
+`acquiredBuffs[]`. Iron Skin / Tempered Body também heal o player no pickup
+(não vale recompensar com HP novo se o player tá full e morre na próxima).
+
+### Input
+
+`Digit1/2/3` → `pick1/pick2/pick3` em `Input.ts`. Durante `buffOffer` phase,
+main.ts checa `justPressed` em cada e aplica.
+
+### Reset
+
+`player.resetBuffs()` chamado em game over (lives=0). Buffs persistem
+através de morte com lives > 0 (a sub-fase 4.A.5 já preserva run state na
+morte; buffs idem).
+
+### UI
+
+`client/src/game/BuffOffer.ts` — 3 cards 220×280 centrados com border
+amarela. Cada card mostra `[N]`, nome (bold), descrição. Title "PICK A
+BLESSING" em cima, hint "press 1, 2, or 3" embaixo. `container.visible`
+toggle.
+
+### HUD
+
+Linha de buffs anexada quando `acquiredBuffs.length > 0`:
+`buffs: Forge of Ardor, Mana Surge, ...`. HP display agora usa
+`player.getMaxHp()` em vez de `ELESIS.maxHp` (atualiza com Iron Skin).
+
 ## Próximas sub-fases
 
-### 4.B — Buff offer
+### 4.C — Buffs raros + ativos especiais
 
-Após `STAGE N CLEAR`, antes de avançar pro próximo stage, mostrar 3 cards
-com buffs random. Player escolhe 1 (clique ou tecla 1/2/3). Card aplica
-um effect modifier ao player.
+Adicionar tier raro com efeitos comportamentais:
+- **Flame Burst**: após combo Z3, explosão AoE secundária
+- **Time Hold**: parry stuna mob 1.5× mais tempo
+- **Vampiric Edge**: 10% lifesteal no combo Z
+- **Echo Strike**: 25% chance de dano extra após hit
 
-UI: 3 retângulos no centro com nome + descrição. Setas pra escolher,
-Enter pra confirmar. Ou click direto.
-
-Buffs base (ideias do GC + Hades):
-- **Forge of Ardor**: +20% damage do combo Z
-- **Iron Skin**: +15 max HP
-- **Mana Surge**: regen MP 2× mais rápido
-- **Quick Step**: dodge regen 1.5× mais rápido
-- **Flame Burst** (rara): após combo Z3, explosão AoE secundária
-- **Time Hold** (rara): parry stuna mob 1.5× mais tempo
-
-### 4.C — Effects implementados
-
-Aplicar buffs ao player. Cada buff tem `apply(player)` que mutaciona stats
-ou adiciona behaviors. Persistem na run (até morrer).
+Esses precisam de mais que mutação de modifiers — requerem novos
+behaviors (callbacks no Mob.receiveHit, hooks no parry).
 
 ### 4.D — Run records
 

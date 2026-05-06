@@ -401,3 +401,25 @@ Trade-off agora calibrado:
 - Dodge: evita dano, mantém combo, baixo skill ceiling (timing genérico)
 - Parry: gasta mais skill (timing exato no telegraph), mas recompensa com
   damage stack que pode encerrar o engagement
+
+## Backlog de polish — visual do parry timing
+
+Cada mob tem `telegraphMs` próprio e `activeMs` próprio. Slim 420/160, Racoon
+540/200, Boss bite 440/180, charge 540/380, stomp 600/220. O parry tem janela
+ativa 30-180ms.
+
+Hoje o `previewMarker` no Mob mostra um pulse genérico (0.06 → 0.24 alpha)
+durante o telegraph todo, sem indicar **quando exatamente** o ataque vai
+ativar. Resultado observado pelo player: parry de slim precisa ser mais
+imediato, parry de boss precisa de delay deliberado — sem cue claro pra
+distinguir.
+
+Quando entrarmos em arte (Phase 7), considerar:
+- "Click" frame: cor/forma muda nos últimos ~150ms do telegraph (signaling
+  active iminente)
+- Slow-in/fast-out: pulse não-linear que acelera no fim, criando sensação de
+  "quase agora"
+- Áudio cue distinto: tick rising em pitch nos últimos frames
+
+Por enquanto, deixar como está — playtest validou que é skill gap legítimo,
+mas a curva de aprendizado é mais íngreme do que precisaria com cue melhor.

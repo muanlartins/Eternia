@@ -1,12 +1,14 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import type { ClientMessage, ServerMessage } from '@eternia/shared';
 import { ELESIS } from './data/elesis.js';
+import { BUFFS, pickRandomBuffs } from './data/buffs.js';
 import { Input } from './game/Input.js';
 import { Player } from './game/Player.js';
 import { Camera } from './game/Camera.js';
 import { Stage } from './game/Stage.js';
 import { STAGES } from './data/stages.js';
 import { HitFx } from './game/HitFx.js';
+import { BuffOffer } from './game/BuffOffer.js';
 import { PlayerState, type AABB } from './game/types.js';
 
 function rectsOverlap(a: AABB, b: AABB): boolean {
@@ -142,6 +144,9 @@ async function main() {
   stageBanner.visible = false;
   uiStage.addChild(stageBanner);
 
+  const buffOffer = new BuffOffer(GAME_W, GAME_H);
+  uiStage.addChild(buffOffer.container);
+
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
@@ -173,7 +178,7 @@ async function main() {
   ws.addEventListener('close', () => (serverInfo = 'disconnected'));
   ws.addEventListener('error', () => (serverInfo = 'ws error'));
 
-  type StagePhase = 'playing' | 'clearAnnounce' | 'nextAnnounce' | 'gameOver';
+  type StagePhase = 'playing' | 'clearAnnounce' | 'buffOffer' | 'nextAnnounce' | 'gameOver';
   let stagePhase: StagePhase = 'nextAnnounce';
   let stageTransitionTimerMs = 1500;
   stageBanner.text = `STAGE 1: ${STAGES[currentStageIdx]!.name}`;
@@ -246,6 +251,7 @@ async function main() {
       if (lives <= 0) {
         lives = MAX_LIVES;
         currentStageIdx = 0;
+        player.resetBuffs();
         stage.destroy();
         stage = new Stage(STAGES[currentStageIdx]!, worldStage);
         stage.spawn();
@@ -270,6 +276,20 @@ async function main() {
     } else if (stagePhase === 'clearAnnounce') {
       stageTransitionTimerMs -= dtMs;
       if (stageTransitionTimerMs <= 0) {
+        stageBanner.visible = false;
+        buffOffer.show(pickRandomBuffs(BUFFS, 3));
+        stagePhase = 'buffOffer';
+      }
+    } else if (stagePhase === 'buffOffer') {
+      let pickIdx = -1;
+      if (input.justPressed('pick1')) pickIdx = 0;
+      else if (input.justPressed('pick2')) pickIdx = 1;
+      else if (input.justPressed('pick3')) pickIdx = 2;
+      if (pickIdx >= 0) {
+        const offers = buffOffer.getOffers();
+        const buff = offers[pickIdx];
+        if (buff) player.applyBuff(buff);
+        buffOffer.hide();
         currentStageIdx = (currentStageIdx + 1) % STAGES.length;
         stage.destroy();
         stage = new Stage(STAGES[currentStageIdx]!, worldStage);
@@ -278,6 +298,7 @@ async function main() {
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
         stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+        stageBanner.visible = true;
       }
     } else if (stagePhase === 'nextAnnounce') {
       stageTransitionTimerMs -= dtMs;
@@ -307,15 +328,19 @@ async function main() {
       ']';
     const aliveCount = stage.getMobs().filter((m) => m.alive).length;
     const livesDisplay = '♥'.repeat(lives) + '·'.repeat(MAX_LIVES - lives);
+    const buffsLine =
+      player.acquiredBuffs.length === 0
+        ? ''
+        : `  buffs: ${player.acquiredBuffs.map((b) => b.name).join(', ')}`;
     hud.text =
       `stage ${currentStageIdx + 1}/${STAGES.length}  ` +
       `lives: ${livesDisplay}  ` +
       `mobs: ${aliveCount}  ` +
       `state: ${player.state.padEnd(12, ' ')}  ` +
-      `hp: ${player.hp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxHp}  ` +
+      `hp: ${player.hp.toFixed(0).padStart(3, ' ')}/${player.getMaxHp()}  ` +
       `mp: ${player.mp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxMp}  ` +
       `dodge: ${dodgeSegments}  ` +
-      `${serverInfo}`;
+      `${serverInfo}${buffsLine}`;
 
     input.endFrame();
   });
