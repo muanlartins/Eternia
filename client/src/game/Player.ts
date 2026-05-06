@@ -67,6 +67,7 @@ export class Player {
   private respawnTimerMs = 0;
   private parryCooldownMs = 0;
   parryBuffMs = 0;
+  private counterHurtMs = 0;
 
   modifiers: PlayerModifiers = { ...DEFAULT_MODIFIERS };
   acquiredBuffs: BuffSpec[] = [];
@@ -343,6 +344,22 @@ export class Player {
 
   takeDamage(damage: number, knockbackVx: number) {
     if (this.isInvincible()) return;
+
+    const wasCharging = this.chargingActive;
+    if (wasCharging) {
+      const chargedMp =
+        (this.chargingMs / this.spec.chargeTier3Ms) * this.spec.skills.s3.mpCost;
+      this.mp = Math.max(0, this.mp - chargedMp);
+      for (let i = 0; i < this.skillCooldowns.length; i++) {
+        this.skillCooldowns[i] = Math.max(this.skillCooldowns[i]!, 10000);
+      }
+      this.counterHurtMs = 1500;
+    } else {
+      this.counterHurtMs = 0;
+    }
+    this.chargingActive = false;
+    this.chargingMs = 0;
+
     this.hp = Math.max(0, this.hp - damage);
     this.vx = knockbackVx;
     this.vy = -180;
@@ -352,6 +369,10 @@ export class Player {
     } else {
       this.setState(PlayerState.Hurt);
     }
+  }
+
+  isCounterStunned(): boolean {
+    return this.counterHurtMs > 0;
   }
 
   aabb() {
@@ -774,7 +795,9 @@ export class Player {
         : this.spec.gravity;
     this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
 
-    if (this.stateTimeMs >= this.spec.hurtStunMs) {
+    const stunMs = this.counterHurtMs > 0 ? this.counterHurtMs : this.spec.hurtStunMs;
+    if (this.stateTimeMs >= stunMs) {
+      this.counterHurtMs = 0;
       this.setState(PlayerState.Idle);
     }
   }
@@ -801,6 +824,7 @@ export class Player {
     this.skillBufferIdx = -1;
     this.chargingActive = false;
     this.chargingMs = 0;
+    this.counterHurtMs = 0;
     this.setState(PlayerState.Idle);
   }
 
@@ -1032,7 +1056,7 @@ export class Player {
       .stroke({ color: 0xffffff, width: 2 });
 
     this.chargeIndicator.clear();
-    if (this.chargingActive) {
+    {
       const barW = 50;
       const barH = 5;
       const startX = (this.spec.width - barW) / 2;
@@ -1040,28 +1064,43 @@ export class Player {
 
       this.chargeIndicator
         .rect(startX, y, barW, barH)
-        .fill({ color: 0x1a1a22, alpha: 0.85 })
+        .fill({ color: 0x112244, alpha: 0.85 })
         .stroke({ color: 0xffffff, width: 1, alpha: 0.4 });
 
-      const tier3Ms = this.spec.chargeTier3Ms;
-      const t = Math.min(1, this.chargingMs / tier3Ms);
-      const fillW = barW * t;
+      const mpPct = Math.max(0, Math.min(1, this.mp / this.spec.maxMp));
+      if (mpPct > 0) {
+        this.chargeIndicator
+          .rect(startX, y, barW * mpPct, barH)
+          .fill({ color: 0x4488ff, alpha: 0.95 });
+      }
 
-      let fillColor = 0x666677;
-      if (this.chargingMs >= tier3Ms) fillColor = 0xff5544;
-      else if (this.chargingMs >= this.spec.chargeTier2Ms) fillColor = 0xffaa44;
-      else if (this.chargingMs >= this.spec.chargeTier1Ms) fillColor = 0xffe066;
+      const ticks = [
+        this.spec.skills.s1.mpCost,
+        this.spec.skills.s2.mpCost,
+        this.spec.skills.s3.mpCost,
+      ];
+      for (const cost of ticks) {
+        const tickX = startX + (cost / this.spec.maxMp) * barW;
+        this.chargeIndicator
+          .rect(tickX - 0.5, y - 0.5, 1, barH + 1)
+          .fill({ color: 0xffffff, alpha: 0.55 });
+      }
 
-      this.chargeIndicator.rect(startX, y, fillW, barH).fill({ color: fillColor, alpha: 0.95 });
+      if (this.chargingActive) {
+        const cap = this.spec.chargeTier3Ms;
+        const progress = Math.min(1, this.chargingMs / cap);
+        const cursorMp = progress * this.spec.skills.s3.mpCost;
+        const cursorX = startX + (cursorMp / this.spec.maxMp) * barW;
 
-      const tier1X = startX + (this.spec.chargeTier1Ms / tier3Ms) * barW;
-      const tier2X = startX + (this.spec.chargeTier2Ms / tier3Ms) * barW;
-      this.chargeIndicator
-        .rect(tier1X - 0.5, y - 1, 1, barH + 2)
-        .fill({ color: 0xffffff, alpha: 0.7 });
-      this.chargeIndicator
-        .rect(tier2X - 0.5, y - 1, 1, barH + 2)
-        .fill({ color: 0xffffff, alpha: 0.7 });
+        let cursorColor = 0xddddee;
+        if (this.chargingMs >= cap) cursorColor = 0xff5544;
+        else if (this.chargingMs >= this.spec.chargeTier2Ms) cursorColor = 0xffaa44;
+        else if (this.chargingMs >= this.spec.chargeTier1Ms) cursorColor = 0xffe066;
+
+        this.chargeIndicator
+          .rect(cursorX - 1.5, y - 2, 3, barH + 4)
+          .fill({ color: cursorColor, alpha: 0.95 });
+      }
     }
 
     this.hitboxMarker.clear();

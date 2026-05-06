@@ -79,8 +79,8 @@ export const ELESIS = {
   parryBuffDurationMs: 3000,
   parryBuffDamageMul: 1.5,
 
-  chargeTier1Ms: 525,
-  chargeTier2Ms: 975,
+  chargeTier1Ms: 475,
+  chargeTier2Ms: 950,
   chargeTier3Ms: 1425,
 
   skills: {
@@ -104,7 +104,7 @@ export const ELESIS = {
     },
     s3: {
       duration: 1000,
-      mpCost: 80,
+      mpCost: 75,
       cooldownMs: 16000,
       hits: [
         { active: [280, 600], damage: 60, knockback: 480, hitbox: { cx: 0, y: -10, w: 160, h: 100 } },

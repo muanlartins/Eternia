@@ -22,6 +22,7 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.H.2** | Charging não-bloqueante (movimento livre) + cancel via jump-release + visual contínuo | implementado |
 | **2.H.3** | Charging começa no Z press (qualquer estado) + 1.5x slower thresholds | implementado |
 | **2.H.4** | Charge durante skills + skill override + isHeld trigger + force state reset | implementado |
+| **2.H.5** | MP/charge 1:1 (75/150/225ms equal segments) + counter on charge-hit | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 
@@ -733,6 +734,77 @@ Toda chamada de `startSkill` ou `releaseChargeAndCast` zera
 press) pra começar nova charge. Mas com `isHeld` trigger e cleared
 charge: se Z continuar held + state em allowed list, charge restart
 automaticamente. Continuous hold = continuous charge cycle.
+
+## Sub-fase 2.H.5 — MP/charge 1:1 + counter on charge-hit
+
+### MP costs equais (3 segments + 1 reservado pra ult)
+
+S3 cost ajustado de 80 → 75 pra alinhar segmentos da MP bar:
+- 0-25: segment 1 (S1, A)
+- 25-50: segment 2 (S2, S)
+- 50-75: segment 3 (S3, D)
+- 75-100: **segment 4 reservado pra ultimate** (futuro — não casteável ainda)
+
+### Charge timings 1:1 com MP
+
+`chargeTier1Ms/Tier2Ms/Tier3Ms` = 475/950/1425ms. Spacing igual de 475ms.
+Charge rate = 75 MP / 1425 ms = 52.6 MP/s.
+
+Cursor visual mapping: `cursorMp = (chargingMs / chargeTier3Ms) × s3.mpCost`.
+Cursor X position no MP bar: `(cursorMp / maxMp) × barWidth`. Equal spacing
+visual entre tiers.
+
+### MP bar acima do player substitui chargeIndicator
+
+Antes: bar dedicada de carga acima da cabeça (50×5px), só visível durante
+charging.
+
+Depois: **MP bar permanente** acima da cabeça (50×5px), sempre visível.
+- Background azul-escuro com stroke branco
+- Fill azul `0x4488ff` proporcional a `mp/maxMp`
+- 3 ticks brancos verticais nas posições 25/50/75 (S1/S2/S3 costs)
+- Charge cursor (overlay) só aparece quando `chargingActive=true`:
+  - Posição = `chargedMp / maxMp` do bar
+  - Cor por tier: cinza < amarelo (T1) < laranja (T2) < vermelho (T3)
+  - Vertical 3px wide, 1px taller than bar pra visibilidade
+
+HUD MP bar (top-left) recebeu o mesmo charge cursor overlay. Player tem 2
+visualizações sincronizadas: uma "encima do personagem" (foco no combate),
+outra na HUD (referência periférica).
+
+### Counter mecânica (hit durante charge)
+
+Trigger: `Player.takeDamage` com `chargingActive=true` e `!isInvincible`.
+
+Punições aplicadas:
+1. **MP perdida**: `chargedMp = (chargingMs / chargeTier3Ms) × s3.mpCost`
+   deduzido de `mp` (capped at 0). Player perde literalmente o MP que
+   "carregou".
+2. **Cooldowns extended**: cada `skillCooldowns[i] = max(skillCooldowns[i],
+   10000)`. Skills off-cooldown viram 10s; skills com cd menor vão pra 10s;
+   skills com cd ≥ 10s mantêm o seu.
+3. **Stun extendido**: `counterHurtMs = 1500` (vs `hurtStunMs = 380` normal).
+   ≈ 3.75× dodge stand. Suficiente pro player pensar antes de carregar
+   próximo.
+4. **Invulnerabilidade**: Hurt já era invincible. Counter herda — durante
+   1.5s o player não pode tomar mais hits, similar a um dodge stand
+   extra-longo.
+
+`tickHurt` checa `counterHurtMs` primeiro: se setado, usa esse em vez de
+`hurtStunMs`. Limpa `counterHurtMs = 0` ao sair de Hurt.
+
+Player.takeDamage limpa `chargingActive` e `chargingMs` (não importa
+counter ou normal). Charge state nunca persiste através de hurt.
+
+### Trade-off
+
+GC's "punish the greedy charger". Player que carrega skill near boss sem
+cuidar do telegraph vira presa fácil:
+- Joga 50 MP + cooldowns travados + 1.5s stun = ~3-5s perdidos
+- vs jogador cauteloso que carrega à distância: zero downside
+
+Alta skill ceiling: posicionamento + leitura de telegraph importam mais
+que damage stats.
 
 ## Backlog de polish — visual do parry timing
 

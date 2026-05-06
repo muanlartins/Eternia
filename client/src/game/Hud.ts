@@ -14,7 +14,7 @@ const SKILL_BOX_H = 26;
 const SKILL_BOX_GAP = 6;
 
 const SKILL_LABELS = ['A', 'S', 'D'];
-const SKILL_COSTS = [25, 50, 80];
+const SKILL_COSTS = [25, 50, 75];
 
 export class Hud {
   readonly container = new Container();
@@ -26,6 +26,7 @@ export class Hud {
   private mpBg: Graphics;
   private mpFg: Graphics;
   private mpTicks: Graphics;
+  private mpCursor: Graphics;
   private mpLabel: Text;
   private dodgeBoxes: Graphics;
   private dodgeLabel: Text;
@@ -83,6 +84,11 @@ export class Hud {
     this.mpTicks.x = PADDING;
     this.mpTicks.y = y;
     this.container.addChild(this.mpTicks);
+
+    this.mpCursor = new Graphics();
+    this.mpCursor.x = PADDING;
+    this.mpCursor.y = y;
+    this.container.addChild(this.mpCursor);
 
     this.mpLabel = new Text({
       text: '',
@@ -231,6 +237,20 @@ export class Hud {
     for (const cost of SKILL_COSTS) {
       const x = (cost / ELESIS.maxMp) * BAR_W;
       this.mpTicks.rect(x - 0.5, -1, 1, BAR_H + 2).fill({ color: 0xffffff, alpha: 0.55 });
+    }
+    this.mpCursor.clear();
+    if (player.chargingActive) {
+      const cap = ELESIS.chargeTier3Ms;
+      const progress = Math.min(1, player.chargingMs / cap);
+      const cursorMp = progress * ELESIS.skills.s3.mpCost;
+      const cursorX = (cursorMp / ELESIS.maxMp) * BAR_W;
+      let cursorColor = 0xddddee;
+      if (player.chargingMs >= cap) cursorColor = 0xff5544;
+      else if (player.chargingMs >= ELESIS.chargeTier2Ms) cursorColor = 0xffaa44;
+      else if (player.chargingMs >= ELESIS.chargeTier1Ms) cursorColor = 0xffe066;
+      this.mpCursor
+        .rect(cursorX - 1.5, -2, 3, BAR_H + 4)
+        .fill({ color: cursorColor, alpha: 0.95 });
     }
     this.mpLabel.text = `MP ${Math.round(player.mp)}/${ELESIS.maxMp}`;
 
