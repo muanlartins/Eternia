@@ -51,16 +51,20 @@ export class Mob {
   private body: Graphics;
   private hpBar: Graphics;
 
+  private readonly autoRespawn: boolean;
+
   constructor(
     private readonly spec: MobSpec,
     x: number,
     y: number,
+    options?: { autoRespawn?: boolean },
   ) {
     this.originalX = x;
     this.originalY = y;
     this.x = x;
     this.y = y;
     this.hp = spec.maxHp;
+    this.autoRespawn = options?.autoRespawn ?? true;
     this.body = new Graphics();
     this.hpBar = new Graphics();
     this.view.addChild(this.body);
@@ -197,9 +201,11 @@ export class Mob {
         }
         break;
       case MobState.Dead:
-        this.deadTimerMs -= dtMs;
-        if (this.deadTimerMs <= 0) {
-          this.respawn();
+        if (this.autoRespawn) {
+          this.deadTimerMs -= dtMs;
+          if (this.deadTimerMs <= 0) {
+            this.respawn();
+          }
         }
         break;
     }

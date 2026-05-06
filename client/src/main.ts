@@ -4,9 +4,8 @@ import { ELESIS } from './data/elesis.js';
 import { Input } from './game/Input.js';
 import { Player } from './game/Player.js';
 import { Camera } from './game/Camera.js';
-import { TargetDummy } from './game/TargetDummy.js';
-import { Mob } from './game/Mob.js';
-import { SLIM, RACOON, INSECTIVOROUS } from './data/mobs.js';
+import { Stage } from './game/Stage.js';
+import { STAGES } from './data/stages.js';
 import { HitFx } from './game/HitFx.js';
 import { PlayerState, type AABB } from './game/types.js';
 
@@ -108,20 +107,9 @@ async function main() {
   const input = new Input({ doubleTapWindowMs: ELESIS.doubleTapWindowMs });
   const player = new Player(ELESIS);
 
-  const dummies = [
-    new TargetDummy(220, GROUND_Y - 64),
-    new TargetDummy(-260, GROUND_Y - 64),
-  ];
-  for (const d of dummies) worldStage.addChild(d.view);
-
-  const mobs = [
-    new Mob(SLIM, 480, GROUND_Y - SLIM.height),
-    new Mob(SLIM, -520, GROUND_Y - SLIM.height),
-    new Mob(RACOON, 820, GROUND_Y - RACOON.height),
-    new Mob(RACOON, -880, GROUND_Y - RACOON.height),
-    new Mob(INSECTIVOROUS, 1400, GROUND_Y - INSECTIVOROUS.height),
-  ];
-  for (const m of mobs) worldStage.addChild(m.view);
+  let currentStageIdx = 0;
+  let stage = new Stage(STAGES[currentStageIdx]!, worldStage);
+  stage.spawn();
 
   worldStage.addChild(player.view);
 
@@ -137,6 +125,22 @@ async function main() {
   hud.x = 12;
   hud.y = 12;
   uiStage.addChild(hud);
+
+  const stageBanner = new Text({
+    text: '',
+    style: {
+      fontFamily: 'monospace',
+      fontSize: 32,
+      fill: 0xfff066,
+      fontWeight: 'bold',
+      stroke: { color: 0x000000, width: 4 },
+    },
+  });
+  stageBanner.anchor.set(0.5, 0.5);
+  stageBanner.x = GAME_W / 2;
+  stageBanner.y = GAME_H / 2 - 40;
+  stageBanner.visible = false;
+  uiStage.addChild(stageBanner);
 
   const controls = new Text({
     text:
@@ -169,17 +173,22 @@ async function main() {
   ws.addEventListener('close', () => (serverInfo = 'disconnected'));
   ws.addEventListener('error', () => (serverInfo = 'ws error'));
 
+  type StagePhase = 'playing' | 'clearAnnounce' | 'nextAnnounce';
+  let stagePhase: StagePhase = 'nextAnnounce';
+  let stageTransitionTimerMs = 1500;
+  stageBanner.text = `STAGE 1: ${STAGES[currentStageIdx]!.name}`;
+  stageBanner.visible = true;
+  let prevPlayerState: PlayerState = player.state;
+
   app.ticker.add(() => {
     const dtMs = app.ticker.deltaMS;
 
     player.update(dtMs, input);
 
+    const stageMobs = stage.getMobs();
+
     if (!player.isInvincible()) {
-      for (const d of dummies) {
-        if (!d.alive) continue;
-        resolvePlayerVsBox(player, d.hurtbox());
-      }
-      for (const m of mobs) {
+      for (const m of stageMobs) {
         if (!m.alive) continue;
         resolvePlayerVsBox(player, m.hurtbox());
       }
@@ -187,20 +196,7 @@ async function main() {
 
     const hit = player.getActiveHit();
     if (hit !== null) {
-      for (const d of dummies) {
-        if (!d.alive) continue;
-        const hb = d.hurtbox();
-        if (rectsOverlap(hit.bbox, hb)) {
-          const accepted = d.receiveHit(hit.attackId, hit.damage, hit.knockback * hit.facing);
-          if (accepted) {
-            const c = intersectionCenter(hit.bbox, hb);
-            hitFx.popup(c.x, c.y, hit.damage);
-            hitFx.spark(c.x, c.y);
-            player.giveMp(ELESIS.mpPerHit);
-          }
-        }
-      }
-      for (const m of mobs) {
+      for (const m of stageMobs) {
         if (!m.alive) continue;
         const hb = m.hurtbox();
         if (rectsOverlap(hit.bbox, hb)) {
@@ -219,8 +215,9 @@ async function main() {
       }
     }
 
-    for (const m of mobs) {
-      m.update(dtMs, player.x + ELESIS.width / 2);
+    stage.update(dtMs, player.x + ELESIS.width / 2);
+
+    for (const m of stageMobs) {
       if (!m.alive) continue;
       const mobHit = m.getActiveHit();
       if (mobHit) {
@@ -241,7 +238,41 @@ async function main() {
       }
     }
 
-    for (const d of dummies) d.update(dtMs);
+    if (prevPlayerState === PlayerState.Dead && player.state !== PlayerState.Dead) {
+      stage.destroy();
+      stage = new Stage(STAGES[currentStageIdx]!, worldStage);
+      stage.spawn();
+      stagePhase = 'nextAnnounce';
+      stageTransitionTimerMs = 1500;
+      stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+      stageBanner.visible = true;
+    }
+    prevPlayerState = player.state;
+
+    if (stagePhase === 'playing' && stage.isCleared()) {
+      stagePhase = 'clearAnnounce';
+      stageTransitionTimerMs = 1500;
+      stageBanner.text = `STAGE ${currentStageIdx + 1} CLEAR!`;
+      stageBanner.visible = true;
+    } else if (stagePhase === 'clearAnnounce') {
+      stageTransitionTimerMs -= dtMs;
+      if (stageTransitionTimerMs <= 0) {
+        currentStageIdx = (currentStageIdx + 1) % STAGES.length;
+        stage.destroy();
+        stage = new Stage(STAGES[currentStageIdx]!, worldStage);
+        stage.spawn();
+        stagePhase = 'nextAnnounce';
+        stageTransitionTimerMs = 1500;
+        stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+      }
+    } else if (stagePhase === 'nextAnnounce') {
+      stageTransitionTimerMs -= dtMs;
+      if (stageTransitionTimerMs <= 0) {
+        stageBanner.visible = false;
+        stagePhase = 'playing';
+      }
+    }
+
     hitFx.update(dtMs);
 
     camera.follow(player.x + ELESIS.width / 2, player.y + ELESIS.height / 2);
@@ -252,13 +283,14 @@ async function main() {
       '█'.repeat(Math.floor(player.dodgeBar)) +
       '·'.repeat(ELESIS.dodgeBarMax - Math.floor(player.dodgeBar)) +
       ']';
+    const aliveCount = stage.getMobs().filter((m) => m.alive).length;
     hud.text =
+      `stage ${currentStageIdx + 1}/${STAGES.length}  ` +
+      `mobs: ${aliveCount}  ` +
       `state: ${player.state.padEnd(12, ' ')}  ` +
       `hp: ${player.hp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxHp}  ` +
       `mp: ${player.mp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxMp}  ` +
       `dodge: ${dodgeSegments}  ` +
-      `pos: (${player.x.toFixed(0)}, ${player.y.toFixed(0)})  ` +
-      `face: ${player.facing > 0 ? '→' : '←'}  ` +
       `${serverInfo}`;
 
     input.endFrame();
