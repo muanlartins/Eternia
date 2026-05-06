@@ -12,6 +12,7 @@ forte com primitivas que já temos.
 | **5.A.3** | Boss death slow fade (drift up + alpha decay 2.5s) + spark trail | implementado |
 | **5.C** | Damage number juiciness (tier color/size, pop animation, parry "!" suffix) | implementado |
 | **5.B** | SFX sintéticos via Web Audio API (hit/parry/death/skill/jump/dash) | implementado |
+| **5.E** | HUD redesign — Pixi bars (HP/MP/Dodge/Skills) + run timer + stage banner | implementado |
 | **5.D** | BGM + assets de áudio profissionais | pendente |
 
 ## 5.A — Hit pause + screen shake + KO flash
@@ -252,6 +253,61 @@ suspended, chama `.resume()`.
 
 `masterGain.gain.value = 0.4` por default — não deafening em laptop
 speakers, mas audível. Configurável via `audio.setVolume(0..1)`.
+
+## 5.E — HUD redesign
+
+### Antes vs depois
+
+**Antes**: linha única de texto monoespaçado em `hud.text` com tudo
+concatenado (`stage 1/3  lives: ♥♥♥  mobs: 5  state: idle  hp: 87/100
+mp: 45/100  dodge: [██·]  cd: A✓ S5.2 D12.0  ★PARRY×1.5  buffs: ...`).
+Funcional pra debug mas visualmente cansativo.
+
+**Depois**: classe `Hud` (`client/src/game/Hud.ts`) com Pixi Graphics
+para bars, Text só para labels.
+
+### Layout
+
+**Top-left** (column ~280px):
+1. **Lives**: `♥♥♥` em vermelho (font 20)
+2. **HP bar**: 200×14, fundo escuro com stroke branco, fill vermelho
+   `0xff4455`. Label `HP 87/100` à direita.
+3. **MP bar**: 200×14, fundo azul-escuro, fill azul `0x4488ff`. **3 tick
+   marks brancos verticais** nas posições 25/50/80% indicando os MP costs
+   das skills S1/S2/S3. Label `MP 45/100` à direita.
+4. **Dodge boxes**: 5 quadrados 18×8 com gap 4px. Filled cyan
+   (`0x88eecc`) por segment cheio, dim (`0x222233`) por vazio. Label
+   "DODGE" à direita.
+5. **Parry buff** (visible só quando ativo): texto gold
+   `★ PARRY ×1.5  2.3s`
+6. **Skill cooldowns**: 3 boxes 26×26 com letra A/S/D dentro. Box azul
+   `0x223355` com border azul claro quando ready; box marrom
+   `0x332211` com border marrom quando em cooldown. Letra dim 0.45
+   alpha durante cd. Texto `5.2s` abaixo de cada box quando aplicável.
+7. **Buffs**: text wrap pequeno (10px gray) abaixo dos skill boxes.
+
+**Top-center**:
+- Stage info: `STAGE 2/3 — Floresta dos Elfos — 2   4 mobs` (font 13 bold)
+- Run timer abaixo: `2:34` (font 11 dim)
+
+**Top-right**:
+- Server status: `server 0.0.1` (font 10 cinza, anchored right)
+
+**Bottom-left** (existente): controls hint preservado.
+
+### Tick marks no MP bar
+
+Posições calculadas dinamicamente via `(cost / maxMp) * BAR_W`. Com
+maxMp=100 e costs 25/50/80, ticks aparecem em 50px, 100px, 160px do
+bar de 200px. Player vê ao bater os MP cuts onde cada skill começa a
+ficar disponível. Visual prep pra futura integração charge+MP em uma
+única bar (mencionado pelo user).
+
+### Update API
+
+`hud.update({ player, lives, maxLives, stageIdx, stageName, totalStages,
+aliveCount, serverInfo, runMs })`. Cada frame em `main.ts`. Run timer
+calculado de `runStats.startedAtMs` ou `endedAtMs` se vitória.
 
 ## Próximas sub-fases
 

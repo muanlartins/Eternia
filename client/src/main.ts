@@ -11,6 +11,7 @@ import { HitFx } from './game/HitFx.js';
 import { BuffOffer } from './game/BuffOffer.js';
 import { GameAudio, type HitIntensity } from './game/Audio.js';
 import { VictoryStats, type RunStatsView } from './game/VictoryStats.js';
+import { Hud } from './game/Hud.js';
 import { PlayerState, type AABB } from './game/types.js';
 
 function rectsOverlap(a: AABB, b: AABB): boolean {
@@ -122,13 +123,8 @@ async function main() {
 
   const camera = new Camera(worldStage, GAME_W, GAME_H);
 
-  const hud = new Text({
-    text: '',
-    style: { fontFamily: 'monospace', fontSize: 13, fill: 0xddddee },
-  });
-  hud.x = 12;
-  hud.y = 12;
-  uiStage.addChild(hud);
+  const hud = new Hud(GAME_W);
+  uiStage.addChild(hud.container);
 
   const stageBanner = new Text({
     text: '',
@@ -563,32 +559,22 @@ async function main() {
     camera.follow(player.x + ELESIS.width / 2, player.y + ELESIS.height / 2);
     camera.update(realDtMs);
 
-    const dodgeSegments =
-      '['.padEnd(1, '') +
-      '█'.repeat(Math.floor(player.dodgeBar)) +
-      '·'.repeat(ELESIS.dodgeBarMax - Math.floor(player.dodgeBar)) +
-      ']';
     const aliveCount = stage.getMobs().filter((m) => m.alive).length;
-    const livesDisplay = '♥'.repeat(lives) + '·'.repeat(MAX_LIVES - lives);
-    const buffsLine =
-      player.acquiredBuffs.length === 0
-        ? ''
-        : `  buffs: ${player.acquiredBuffs.map((b) => b.name).join(', ')}`;
-    const parryBuffLine = player.hasParryBuff()
-      ? `  ★PARRY×${ELESIS.parryBuffDamageMul.toFixed(1)} ${(player.parryBuffMs / 1000).toFixed(1)}s`
-      : '';
-    const skillCdSegment = (label: string, ms: number) =>
-      ms > 0 ? `${label}${(ms / 1000).toFixed(1)}` : `${label}✓`;
-    const cdLine = `cd: ${skillCdSegment('A', player.skillCooldowns[0]!)} ${skillCdSegment('S', player.skillCooldowns[1]!)} ${skillCdSegment('D', player.skillCooldowns[2]!)}`;
-    hud.text =
-      `stage ${currentStageIdx + 1}/${STAGES.length}  ` +
-      `lives: ${livesDisplay}  ` +
-      `mobs: ${aliveCount}  ` +
-      `state: ${player.state.padEnd(12, ' ')}  ` +
-      `hp: ${player.hp.toFixed(0).padStart(3, ' ')}/${player.getMaxHp()}  ` +
-      `mp: ${player.mp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxMp}  ` +
-      `dodge: ${dodgeSegments}  ${cdLine}${parryBuffLine}  ` +
-      `${serverInfo}${buffsLine}`;
+    const elapsedMs =
+      runStats.endedAtMs !== null
+        ? runStats.endedAtMs - runStats.startedAtMs
+        : performance.now() - runStats.startedAtMs;
+    hud.update({
+      player,
+      lives,
+      maxLives: MAX_LIVES,
+      stageIdx: currentStageIdx,
+      stageName: STAGES[currentStageIdx]!.name,
+      totalStages: STAGES.length,
+      aliveCount,
+      serverInfo,
+      runMs: elapsedMs,
+    });
 
     input.endFrame();
   });
