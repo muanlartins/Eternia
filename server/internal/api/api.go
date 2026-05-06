@@ -1,0 +1,115 @@
+package api
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"eternia/internal/store"
+)
+
+type loginRequest struct {
+	Username string `json:"username"`
+}
+
+type loginResponse struct {
+	Token    string         `json:"token"`
+	UserID   int            `json:"userId"`
+	Username string         `json:"username"`
+	Records  store.Records  `json:"records"`
+}
+
+type runRequest struct {
+	DurationMs  int64 `json:"durationMs"`
+	DamageDealt int   `json:"damageDealt"`
+	Deaths      int   `json:"deaths"`
+	Victory     bool  `json:"victory"`
+}
+
+type runResponse struct {
+	Records store.Records `json:"records"`
+}
+
+func writeError(w http.ResponseWriter, status int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+func writeJSON(w http.ResponseWriter, status int, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
+}
+
+func bearerToken(r *http.Request) string {
+	h := r.Header.Get("Authorization")
+	if !strings.HasPrefix(h, "Bearer ") {
+		return ""
+	}
+	return strings.TrimPrefix(h, "Bearer ")
+}
+
+func HandleLogin(s *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req loginRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid json")
+			return
+		}
+		user, err := s.FindOrCreateUser(req.Username)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, loginResponse{
+			Token:    user.Token,
+			UserID:   user.ID,
+			Username: user.Username,
+			Records:  s.RecordsForUser(user.ID),
+		})
+	}
+}
+
+func HandleSaveRun(s *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := bearerToken(r)
+		user, ok := s.UserByToken(token)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+		var req runRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid json")
+			return
+		}
+		if req.DurationMs < 0 || req.DamageDealt < 0 || req.Deaths < 0 {
+			writeError(w, http.StatusBadRequest, "negative values not allowed")
+			return
+		}
+		if _, err := s.AddRun(store.Run{
+			UserID:      user.ID,
+			DurationMs:  req.DurationMs,
+			DamageDealt: req.DamageDealt,
+			Deaths:      req.Deaths,
+			Victory:     req.Victory,
+		}); err != nil {
+			writeError(w, http.StatusInternalServerError, "save failed")
+			return
+		}
+		writeJSON(w, http.StatusOK, runResponse{Records: s.RecordsForUser(user.ID)})
+	}
+}
+
+func HandleMyRecords(s *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := bearerToken(r)
+		user, ok := s.UserByToken(token)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+		writeJSON(w, http.StatusOK, runResponse{Records: s.RecordsForUser(user.ID)})
+	}
+}

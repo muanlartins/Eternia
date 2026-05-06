@@ -10,6 +10,11 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
+      // Proxy REST API calls to the Go server during dev
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
   build: {

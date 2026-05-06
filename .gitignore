@@ -8,6 +8,7 @@ build/
 # Go
 server/eternia-server
 server/*.exe
+server/data/
 *.test
 *.out
 

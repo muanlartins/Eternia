@@ -1,5 +1,5 @@
-// Phase 0 — Foundation: HTTP + WebSocket echo server. No gameplay yet.
-// Just proves we can do client <-> server JSON over WS.
+// Eternia server. WebSocket for game session (Phase 0 hello), REST API for
+// auth + run persistence (Phase 6).
 package main
 
 import (
@@ -10,9 +10,12 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"eternia/internal/api"
+	"eternia/internal/store"
 )
 
-const version = "0.0.1"
+const version = "0.1.0"
 
 var upgrader = websocket.Upgrader{
 	// Dev only: accept any origin. Tighten before any non-localhost deployment.
@@ -72,15 +75,24 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	addr := flag.String("addr", ":8080", "listen address")
+	dataPath := flag.String("data", "data/eternia.json", "JSON data file path")
 	flag.Parse()
+
+	s, err := store.New(*dataPath)
+	if err != nil {
+		log.Fatalf("store: %v", err)
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", handleWS)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})
+	mux.HandleFunc("POST /api/login", api.HandleLogin(s))
+	mux.HandleFunc("POST /api/runs", api.HandleSaveRun(s))
+	mux.HandleFunc("GET /api/runs/me", api.HandleMyRecords(s))
 
-	log.Printf("Eternia server v%s listening on %s", version, *addr)
+	log.Printf("Eternia server v%s listening on %s (data: %s)", version, *addr, *dataPath)
 	if err := http.ListenAndServe(*addr, mux); err != nil {
 		log.Fatal(err)
 	}

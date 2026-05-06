@@ -19,7 +19,7 @@
 | **4.I** | Portal requires onGround + 6 new buffs + 3 new modifiers | implementado |
 | **4.J** | Boss death drama phase (game continues ticking enquanto boss completa fade antes do VICTORY!) | implementado |
 | **4.L** | Boss intro banner ("★ BOSS ★ NAME") + persistent boss HP bar no topo do HUD com Phase 2 indicator | implementado |
-| **4.K** | Run record / save no servidor | pendente (parte da Phase 6) |
+| **4.K** | Run record / save no servidor | implementado em Phase 6.A (`06-server-design.md`) |
 
 ## 4.A — Stage system
 

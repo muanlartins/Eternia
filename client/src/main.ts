@@ -18,6 +18,8 @@ import { pickRandomModifiers } from './data/modifiers.js';
 import { MiniMap } from './game/MiniMap.js';
 import { SettingsMenu } from './game/SettingsMenu.js';
 import { BossHpBar } from './game/BossHpBar.js';
+import { Auth } from './game/Auth.js';
+import { LoginScreen } from './game/LoginScreen.js';
 import { MOB_SPECS } from './data/stages.js';
 import {
   applyGameOverToRecords,
@@ -199,6 +201,26 @@ async function main() {
   const bossHpBar = new BossHpBar(GAME_W);
   uiStage.addChild(bossHpBar.container);
 
+  const auth = new Auth();
+  const loginScreen = new LoginScreen(GAME_W, GAME_H);
+  uiStage.addChild(loginScreen.container);
+
+  if (!auth.isAuthenticated()) {
+    loginScreen.show({
+      onSubmit: async (username) => {
+        const result = await auth.login(username);
+        if (result.ok) {
+          loginScreen.hide();
+        } else {
+          loginScreen.setError(result.error);
+        }
+      },
+      onGuest: () => loginScreen.hide(),
+    });
+  } else {
+    void auth.refreshRecords();
+  }
+
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump, ↓ = drop through platform / enter portal. double-tap ← / → = dash. ' +
@@ -328,6 +350,12 @@ async function main() {
 
   app.ticker.add(() => {
     const realDtMs = app.ticker.deltaMS;
+
+    if (loginScreen.isOpen()) {
+      loginScreen.tick(realDtMs);
+      input.endFrame();
+      return;
+    }
 
     if (input.justPressed('options')) {
       settingsMenu.toggle();
@@ -556,6 +584,13 @@ async function main() {
       runStats.deaths += 1;
       lives -= 1;
       if (lives <= 0) {
+        const durationMs = performance.now() - runStats.startedAtMs;
+        void auth.saveRun({
+          durationMs,
+          damageDealt: Math.round(runStats.damageDealt),
+          deaths: runStats.deaths,
+          victory: false,
+        });
         lives = MAX_LIVES;
         currentStageIdx = 0;
         player.resetBuffs();
@@ -605,6 +640,12 @@ async function main() {
         records = result.records;
         pendingFlags = result.flags;
         saveRecords(records);
+        void auth.saveRun({
+          durationMs,
+          damageDealt: Math.round(runStats.damageDealt),
+          deaths: runStats.deaths,
+          victory: true,
+        });
         stagePhase = 'victoryAnnounce';
         stageTransitionTimerMs = 2500;
         stageBanner.text = 'VICTORY!';
@@ -780,6 +821,8 @@ async function main() {
       runStats.endedAtMs !== null
         ? runStats.endedAtMs - runStats.startedAtMs
         : performance.now() - runStats.startedAtMs;
+    const username = auth.getUsername();
+    const infoLine = username ? `@${username}` : serverInfo;
     hud.update({
       player,
       lives,
@@ -788,7 +831,7 @@ async function main() {
       stageName: STAGES[currentStageIdx]!.name,
       totalStages: STAGES.length,
       aliveCount,
-      serverInfo,
+      serverInfo: infoLine,
       runMs: elapsedMs,
     });
 
