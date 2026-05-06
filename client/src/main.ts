@@ -134,6 +134,7 @@ async function main() {
       'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
       'Z = attack (combo Z→Z→Z; ground dash + Z = dash-atk; air + Z = jump-atk 1×/cycle). ' +
       'A = S1 (25 MP), S = S2 (50 MP), D = S3 (80 MP). Alt/⌥ = dodge stand (then double-tap ←/→ to roll, iframes throughout). ' +
+      'Space = parry (150ms active window — time the orange telegraph to stun the mob). ' +
       '↑ during ground dash = jump out, ↓ during air dash = drop, opposite hold mid-dash = decelerate.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
@@ -209,13 +210,20 @@ async function main() {
       m.update(dtMs, player.x + ELESIS.width / 2);
       if (!m.alive) continue;
       const mobHit = m.getActiveHit();
-      if (mobHit && !player.isInvincible()) {
+      if (mobHit) {
         const playerBox = player.aabb();
         if (rectsOverlap(mobHit.bbox, playerBox)) {
-          player.takeDamage(mobHit.damage, mobHit.knockback * mobHit.facing);
           const c = intersectionCenter(mobHit.bbox, playerBox);
-          hitFx.popup(c.x, c.y, mobHit.damage);
-          hitFx.spark(c.x, c.y);
+          if (player.isParryActive()) {
+            m.parried(-mobHit.facing * 240);
+            hitFx.spark(c.x, c.y);
+            hitFx.spark(c.x + 8, c.y - 4);
+            hitFx.spark(c.x - 8, c.y + 4);
+          } else if (!player.isInvincible()) {
+            player.takeDamage(mobHit.damage, mobHit.knockback * mobHit.facing);
+            hitFx.popup(c.x, c.y, mobHit.damage);
+            hitFx.spark(c.x, c.y);
+          }
         }
       }
     }

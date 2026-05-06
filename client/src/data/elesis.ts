@@ -69,6 +69,11 @@ export const ELESIS = {
   hurtStunMs: 380,
   deathRespawnMs: 1500,
 
+  parryDurationMs: 360,
+  parryActiveStartMs: 30,
+  parryActiveEndMs: 180,
+  parryCooldownMs: 600,
+
   skills: {
     s1: {
       duration: 480,

@@ -20,6 +20,7 @@ export const PlayerState = {
   DodgeRoll: 'dodge_roll',
   Hurt: 'hurt',
   Dead: 'dead',
+  Parry: 'parry',
 } as const;
 
 export type PlayerState = (typeof PlayerState)[keyof typeof PlayerState];
@@ -65,4 +66,5 @@ export const STATE_COLOR: Record<PlayerState, number> = {
   [PlayerState.DodgeRoll]: 0x44bb88,
   [PlayerState.Hurt]: 0xff4488,
   [PlayerState.Dead]: 0x666666,
+  [PlayerState.Parry]: 0xfff066,
 };

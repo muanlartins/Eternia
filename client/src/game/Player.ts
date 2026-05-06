@@ -55,6 +55,7 @@ export class Player {
   private airAtkUsed = false;
   private dodgeCooldownMs = 0;
   private respawnTimerMs = 0;
+  private parryCooldownMs = 0;
 
   readonly view = new Container();
   private body: Graphics;
@@ -80,6 +81,7 @@ export class Player {
     this.dashCooldownMs = Math.max(0, this.dashCooldownMs - dtMs);
     this.airDashBufferedMs = Math.max(0, this.airDashBufferedMs - dtMs);
     this.dodgeCooldownMs = Math.max(0, this.dodgeCooldownMs - dtMs);
+    this.parryCooldownMs = Math.max(0, this.parryCooldownMs - dtMs);
 
     this.mp = Math.min(this.spec.maxMp, this.mp + (this.spec.mpRegenPerSec * dtMs) / 1000);
 
@@ -161,6 +163,9 @@ export class Player {
       case PlayerState.Dead:
         this.tickDead(dtMs);
         break;
+      case PlayerState.Parry:
+        this.tickParry(dtMs);
+        break;
     }
 
     const dt = dtMs / 1000;
@@ -224,6 +229,14 @@ export class Player {
     );
   }
 
+  isParryActive(): boolean {
+    if (this.state !== PlayerState.Parry) return false;
+    return (
+      this.stateTimeMs >= this.spec.parryActiveStartMs &&
+      this.stateTimeMs <= this.spec.parryActiveEndMs
+    );
+  }
+
   takeDamage(damage: number, knockbackVx: number) {
     if (this.isInvincible()) return;
     this.hp = Math.max(0, this.hp - damage);
@@ -242,6 +255,11 @@ export class Player {
   }
 
   private tickGround(_dtMs: number, input: Input, ax: number) {
+    if (input.justPressed('parry') && this.parryCooldownMs <= 0) {
+      this.startParry();
+      return;
+    }
+
     if (input.justPressed('dodge') && this.dodgeCooldownMs <= 0) {
       this.startDodgeStand();
       return;
@@ -533,6 +551,21 @@ export class Player {
     }
   }
 
+  private tickParry(_dtMs: number) {
+    this.vx = 0;
+    this.vy = 0;
+    if (this.stateTimeMs >= this.spec.parryDurationMs) {
+      this.parryCooldownMs = this.spec.parryCooldownMs;
+      this.setState(PlayerState.Idle);
+    }
+  }
+
+  private startParry() {
+    this.vx = 0;
+    this.vy = 0;
+    this.setState(PlayerState.Parry);
+  }
+
   private tickHurt(dtMs: number) {
     const dt = dtMs / 1000;
     const decel = this.spec.groundFriction * dt;
@@ -726,7 +759,8 @@ export class Player {
       this.state === PlayerState.Skill3 ||
       this.state === PlayerState.DashAtk ||
       this.state === PlayerState.JumpAtk ||
-      this.state === PlayerState.DodgeRoll
+      this.state === PlayerState.DodgeRoll ||
+      this.state === PlayerState.Parry
     );
   }
 

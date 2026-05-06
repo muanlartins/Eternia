@@ -16,6 +16,7 @@ export const SLIM = {
   attackCooldownMs: 1400,
   knockbackFriction: 1500,
   hurtStunMs: 280,
+  parriedStunMs: 900,
   respawnMs: 3000,
 } as const;
 

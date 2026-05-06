@@ -41,6 +41,7 @@ export class Mob {
   private attackCooldownMs = 0;
   private currentAttackId = 0;
   private receivedAttackIds = new Set<number>();
+  private hurtDurationMs = 0;
 
   readonly view = new Container();
   private body: Graphics;
@@ -82,9 +83,18 @@ export class Mob {
       this.deadTimerMs = this.spec.respawnMs;
       this.setState(MobState.Dead);
     } else {
+      this.hurtDurationMs = this.spec.hurtStunMs;
       this.setState(MobState.Hurt);
     }
     return true;
+  }
+
+  parried(knockbackVx: number) {
+    if (!this.alive) return;
+    this.vx += knockbackVx;
+    this.hitFlashMs = 200;
+    this.hurtDurationMs = this.spec.parriedStunMs;
+    this.setState(MobState.Hurt);
   }
 
   getActiveHit(): ActiveHit | null {
@@ -134,7 +144,7 @@ export class Mob {
         }
         break;
       case MobState.Hurt:
-        if (this.stateTimeMs >= this.spec.hurtStunMs) {
+        if (this.stateTimeMs >= this.hurtDurationMs) {
           this.setState(MobState.Idle);
         }
         break;

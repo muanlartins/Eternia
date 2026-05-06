@@ -14,7 +14,7 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.D.2** | GROUND_DOWN_DASH (slam vindo do air dash) | pendente |
 | **2.E** | Dodge (iframes) + colisão player↔mob | implementado |
 | **2.E.2** | Dodge bar (3 segments com refill) substituindo cooldown único | pendente |
-| **2.F** | Parry (timing window + reflect) | pendente |
+| **2.F** | Parry (timing window + reflect → stun no mob) | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 
@@ -307,3 +307,62 @@ input `'dodge'`. Pode ser disparado de `Idle/Walk/Run` ou de `Dash` ground
 - Dodge bar com 3 segments visíveis no HUD
 - Refill: 1 segment a cada 1.5s? Tunar com playtest
 - Dodge consome 1 segment, falha silencioso quando vazio
+
+### Sub-fase 2.F (implementada)
+
+#### Parry — defesa por timing
+
+Tecla **Space**. Trigger só de Idle/Walk/Run (não cancela combo, skill nem
+dodge). Dispara estado `Parry`:
+
+| Janela | Tempo (ms) | Comportamento |
+|---|---|---|
+| Startup | 0–30 | vulnerável (player ainda não levantou a guarda) |
+| **Active** | **30–180** | **se receber hit do mob, parry conecta** |
+| Recovery | 180–360 | vulnerável (guarda baixou) |
+| Cooldown | +600 | bloqueia novo parry direto |
+
+Total duration 360ms, active window de 150ms. Punível se errado, recompensa
+alta se acerta — perfect skill expression.
+
+#### Como conecta
+
+`Player.isParryActive()` retorna true só se `state === Parry` E
+`stateTimeMs ∈ [30, 180]`. Em `main.ts`, no loop de mob attack vs player:
+
+```ts
+if (player.isParryActive()) {
+  mob.parried(-mobHit.facing * 240);  // small knockback
+  // 3 sparks for visual emphasis
+} else if (!player.isInvincible()) {
+  player.takeDamage(...);
+}
+```
+
+#### Mob.parried()
+
+Novo método: nenhum dano ao mob, mas seta `hurtDurationMs = parriedStunMs`
+(900ms vs 280ms do hurt normal) e estado Hurt. O mob fica stunado mais
+de 3× o tempo, dando ao player uma janela enorme pra encadear combo Z→Z→Z
+ou skill com dano máximo.
+
+Trade-off intencional: parry NÃO causa dano direto, mas ABRE a janela pra
+todo o dano que o player conseguir empilhar. Dodge avoid + counter atinge
+o mesmo objetivo, mas com risco mais alto pq exige reposicionamento.
+
+#### Dedicated `hurtDurationMs` no Mob
+
+Antes: `tickHurt` checava `stateTimeMs >= spec.hurtStunMs` direto. Agora
+um campo runtime `hurtDurationMs` é setado em `receiveHit` (= spec.hurtStunMs)
+ou em `parried` (= spec.parriedStunMs). Permite stun customizado por
+contexto sem multiplicar estados.
+
+#### Por que parry NÃO dá iframes
+
+Parry é defesa por timing. Se você errou o timing, **deve** levar dano —
+isso é o que ensina o jogador a respeitar telegraphs. Iframes "consolation"
+removeria o risk side da equação.
+
+Único caso em que parry "vira" iframe: se acertar o timing, a hitbox do
+mob é absorvida (mob.parried interrompe Active state via setState(Hurt)),
+então o hit não conecta de novo durante esse swing.
