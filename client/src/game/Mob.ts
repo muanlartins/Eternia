@@ -43,6 +43,8 @@ export class Mob {
   private receivedAttackIds = new Set<number>();
   private hurtDurationMs = 0;
   private parriedBuff = false;
+  private consecutiveHits = 0;
+  private armorActive = false;
 
   readonly view = new Container();
   private body: Graphics;
@@ -85,6 +87,23 @@ export class Mob {
       this.alive = false;
       this.deadTimerMs = this.spec.respawnMs;
       this.setState(MobState.Dead);
+      return { applied, bonus };
+    }
+
+    if (this.armorActive) {
+      return { applied, bonus };
+    }
+
+    if (!bonus) {
+      this.consecutiveHits++;
+    }
+
+    if (this.consecutiveHits >= this.spec.comboBreakThreshold && !bonus) {
+      if (knockbackVx > 0) this.facing = -1;
+      else if (knockbackVx < 0) this.facing = 1;
+      this.consecutiveHits = 0;
+      this.armorActive = true;
+      this.setState(MobState.Telegraph);
     } else {
       this.hurtDurationMs = this.spec.hurtStunMs;
       this.setState(MobState.Hurt);
@@ -98,6 +117,8 @@ export class Mob {
     this.hitFlashMs = 200;
     this.hurtDurationMs = this.spec.parriedStunMs;
     this.parriedBuff = true;
+    this.consecutiveHits = 0;
+    this.armorActive = false;
     this.setState(MobState.Hurt);
   }
 
@@ -144,6 +165,7 @@ export class Mob {
       case MobState.Recover:
         if (this.stateTimeMs >= this.spec.attack.recoveryMs) {
           this.attackCooldownMs = this.spec.attackCooldownMs;
+          this.armorActive = false;
           this.setState(MobState.Idle);
         }
         break;
@@ -197,6 +219,8 @@ export class Mob {
     this.attackCooldownMs = 0;
     this.receivedAttackIds.clear();
     this.parriedBuff = false;
+    this.consecutiveHits = 0;
+    this.armorActive = false;
     this.setState(MobState.Idle);
   }
 
@@ -226,8 +250,12 @@ export class Mob {
 
     const baseColor = MOB_COLOR[this.state];
     const color = this.hitFlashMs > 0 ? 0xff8866 : baseColor;
-    const strokeColor = this.parriedBuff ? 0xffd700 : 0xffffff;
-    const strokeWidth = this.parriedBuff ? 2 : 1;
+    const strokeColor = this.parriedBuff
+      ? 0xffd700
+      : this.armorActive
+        ? 0xff3300
+        : 0xffffff;
+    const strokeWidth = this.parriedBuff || this.armorActive ? 3 : 1;
     this.body
       .rect(0, 0, this.spec.width, this.spec.height)
       .fill({ color, alpha: 0.95 })

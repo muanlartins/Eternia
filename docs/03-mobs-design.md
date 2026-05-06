@@ -6,6 +6,7 @@
 |---|---|---|
 | **3.A** | 1 mob (Slim) com AI básica (chase + telegraphed attack) + dano no player + HP/Hurt/Dead | implementado |
 | **3.B** | Racoon — variante mais lenta, pesada, com mais HP | implementado |
+| **3.B.2** | Combo break threshold + armor durante counter | implementado |
 | **3.C** | Mob spawning data-driven (replicar quest_zero stage_mon) | pendente |
 | **3.D** | Boss (Insectivorous) com 5 ataques diferenciados | pendente |
 
@@ -176,6 +177,63 @@ AI permanece igual (Idle → Chase → Telegraph → Active → Recover). Difere
 
 Player progride: combo no dummy → engaja Slim (baixo risco) → enfrenta
 Racoon (alto risco, telegraph mais longo recompensa parry).
+
+### 3.B.2 (implementada) — Combo break + armor
+
+**Problema**: hits sucessivos do player ficavam re-stunando o mob (cada
+`receiveHit` setava `MobState.Hurt` cancelando o anterior). Z→Z→Z em loop
+travava o mob indefinidamente. Sem resistência = combo infinito.
+
+**Solução em duas peças**:
+
+1. **Combo break threshold** — `Mob.consecutiveHits` conta hits desde último
+   reset. Cada `receiveHit` (sem `parriedBuff`) incrementa. Quando atinge
+   `spec.comboBreakThreshold`, em vez de Hurt o mob entra direto em
+   `Telegraph` (counter-attack), com facing apontando pro player (deduzido
+   pelo sinal de `knockbackVx`).
+
+2. **Armor durante counter** — flag `armorActive` setada na entrada do
+   counter. `receiveHit` durante armor aplica dano normal mas pula a lógica
+   de state change (sem ir pra Hurt, sem incrementar consecutiveHits, sem
+   re-trigger de break). Mob mantém o pipeline Telegraph → Active → Recover.
+   Flag limpa no fim do Recover (volta a ser interrompível).
+
+**Thresholds atuais**:
+
+| Mob | Threshold |
+|---|---|
+| Slim | 3 hits (combo Z→Z→Z completo aciona break) |
+| Racoon | 4 hits (mais durável, recompensa engagement maior) |
+
+**Reset rules**:
+- `parried()`: zera `consecutiveHits` E desliga armor (parry sempre
+  prevalece, dá combo limpo)
+- `receiveHit` durante `parriedBuff`: NÃO incrementa (hits buffed não
+  contam pro break)
+- Respawn: zera tudo
+
+**Fluxo típico Slim**:
+1. Player Z (hit 1) → Hurt
+2. Player Z (hit 2) → Hurt re-set, timer não reseta (já em Hurt)
+3. Player Z (hit 3) → BREAK → Telegraph laranja com armor vermelho-grosso
+4. Player tenta Z 4 → mob ainda em Telegraph mas com armor → dano aplica,
+   estado não muda. Player vê o stroke vermelho indicando "não dá pra
+   stunar mais"
+5. Active hitbox → player precisa dodge ou parry. Se parry → mob entra em
+   Hurt com parriedBuff, armor desliga, consecutiveHits zera, player ganha
+   ~3 hits buffed
+6. Após Recover (ou parry-stun → idle), mob volta ao normal vulnerável
+
+**Visuais distintos**:
+- `parriedBuff`: stroke dourado grosso (mob tomando damage extra)
+- `armorActive`: stroke vermelho-laranja grosso (mob no contra-ataque,
+  resistente a flinch)
+- normal: stroke branco fino
+
+**Por que parry > dodge agora**:
+- Dodge → 3 hits naturais → break → counter → repetir ciclo
+- Parry → 3 hits buffed (stun) + 3 hits naturais (post-stun) → break → counter
+- Parry rende ~6 hits com 3 deles a 1.7×, vs dodge que rende ~3 hits raw
 
 ### 3.C (próxima)
 

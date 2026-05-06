@@ -18,6 +18,7 @@ export const SLIM = {
   hurtStunMs: 280,
   parriedStunMs: 900,
   parriedDamageMultiplier: 1.7,
+  comboBreakThreshold: 3,
   respawnMs: 3000,
 } as const;
 
@@ -41,6 +42,7 @@ export const RACOON = {
   hurtStunMs: 320,
   parriedStunMs: 1100,
   parriedDamageMultiplier: 1.7,
+  comboBreakThreshold: 4,
   respawnMs: 4000,
 } as const;
 
@@ -69,5 +71,6 @@ export interface MobSpec {
   readonly hurtStunMs: number;
   readonly parriedStunMs: number;
   readonly parriedDamageMultiplier: number;
+  readonly comboBreakThreshold: number;
   readonly respawnMs: number;
 }
