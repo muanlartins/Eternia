@@ -29,6 +29,7 @@ export const ELESIS = {
 
   coyoteTimeMs: 90,
   jumpBufferMs: 90,
+  skillBufferMs: 400,
 
   landDurationMs: 60,
 

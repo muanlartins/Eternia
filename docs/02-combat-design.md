@@ -16,6 +16,7 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.E.2** | Dodge bar (3 segments com refill) substituindo cooldown único | implementado |
 | **2.F** | Parry (timing window + reflect → stun no mob) | implementado |
 | **2.F.2** | Parry damage buff no mob stunado | implementado |
+| **2.G** | Skills usáveis no ar + ground dash + skill input buffer | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 
@@ -401,6 +402,59 @@ Trade-off agora calibrado:
 - Dodge: evita dano, mantém combo, baixo skill ceiling (timing genérico)
 - Parry: gasta mais skill (timing exato no telegraph), mas recompensa com
   damage stack que pode encerrar o engagement
+
+## Sub-fase 2.G — Skills disponíveis em mais estados + input buffer
+
+### Estados onde skill pode ser invocada
+
+| Estado | Antes | Depois |
+|---|---|---|
+| Idle / Walk / Run | ✓ | ✓ |
+| Ground Dash | ✗ | ✓ (cancela dash, vira skill) |
+| JumpRise / Fall / DoubleJump | ✗ | ✓ (hover durante skill, depois Fall) |
+| AirDash | ✗ | ✓ (cancela air dash, hover) |
+| Parry / Dodge / Hurt | ✗ | ✗ (estados defensivos, mas buffer ativo) |
+| Attack 1/2/3 | ✗ | ✗ (compromisso ofensivo, sem cancel pra skill) |
+
+### Skill no ar = hover
+
+`tickSkill` agora seta `vy=0` (não só `vx=0`). Player paira durante toda a
+duração da skill independente de altura. Após `stateTimeMs >= skill.duration`:
+- Se `onGround`: → Idle
+- Se !onGround: → Fall (que aplica gravidade no próximo tick)
+
+Cinematicamente: você dá ground dash, pula, double jump, e usa S3 no apex
+da altura — a skill executa congelada no ar (efeito "anime hover"), depois
+você cai.
+
+### Input buffer (skillBufferMs = 400ms)
+
+Adicionado em `Player.update`:
+
+```ts
+this.skillBufferMs = max(0, this.skillBufferMs - dtMs);
+for (let i = 0; i < SKILL_KEYS.length; i++) {
+  if (input.justPressed(SKILL_KEYS[i]!)) {
+    this.skillBufferIdx = i;
+    this.skillBufferMs = spec.skillBufferMs;
+  }
+}
+```
+
+Cada estado "permissivo" (tickGround, tickDash, tickFirstJumpAir, etc.)
+chama `consumeSkillBuffer()` no início — se buffer válido, fire skill +
+clear. Se startSkill falhar (no MP), buffer também é limpo (não retry).
+
+Cobre cenário: pressionar S durante parry (estado defensivo, ignora
+input direto). Parry dura 360ms, buffer dura 400ms — buffer sobrevive
+até parry terminar. Próximo tick em Idle → tickGround → consumeSkillBuffer
+→ S2 dispara.
+
+### Cancel skill com parry/dodge: só ground
+
+`tickSkill` agora só roda `tryDefensiveCancel` se `this.onGround`. Skills
+no ar comprometem (igual jumpAtk). Evita estados absurdos como "air parry"
+ou "air dodge roll".
 
 ## Backlog de polish — visual do parry timing
 

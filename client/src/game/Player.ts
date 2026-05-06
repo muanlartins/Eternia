@@ -51,6 +51,9 @@ export class Player {
   private airDashBufferedDir: -1 | 0 | 1 = 0;
   private airDashBufferedMs = 0;
 
+  private skillBufferIdx = -1;
+  private skillBufferMs = 0;
+
   private currentAttackId = 0;
   private lastActiveHitIdx = -1;
   private activeHit: ActiveHit | null = null;
@@ -89,6 +92,14 @@ export class Player {
     this.airDashBufferedMs = Math.max(0, this.airDashBufferedMs - dtMs);
     this.parryCooldownMs = Math.max(0, this.parryCooldownMs - dtMs);
     this.parryBuffMs = Math.max(0, this.parryBuffMs - dtMs);
+    this.skillBufferMs = Math.max(0, this.skillBufferMs - dtMs);
+
+    for (let i = 0; i < SKILL_KEYS.length; i++) {
+      if (input.justPressed(SKILL_KEYS[i]!)) {
+        this.skillBufferIdx = i;
+        this.skillBufferMs = this.spec.skillBufferMs;
+      }
+    }
 
     this.mp = Math.min(
       this.spec.maxMp,
@@ -326,11 +337,7 @@ export class Player {
       return;
     }
 
-    for (let i = 0; i < SKILL_KEYS.length; i++) {
-      if (input.justPressed(SKILL_KEYS[i]!)) {
-        if (this.startSkill(i)) return;
-      }
-    }
+    if (this.consumeSkillBuffer()) return;
 
     if (input.justPressed('attack')) {
       this.startAttack(0);
@@ -367,6 +374,8 @@ export class Player {
   }
 
   private tickFirstJumpAir(dtMs: number, input: Input, ax: number, rising: boolean) {
+    if (this.consumeSkillBuffer()) return;
+
     if (input.justPressed('attack') && !this.airAtkUsed) {
       this.startJumpAtk();
       return;
@@ -428,6 +437,8 @@ export class Player {
   }
 
   private tickDoubleJump(dtMs: number, input: Input, ax: number) {
+    if (this.consumeSkillBuffer()) return;
+
     if (input.justPressed('attack') && !this.airAtkUsed) {
       this.startJumpAtk();
       return;
@@ -458,6 +469,8 @@ export class Player {
       this.startDodgeStand();
       return;
     }
+
+    if (this.consumeSkillBuffer()) return;
 
     if (input.justPressed('attack')) {
       this.startDashAtk();
@@ -492,6 +505,8 @@ export class Player {
   }
 
   private tickAirDash(dtMs: number, input: Input, ax: number) {
+    if (this.consumeSkillBuffer()) return;
+
     if (input.justPressed('attack') && !this.airAtkUsed) {
       this.startJumpAtk();
       return;
@@ -541,6 +556,19 @@ export class Player {
     return false;
   }
 
+  private consumeSkillBuffer(): boolean {
+    if (this.skillBufferMs <= 0 || this.skillBufferIdx < 0) return false;
+    const idx = this.skillBufferIdx;
+    if (this.startSkill(idx)) {
+      this.skillBufferMs = 0;
+      this.skillBufferIdx = -1;
+      return true;
+    }
+    this.skillBufferMs = 0;
+    this.skillBufferIdx = -1;
+    return false;
+  }
+
   private tickAttack(_dtMs: number, input: Input, comboIdx: number) {
     if (this.tryDefensiveCancel(input)) return;
     const spec = this.spec.comboZ[comboIdx]!;
@@ -570,11 +598,12 @@ export class Player {
   }
 
   private tickSkill(_dtMs: number, input: Input, skillIdx: number) {
-    if (this.tryDefensiveCancel(input)) return;
+    if (this.onGround && this.tryDefensiveCancel(input)) return;
     this.vx = 0;
+    this.vy = 0;
     const skill = this.skillByIdx(skillIdx);
     if (this.stateTimeMs >= skill.duration) {
-      this.setState(PlayerState.Idle);
+      this.setState(this.onGround ? PlayerState.Idle : PlayerState.Fall);
     }
   }
 
@@ -678,6 +707,8 @@ export class Player {
     this.airDashUsed = false;
     this.jumpsUsed = 0;
     this.parryCooldownMs = 0;
+    this.skillBufferMs = 0;
+    this.skillBufferIdx = -1;
     this.setState(PlayerState.Idle);
   }
 
