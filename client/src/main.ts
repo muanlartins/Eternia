@@ -12,6 +12,13 @@ import { BuffOffer } from './game/BuffOffer.js';
 import { GameAudio, type HitIntensity } from './game/Audio.js';
 import { VictoryStats, type RunStatsView } from './game/VictoryStats.js';
 import { Hud } from './game/Hud.js';
+import {
+  applyGameOverToRecords,
+  applyVictoryToRecords,
+  loadRecords,
+  saveRecords,
+  type NewRecordFlags,
+} from './game/Records.js';
 import { PlayerState, type AABB } from './game/types.js';
 
 function rectsOverlap(a: AABB, b: AABB): boolean {
@@ -218,6 +225,12 @@ async function main() {
   }
 
   let runStats = makeStats();
+  let records = loadRecords();
+  let pendingFlags: NewRecordFlags = {
+    newBestTime: false,
+    newBestDamage: false,
+    newFewestDeaths: false,
+  };
 
   function statsView(): RunStatsView {
     const ended = runStats.endedAtMs ?? performance.now();
@@ -228,6 +241,8 @@ async function main() {
       killCounts: runStats.killCounts,
       buffsPicked: runStats.buffsPicked,
       deaths: runStats.deaths,
+      records,
+      flags: pendingFlags,
     };
   }
 
@@ -240,6 +255,7 @@ async function main() {
     stage.spawn();
     player.teleportToStart();
     runStats = makeStats();
+    pendingFlags = { newBestTime: false, newBestDamage: false, newFewestDeaths: false };
     victoryStats.hide();
     buffOffer.hide();
     stagePhase = 'nextAnnounce';
@@ -442,6 +458,8 @@ async function main() {
         lives = MAX_LIVES;
         currentStageIdx = 0;
         player.resetBuffs();
+        records = applyGameOverToRecords(records);
+        saveRecords(records);
         runStats = makeStats();
         stage.destroy();
         stage = new Stage(STAGES[currentStageIdx]!, worldStage);
@@ -462,6 +480,16 @@ async function main() {
     if (stagePhase === 'playing' && stage.isCleared()) {
       if (currentStageIdx === STAGES.length - 1) {
         runStats.endedAtMs = performance.now();
+        const durationMs = runStats.endedAtMs - runStats.startedAtMs;
+        const result = applyVictoryToRecords(
+          records,
+          durationMs,
+          Math.round(runStats.damageDealt),
+          runStats.deaths,
+        );
+        records = result.records;
+        pendingFlags = result.flags;
+        saveRecords(records);
         stagePhase = 'victoryAnnounce';
         stageTransitionTimerMs = 2500;
         stageBanner.text = 'VICTORY!';

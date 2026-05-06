@@ -12,6 +12,7 @@
 | **4.B** | Buff offer scene entre stages (Hades cards) + effects aplicados | implementado |
 | **4.C** | Buff rarity tiers + behavioral rares (lifesteal, parry duration) | implementado |
 | **4.D** | Run completion + victory screen + run stats tracking | implementado |
+| **4.E** | Personal records via localStorage + new-record indicators | implementado |
 | **4.D** | Run record / save no servidor | pendente |
 
 ## 4.A — Stage system
@@ -435,7 +436,86 @@ VictoryStats. Player começa fresh.
 
 ## Próximas sub-fases
 
-### 4.E — Server-side run records
+## 4.E — Personal records via localStorage
 
-Salvar runStats no servidor após victory (POST /api/runs com payload).
-Stretch: leaderboard global por tempo / damage / deaths por stage count.
+`client/src/game/Records.ts` — persistência client-side via localStorage
+(`eternia.records.v1`). Sem dependência de server.
+
+### Schema
+
+```ts
+interface PersonalRecords {
+  bestTimeMs: number | null;
+  bestDamageDealt: number;
+  fewestDeathsInVictory: number | null;
+  totalVictories: number;
+  totalAttempts: number;
+}
+```
+
+`null` = sem record ainda (primeiro run). `bestDamageDealt` start em 0
+(comparação trivial ".> 0"). Defaults garantidos via parser que falls
+back em fresh records se localStorage corrompido / private mode.
+
+### Trigger points
+
+- **Victory** (last stage clear): `applyVictoryToRecords()` retorna
+  novo records + `NewRecordFlags { newBestTime, newBestDamage,
+  newFewestDeaths }`. Save.
+- **Game over** (lives=0): `applyGameOverToRecords()` apenas incrementa
+  `totalAttempts`. Save.
+- **Start new run** (any key after victory): reset pendingFlags.
+
+### VictoryStats com records
+
+Painel ganha 40px de altura (440 → 480). Ao detectar qualquer flag
+verdadeira:
+- Border laranja `0xff9933` (vs gold normal)
+- Title gain ★ suffix em cor laranja
+- Linha de stat substitui "best X" por "★ NEW BEST!"
+
+Layout:
+```
+RUN COMPLETE  ★
+
+Time:           2:34       ★ NEW BEST!
+Damage Dealt:   1234       best 1500
+Damage Taken:   88
+Deaths:         1          ★ NEW BEST!
+
+Kills:
+  Slims         6
+  Racoons       4
+  Archers       3
+  Bosses        1
+
+Buffs:
+  Forge of Ardor
+  Vampiric Edge
+
+Lifetime: 3 victories / 7 attempts
+
+press any key to start a new run
+```
+
+### formatTime helper
+
+`formatTime(ms): string` em Records.ts → `"m:ss"`. Usado em VictoryStats
+e (TODO) em Hud também.
+
+### Não persistido (intencional)
+
+- Mid-run state (volta ao início no reload)
+- Buffs específicos do run (deck atual)
+- Per-stage best times
+- Replays / ghost data
+
+Reservado para Phase 6 (server-side persistence + auth).
+
+## Próximas sub-fases
+
+### 4.F — Server-side run records (futura)
+
+Sync localStorage com server após login (Phase 6). POST /api/runs com
+runStats payload, server agrega leaderboards. Por agora, localStorage
+é authoritative.

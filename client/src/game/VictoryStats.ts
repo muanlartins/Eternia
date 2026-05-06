@@ -1,4 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
+import { formatTime, type NewRecordFlags, type PersonalRecords } from './Records.js';
 
 export interface RunStatsView {
   durationMs: number;
@@ -7,10 +8,12 @@ export interface RunStatsView {
   killCounts: Record<string, { name: string; count: number }>;
   buffsPicked: readonly string[];
   deaths: number;
+  records: PersonalRecords;
+  flags: NewRecordFlags;
 }
 
-const PANEL_W = 480;
-const PANEL_H = 440;
+const PANEL_W = 520;
+const PANEL_H = 480;
 
 export class VictoryStats {
   readonly container = new Container();
@@ -66,16 +69,28 @@ export class VictoryStats {
   }
 
   show(stats: RunStatsView) {
+    const newAny = stats.flags.newBestTime || stats.flags.newBestDamage || stats.flags.newFewestDeaths;
+    const borderColor = newAny ? 0xff9933 : 0xfff066;
+
     this.bg.clear();
     this.bg
       .roundRect(0, 0, PANEL_W, PANEL_H, 16)
       .fill({ color: 0x101820, alpha: 0.95 })
-      .stroke({ color: 0xfff066, width: 4, alpha: 0.95 });
+      .stroke({ color: borderColor, width: 4, alpha: 0.95 });
 
-    const totalSec = Math.floor(stats.durationMs / 1000);
-    const min = Math.floor(totalSec / 60);
-    const sec = totalSec % 60;
-    const timeStr = `${min}:${sec.toString().padStart(2, '0')}`;
+    this.title.text = newAny ? 'RUN COMPLETE  ★' : 'RUN COMPLETE';
+    this.title.style.fill = newAny ? 0xff9933 : 0xfff066;
+
+    const timeStr = formatTime(stats.durationMs);
+    const bestTimeStr =
+      stats.records.bestTimeMs !== null ? formatTime(stats.records.bestTimeMs) : '—';
+    const bestDamageStr = stats.records.bestDamageDealt > 0 ? `${stats.records.bestDamageDealt}` : '—';
+    const fewestDeathsStr =
+      stats.records.fewestDeathsInVictory !== null ? `${stats.records.fewestDeathsInVictory}` : '—';
+
+    const timeRecord = stats.flags.newBestTime ? '  ★ NEW BEST!' : `  best ${bestTimeStr}`;
+    const damageRecord = stats.flags.newBestDamage ? '  ★ NEW BEST!' : `  best ${bestDamageStr}`;
+    const deathsRecord = stats.flags.newFewestDeaths ? '  ★ NEW BEST!' : `  best ${fewestDeathsStr}`;
 
     const killLines = Object.values(stats.killCounts)
       .filter((k) => k.count > 0)
@@ -86,14 +101,16 @@ export class VictoryStats {
       stats.buffsPicked.length === 0 ? '  (none)' : stats.buffsPicked.map((b) => `  ${b}`).join('\n');
 
     this.body.text =
-      `Time:           ${timeStr}\n` +
-      `Damage Dealt:   ${stats.damageDealt}\n` +
+      `Time:           ${timeStr.padEnd(8, ' ')}${timeRecord}\n` +
+      `Damage Dealt:   ${stats.damageDealt.toString().padEnd(8, ' ')}${damageRecord}\n` +
       `Damage Taken:   ${stats.damageTaken}\n` +
-      `Deaths:         ${stats.deaths}\n` +
+      `Deaths:         ${stats.deaths.toString().padEnd(8, ' ')}${deathsRecord}\n` +
       `\n` +
       `Kills:\n${killLines || '  (none)'}\n` +
       `\n` +
-      `Buffs:\n${buffsLine}`;
+      `Buffs:\n${buffsLine}\n` +
+      `\n` +
+      `Lifetime: ${stats.records.totalVictories} victories / ${stats.records.totalAttempts} attempts`;
 
     this.container.visible = true;
   }

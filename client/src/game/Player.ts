@@ -76,7 +76,6 @@ export class Player {
   private body: Graphics;
   private facingMarker: Graphics;
   private hitboxMarker: Graphics;
-  private chargeIndicator: Graphics;
 
   constructor(private readonly spec: ElesisSpec) {
     this.mp = spec.maxMp;
@@ -85,11 +84,9 @@ export class Player {
     this.body = new Graphics();
     this.facingMarker = new Graphics();
     this.hitboxMarker = new Graphics();
-    this.chargeIndicator = new Graphics();
     this.view.addChild(this.body);
     this.view.addChild(this.facingMarker);
     this.view.addChild(this.hitboxMarker);
-    this.view.addChild(this.chargeIndicator);
     this.redraw();
   }
 
@@ -1054,54 +1051,6 @@ export class Player {
       .moveTo(cx, cy)
       .lineTo(tipX, cy)
       .stroke({ color: 0xffffff, width: 2 });
-
-    this.chargeIndicator.clear();
-    {
-      const barW = 50;
-      const barH = 5;
-      const startX = (this.spec.width - barW) / 2;
-      const y = -10;
-
-      this.chargeIndicator
-        .rect(startX, y, barW, barH)
-        .fill({ color: 0x112244, alpha: 0.85 })
-        .stroke({ color: 0xffffff, width: 1, alpha: 0.4 });
-
-      const mpPct = Math.max(0, Math.min(1, this.mp / this.spec.maxMp));
-      if (mpPct > 0) {
-        this.chargeIndicator
-          .rect(startX, y, barW * mpPct, barH)
-          .fill({ color: 0x4488ff, alpha: 0.95 });
-      }
-
-      const ticks = [
-        this.spec.skills.s1.mpCost,
-        this.spec.skills.s2.mpCost,
-        this.spec.skills.s3.mpCost,
-      ];
-      for (const cost of ticks) {
-        const tickX = startX + (cost / this.spec.maxMp) * barW;
-        this.chargeIndicator
-          .rect(tickX - 0.5, y - 0.5, 1, barH + 1)
-          .fill({ color: 0xffffff, alpha: 0.55 });
-      }
-
-      if (this.chargingActive) {
-        const cap = this.spec.chargeTier3Ms;
-        const progress = Math.min(1, this.chargingMs / cap);
-        const cursorMp = progress * this.spec.skills.s3.mpCost;
-        const cursorX = startX + (cursorMp / this.spec.maxMp) * barW;
-
-        let cursorColor = 0xddddee;
-        if (this.chargingMs >= cap) cursorColor = 0xff5544;
-        else if (this.chargingMs >= this.spec.chargeTier2Ms) cursorColor = 0xffaa44;
-        else if (this.chargingMs >= this.spec.chargeTier1Ms) cursorColor = 0xffe066;
-
-        this.chargeIndicator
-          .rect(cursorX - 1.5, y - 2, 3, barH + 4)
-          .fill({ color: cursorColor, alpha: 0.95 });
-      }
-    }
 
     this.hitboxMarker.clear();
     if (this.activeHit !== null) {
