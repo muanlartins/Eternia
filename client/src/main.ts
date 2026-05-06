@@ -204,6 +204,7 @@ async function main() {
   type StagePhase =
     | 'playing'
     | 'awaitingPortal'
+    | 'bossDeathDrama'
     | 'clearAnnounce'
     | 'buffOffer'
     | 'nextAnnounce'
@@ -512,7 +513,18 @@ async function main() {
     if (stagePhase === 'playing' && stage.isCleared()) {
       if (currentStageIdx === STAGES.length - 1) {
         runStats.endedAtMs = performance.now();
-        const durationMs = runStats.endedAtMs - runStats.startedAtMs;
+        stagePhase = 'bossDeathDrama';
+        stageTransitionTimerMs = 2500;
+      } else {
+        stagePhase = 'awaitingPortal';
+        stageBanner.text = `STAGE ${currentStageIdx + 1} CLEAR! → portal open`;
+        stageBanner.visible = true;
+        stageTransitionTimerMs = 1200;
+      }
+    } else if (stagePhase === 'bossDeathDrama') {
+      stageTransitionTimerMs -= realDtMs;
+      if (stageTransitionTimerMs <= 0) {
+        const durationMs = (runStats.endedAtMs ?? performance.now()) - runStats.startedAtMs;
         const result = applyVictoryToRecords(
           records,
           durationMs,
@@ -526,11 +538,6 @@ async function main() {
         stageTransitionTimerMs = 2500;
         stageBanner.text = 'VICTORY!';
         stageBanner.visible = true;
-      } else {
-        stagePhase = 'awaitingPortal';
-        stageBanner.text = `STAGE ${currentStageIdx + 1} CLEAR! → portal open`;
-        stageBanner.visible = true;
-        stageTransitionTimerMs = 1200;
       }
     } else if (stagePhase === 'awaitingPortal') {
       if (stageTransitionTimerMs > 0) {

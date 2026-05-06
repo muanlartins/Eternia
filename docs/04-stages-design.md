@@ -17,7 +17,8 @@
 | **4.G** | Run start modifier choice (3 cards, big tradeoffs, persists per run) | implementado |
 | **4.H** | Closed rectangular maps + portal advance + boss-kill ends stage + minimap (Tab) + more platforms | implementado |
 | **4.I** | Portal requires onGround + 6 new buffs + 3 new modifiers | implementado |
-| **4.D** | Run record / save no servidor | pendente |
+| **4.J** | Boss death drama phase (game continues ticking enquanto boss completa fade antes do VICTORY!) | implementado |
+| **4.K** | Run record / save no servidor | pendente (parte da Phase 6) |
 
 ## 4.A — Stage system
 
@@ -516,9 +517,35 @@ e (TODO) em Hud também.
 
 Reservado para Phase 6 (server-side persistence + auth).
 
+## 4.J — Boss death drama phase
+
+**Bug**: matar o boss na fase final transicionava direto para `victoryAnnounce`,
+que estava em `isCinematic`. Isso zerava `gameDtMs`, congelando a animação de
+fade do boss (2.5s) instantaneamente. Player via boss congelado mid-fade
+enquanto o banner "VICTORY!" aparecia.
+
+**Fix**: nova phase `bossDeathDrama`, NÃO inclusa em `isCinematic`. Quando o
+boss morre na última fase e `stage.isCleared()` retorna true, transiciona
+para `bossDeathDrama` com `stageTransitionTimerMs = 2500`. Game continua
+tickando normalmente — boss completa flash (500ms) + fade (2500ms), sparks
+emergem, racoons são instakilled após o `bossDramaTimerMs` (1s). Quando o
+timer expira (real time, não game time), aplica victory records e transiciona
+para `victoryAnnounce`.
+
+Timeline (com 2 racoons + boss):
+- T=0: boss morre. flash 500ms, fade começa.
+- T=1000: `killNonBossMobs()` mata os racoons.
+- T=1000ish: `stage.isCleared()` = true → `bossDeathDrama` (timer 2500ms).
+- T=3000: boss fade completo. Stage vazio.
+- T=3500: `bossDeathDrama` expira → `victoryAnnounce` ('VICTORY!' banner).
+- T=6000: `victoryStats` overlay.
+
+Total: ~6s do kill ao stats screen, mas a maioria do tempo o player vê a
+animação completa do boss desaparecendo. Sem freeze.
+
 ## Próximas sub-fases
 
-### 4.F — Server-side run records (futura)
+### 4.K — Server-side run records (futura)
 
 Sync localStorage com server após login (Phase 6). POST /api/runs com
 runStats payload, server agrega leaderboards. Por agora, localStorage

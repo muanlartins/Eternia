@@ -3,7 +3,7 @@
 Personal browser-based action game. Inspired by Grand Chase Season 1 BR (Level Up era,
 2007-2008), redesigned with modern feel + roguelike build cards.
 
-**Status:** Phase 0 (Foundation). See `docs/00-spec.md` for the MVP spec.
+**Status:** ~Phase 5 (polish, mostly done). See `docs/STATUS.md` for the live roadmap snapshot.
 
 > Private project, friends-only access. Not for commercial use. No "Grand Chase" branding
 > in distributable form.
@@ -59,5 +59,7 @@ Open <http://localhost:5173>.
 
 ## Roadmap
 
-See `../docs/eternia-mvp.md` for the full 8-phase roadmap. Currently in **Phase 0
-(Foundation)** — getting hello-world end-to-end working before any gameplay code.
+- `docs/STATUS.md` — live snapshot of phases done / in-progress / pending
+- `../docs/eternia-mvp.md` — full 8-phase roadmap (constitution doc, immutable)
+- `docs/01-movement-design.md` … `docs/05-polish-design.md` — per-phase design
+  log with sub-phase tables and rationale
