@@ -113,7 +113,7 @@ export class Player {
       }
     }
 
-    if (input.justPressed('attack') && !this.chargingActive && this.chargingAllowed()) {
+    if (input.isHeld('attack') && !this.chargingActive && this.chargingAllowed()) {
       this.chargingActive = true;
       this.chargingMs = 0;
     }
@@ -632,6 +632,7 @@ export class Player {
 
   private tickSkill(_dtMs: number, input: Input, skillIdx: number) {
     if (this.tryDefensiveCancel(input)) return;
+    if (this.consumeSkillBuffer()) return;
     this.vx = 0;
     this.vy = 0;
     const skill = this.skillByIdx(skillIdx);
@@ -715,7 +716,10 @@ export class Player {
       s === PlayerState.Attack2 ||
       s === PlayerState.Attack3 ||
       s === PlayerState.DashAtk ||
-      s === PlayerState.JumpAtk
+      s === PlayerState.JumpAtk ||
+      s === PlayerState.Skill1 ||
+      s === PlayerState.Skill2 ||
+      s === PlayerState.Skill3
     );
   }
 
@@ -741,13 +745,15 @@ export class Player {
     const skill = this.skillByIdx(tier);
     this.mp -= skill.mpCost;
     this.vx = 0;
-    const state =
+    const newState =
       tier === 0
         ? PlayerState.Skill1
         : tier === 1
           ? PlayerState.Skill2
           : PlayerState.Skill3;
-    this.setState(state);
+    this.state = newState;
+    this.stateTimeMs = 0;
+    this.lastActiveHitIdx = -1;
   }
 
   private startParry() {
@@ -861,13 +867,17 @@ export class Player {
     this.mp -= skill.mpCost;
     this.skillCooldowns[skillIdx] = skill.cooldownMs;
     this.vx = 0;
-    const state =
+    this.chargingActive = false;
+    this.chargingMs = 0;
+    const newState =
       skillIdx === 0
         ? PlayerState.Skill1
         : skillIdx === 1
           ? PlayerState.Skill2
           : PlayerState.Skill3;
-    this.setState(state);
+    this.state = newState;
+    this.stateTimeMs = 0;
+    this.lastActiveHitIdx = -1;
     return true;
   }
 

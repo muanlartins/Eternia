@@ -21,6 +21,7 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.H** | Hold-Z charging (GC-style MP block tiers) + cooldown apenas no direct cast | implementado |
 | **2.H.2** | Charging não-bloqueante (movimento livre) + cancel via jump-release + visual contínuo | implementado |
 | **2.H.3** | Charging começa no Z press (qualquer estado) + 1.5x slower thresholds | implementado |
+| **2.H.4** | Charge durante skills + skill override + isHeld trigger + force state reset | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 
@@ -669,6 +670,69 @@ Total para S3: 1.4s desde o press (era 1.23s pelo design anterior).
 
 O bloco em `tickAttack` que setava `chargingActive` no fim de Attack1
 foi removido. Charge agora vem só do trigger no press.
+
+## Sub-fase 2.H.4 — Charge durante skills + skill override
+
+### Charge persiste durante Skill1/2/3
+
+`chargingAllowed` agora inclui Skill1, Skill2, Skill3. Player pode segurar Z
+durante uma skill ativa e a barra continua acumulando. Permite encadear:
+
+1. Player cast S1 (480ms duração) via direct A.
+2. Durante S1, segura Z (charge restart from 0).
+3. S1 termina → Idle (charge ainda activa).
+4. Solta Z em momento que tier1 (525ms) foi atingido → S1 cast novamente.
+5. Repete.
+
+Note: tier1 = 525ms vs S1 = 480ms. Player precisa esperar ~45ms em Idle
+antes de soltar pra encadear S1. Cadência intencional.
+
+### isHeld em vez de justPressed
+
+Antes: charge iniciava só no `justPressed('attack')` (frame específico do
+press).
+
+Depois: `input.isHeld('attack') && !chargingActive && chargingAllowed()`.
+Charge inicia em qualquer frame onde Z está held + estado é allowed +
+charge ainda não está active.
+
+Implicação: se player estava em Hurt (charge cancelado), recupera pra Idle
+ainda segurando Z → charge restart automático. Continuous hold através de
+estados temporários re-engaja sem precisar release/re-press.
+
+### Skill override via `tickSkill`
+
+`tickSkill` agora chama `consumeSkillBuffer()` antes do resto da lógica.
+Player que aperta A/S/D durante uma skill em curso:
+- skillBuffer set por A/S/D press
+- tickSkill: consumeSkillBuffer → startSkill(idx) → if cooldown OK,
+  override (mesma skill bloqueada por cooldown próprio; outras skills
+  passam se cd=0)
+- State force-reset (Skill_old → Skill_new ou mesmo Skill_old reseta
+  stateTimeMs e lastActiveHitIdx)
+
+`startSkill` e `releaseChargeAndCast` agora **forçam** state reset (não
+só `setState`, que não fazia nada se state já era o mesmo). Isso é
+crítico pro chain S1→S1 funcionar: `state = newState; stateTimeMs = 0;
+lastActiveHitIdx = -1`.
+
+### Cooldown gate continua
+
+Direct cast continua respeitando cooldown:
+- S1 cast → S1 cooldown 5s → próximo direct A bloqueado por 5s
+- Mas hold-Z casts via `releaseChargeAndCast` (no-cooldown path)
+  funcionam normalmente, permitindo chain de S1's
+
+Diferentes skills sem cd ativo → direct override funciona (e.g., S1 em
+cast → tap D → S3 fires se MP affords e cd=0).
+
+### Charge clears em cast
+
+Toda chamada de `startSkill` ou `releaseChargeAndCast` zera
+`chargingActive` e `chargingMs`. Player precisa re-press Z (release +
+press) pra começar nova charge. Mas com `isHeld` trigger e cleared
+charge: se Z continuar held + state em allowed list, charge restart
+automaticamente. Continuous hold = continuous charge cycle.
 
 ## Backlog de polish — visual do parry timing
 
