@@ -16,6 +16,7 @@
 | **4.F** | Stage 3 nova "Floresta Profunda" (brute + archer mix) entre archer e boss | implementado |
 | **4.G** | Run start modifier choice (3 cards, big tradeoffs, persists per run) | implementado |
 | **4.H** | Closed rectangular maps + portal advance + boss-kill ends stage + minimap (Tab) + more platforms | implementado |
+| **4.I** | Portal requires onGround + 6 new buffs + 3 new modifiers | implementado |
 | **4.D** | Run record / save no servidor | pendente |
 
 ## 4.A — Stage system

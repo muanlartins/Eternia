@@ -61,6 +61,33 @@ export const MODIFIERS: readonly RunModifier[] = [
       m.comboDamageMul *= 0.9;
     },
   },
+  {
+    id: 'berserker',
+    name: 'Berserker',
+    description: '+50% combo dmg, -35 max HP',
+    apply: (m) => {
+      m.comboDamageMul *= 1.5;
+      m.maxHpAdd -= 35;
+    },
+  },
+  {
+    id: 'disciplined',
+    name: 'Disciplined',
+    description: 'Parry buff lasts 2.5x, -15% combo dmg',
+    apply: (m) => {
+      m.parryBuffDurationMul *= 2.5;
+      m.comboDamageMul *= 0.85;
+    },
+  },
+  {
+    id: 'bloodbound',
+    name: 'Bloodbound',
+    description: '+25% lifesteal, MP regen ×0.5',
+    apply: (m) => {
+      m.comboLifestealPct += 0.25;
+      m.mpRegenMul *= 0.5;
+    },
+  },
 ];
 
 export function pickRandomModifiers(count: number): readonly RunModifier[] {

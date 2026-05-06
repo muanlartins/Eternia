@@ -110,6 +110,61 @@ export const BUFFS: readonly BuffSpec[] = [
       m.parryBuffDurationMul *= 1.6;
     },
   },
+  {
+    id: 'concentration',
+    name: 'Concentration',
+    description: 'MP regen 1.5x',
+    rarity: 'common',
+    apply: (m) => {
+      m.mpRegenMul *= 1.5;
+    },
+  },
+  {
+    id: 'light-steps',
+    name: 'Light Steps',
+    description: 'Dodge regen 1.3x',
+    rarity: 'common',
+    apply: (m) => {
+      m.dodgeRegenMul *= 1.3;
+    },
+  },
+  {
+    id: 'iron-skin-2',
+    name: 'Iron Plating',
+    description: '+25 max HP (heals on pickup)',
+    rarity: 'common',
+    apply: (m) => {
+      m.maxHpAdd += 25;
+    },
+  },
+  {
+    id: 'greater-ardor',
+    name: 'Greater Ardor',
+    description: '+35% combo Z damage',
+    rarity: 'rare',
+    apply: (m) => {
+      m.comboDamageMul *= 1.35;
+    },
+  },
+  {
+    id: 'bloodline',
+    name: 'Bloodline',
+    description: 'Combo Z hits heal 25% of damage',
+    rarity: 'rare',
+    apply: (m) => {
+      m.comboLifestealPct += 0.25;
+    },
+  },
+  {
+    id: 'mountain-heart',
+    name: 'Mountain Heart',
+    description: '+30 max HP, HP regen +1/s',
+    rarity: 'rare',
+    apply: (m) => {
+      m.maxHpAdd += 30;
+      m.hpRegenPerSec += 1;
+    },
+  },
 ];
 
 const RARE_PICK_CHANCE = 0.25;

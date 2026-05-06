@@ -540,7 +540,7 @@ async function main() {
         }
       }
       const portalBox = stage.getPortalBox();
-      if (portalBox) {
+      if (portalBox && player.onGround) {
         const playerBox = player.aabb();
         if (rectsOverlap(playerBox, portalBox) && input.justPressed('down')) {
           stagePhase = 'clearAnnounce';

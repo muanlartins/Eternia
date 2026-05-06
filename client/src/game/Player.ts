@@ -36,7 +36,7 @@ export class Player {
   hp: number;
   dodgeBar: number;
 
-  private onGround = true;
+  onGround = true;
   private jumpsUsed = 0;
   private airDashUsed = false;
 
@@ -323,6 +323,8 @@ export class Player {
     this.acquiredBuffs.push(buff);
     if (buff.id === 'iron-skin') this.hp = Math.min(this.getMaxHp(), this.hp + 15);
     if (buff.id === 'tempered-body') this.hp = Math.min(this.getMaxHp(), this.hp + 10);
+    if (buff.id === 'iron-skin-2') this.hp = Math.min(this.getMaxHp(), this.hp + 25);
+    if (buff.id === 'mountain-heart') this.hp = Math.min(this.getMaxHp(), this.hp + 30);
   }
 
   applyModifier(mod: RunModifier) {
