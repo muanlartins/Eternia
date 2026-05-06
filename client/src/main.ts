@@ -5,6 +5,8 @@ import { Input } from './game/Input.js';
 import { Player } from './game/Player.js';
 import { Camera } from './game/Camera.js';
 import { TargetDummy } from './game/TargetDummy.js';
+import { Mob } from './game/Mob.js';
+import { SLIM } from './data/mobs.js';
 import { HitFx } from './game/HitFx.js';
 import { PlayerState, type AABB } from './game/types.js';
 
@@ -106,6 +108,12 @@ async function main() {
   ];
   for (const d of dummies) worldStage.addChild(d.view);
 
+  const mobs = [
+    new Mob(SLIM, 480, GROUND_Y - SLIM.height),
+    new Mob(SLIM, -520, GROUND_Y - SLIM.height),
+  ];
+  for (const m of mobs) worldStage.addChild(m.view);
+
   worldStage.addChild(player.view);
 
   const hitFx = new HitFx();
@@ -161,6 +169,10 @@ async function main() {
         if (!d.alive) continue;
         resolvePlayerVsBox(player, d.hurtbox());
       }
+      for (const m of mobs) {
+        if (!m.alive) continue;
+        resolvePlayerVsBox(player, m.hurtbox());
+      }
     }
 
     const hit = player.getActiveHit();
@@ -178,6 +190,34 @@ async function main() {
           }
         }
       }
+      for (const m of mobs) {
+        if (!m.alive) continue;
+        const hb = m.hurtbox();
+        if (rectsOverlap(hit.bbox, hb)) {
+          const accepted = m.receiveHit(hit.attackId, hit.damage, hit.knockback * hit.facing);
+          if (accepted) {
+            const c = intersectionCenter(hit.bbox, hb);
+            hitFx.popup(c.x, c.y, hit.damage);
+            hitFx.spark(c.x, c.y);
+            player.giveMp(ELESIS.mpPerHit);
+          }
+        }
+      }
+    }
+
+    for (const m of mobs) {
+      m.update(dtMs, player.x + ELESIS.width / 2);
+      if (!m.alive) continue;
+      const mobHit = m.getActiveHit();
+      if (mobHit && !player.isInvincible()) {
+        const playerBox = player.aabb();
+        if (rectsOverlap(mobHit.bbox, playerBox)) {
+          player.takeDamage(mobHit.damage, mobHit.knockback * mobHit.facing);
+          const c = intersectionCenter(mobHit.bbox, playerBox);
+          hitFx.popup(c.x, c.y, mobHit.damage);
+          hitFx.spark(c.x, c.y);
+        }
+      }
     }
 
     for (const d of dummies) d.update(dtMs);
@@ -188,6 +228,7 @@ async function main() {
 
     hud.text =
       `state: ${player.state.padEnd(12, ' ')}  ` +
+      `hp: ${player.hp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxHp}  ` +
       `mp: ${player.mp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxMp}  ` +
       `pos: (${player.x.toFixed(0)}, ${player.y.toFixed(0)})  ` +
       `vel: (${player.vx.toFixed(0)}, ${player.vy.toFixed(0)})  ` +

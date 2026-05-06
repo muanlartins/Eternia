@@ -30,6 +30,7 @@ export class Player {
   stateTimeMs = 0;
 
   mp: number;
+  hp: number;
 
   private onGround = true;
   private jumpsUsed = 0;
@@ -53,6 +54,7 @@ export class Player {
 
   private airAtkUsed = false;
   private dodgeCooldownMs = 0;
+  private respawnTimerMs = 0;
 
   readonly view = new Container();
   private body: Graphics;
@@ -61,6 +63,7 @@ export class Player {
 
   constructor(private readonly spec: ElesisSpec) {
     this.mp = spec.maxMp;
+    this.hp = spec.maxHp;
     this.body = new Graphics();
     this.facingMarker = new Graphics();
     this.hitboxMarker = new Graphics();
@@ -152,6 +155,12 @@ export class Player {
       case PlayerState.DodgeRoll:
         this.tickDodgeRoll(dtMs, input);
         break;
+      case PlayerState.Hurt:
+        this.tickHurt(dtMs);
+        break;
+      case PlayerState.Dead:
+        this.tickDead(dtMs);
+        break;
     }
 
     const dt = dtMs / 1000;
@@ -179,6 +188,8 @@ export class Player {
         PlayerState.AirDash,
         PlayerState.Land,
         PlayerState.JumpAtk,
+        PlayerState.Hurt,
+        PlayerState.Dead,
       ];
       if (!airborneStates.includes(this.state) && this.vy > 0) {
         this.setState(PlayerState.Fall);
@@ -207,8 +218,23 @@ export class Player {
   isInvincible(): boolean {
     return (
       this.state === PlayerState.DodgeStand ||
-      this.state === PlayerState.DodgeRoll
+      this.state === PlayerState.DodgeRoll ||
+      this.state === PlayerState.Hurt ||
+      this.state === PlayerState.Dead
     );
+  }
+
+  takeDamage(damage: number, knockbackVx: number) {
+    if (this.isInvincible()) return;
+    this.hp = Math.max(0, this.hp - damage);
+    this.vx = knockbackVx;
+    this.vy = -180;
+    if (this.hp === 0) {
+      this.respawnTimerMs = this.spec.deathRespawnMs;
+      this.setState(PlayerState.Dead);
+    } else {
+      this.setState(PlayerState.Hurt);
+    }
   }
 
   aabb() {
@@ -505,6 +531,46 @@ export class Player {
       this.dodgeCooldownMs = this.spec.dodgeRollCooldownMs;
       this.setState(PlayerState.Idle);
     }
+  }
+
+  private tickHurt(dtMs: number) {
+    const dt = dtMs / 1000;
+    const decel = this.spec.groundFriction * dt;
+    if (this.vx > 0) this.vx = Math.max(0, this.vx - decel);
+    else if (this.vx < 0) this.vx = Math.min(0, this.vx + decel);
+
+    const g =
+      this.vy >= 0
+        ? this.spec.gravity * this.spec.fallGravityMultiplier
+        : this.spec.gravity;
+    this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
+
+    if (this.stateTimeMs >= this.spec.hurtStunMs) {
+      this.setState(PlayerState.Idle);
+    }
+  }
+
+  private tickDead(dtMs: number) {
+    this.vx = 0;
+    this.vy = 0;
+    this.respawnTimerMs -= dtMs;
+    if (this.respawnTimerMs <= 0) {
+      this.respawn();
+    }
+  }
+
+  private respawn() {
+    this.x = 0;
+    this.y = GROUND_Y - this.spec.height;
+    this.vx = 0;
+    this.vy = 0;
+    this.hp = this.spec.maxHp;
+    this.mp = this.spec.maxMp;
+    this.airAtkUsed = false;
+    this.airDashUsed = false;
+    this.jumpsUsed = 0;
+    this.dodgeCooldownMs = 0;
+    this.setState(PlayerState.Idle);
   }
 
   private startGroundJump() {

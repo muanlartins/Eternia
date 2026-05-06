@@ -65,6 +65,10 @@ export const ELESIS = {
   dodgeRollDurationMs: 280,
   dodgeRollCooldownMs: 500,
 
+  maxHp: 100,
+  hurtStunMs: 380,
+  deathRespawnMs: 1500,
+
   skills: {
     s1: {
       duration: 480,

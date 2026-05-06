@@ -18,6 +18,8 @@ export const PlayerState = {
   JumpAtk: 'jump_atk',
   DodgeStand: 'dodge_stand',
   DodgeRoll: 'dodge_roll',
+  Hurt: 'hurt',
+  Dead: 'dead',
 } as const;
 
 export type PlayerState = (typeof PlayerState)[keyof typeof PlayerState];
@@ -61,4 +63,6 @@ export const STATE_COLOR: Record<PlayerState, number> = {
   [PlayerState.JumpAtk]: 0xffaa44,
   [PlayerState.DodgeStand]: 0x88eecc,
   [PlayerState.DodgeRoll]: 0x44bb88,
+  [PlayerState.Hurt]: 0xff4488,
+  [PlayerState.Dead]: 0x666666,
 };
