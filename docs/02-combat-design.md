@@ -17,7 +17,9 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.F** | Parry (timing window + reflect → stun no mob) | implementado |
 | **2.F.2** | Parry damage buff no mob stunado | implementado |
 | **2.G** | Skills usáveis no ar + ground dash + skill input buffer | implementado |
+| **2.G.2** | **Reverted**: skills voltam a ser ground-only (air skills cancelados por design) | implementado |
 | **2.H** | Hold-Z charging (GC-style MP block tiers) + cooldown apenas no direct cast | implementado |
+| **2.H.2** | Charging não-bloqueante (movimento livre) + cancel via jump-release + visual contínuo | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 
@@ -536,6 +538,83 @@ HUD ganha `cd: A✓ S5.2 D12.0` mostrando cooldown remaining por skill
 `respawn()` e `resetBuffs()` zeram `skillCooldowns = [0, 0, 0]`. Lives
 preservadas: cooldowns só resetam na morte (não através de transitions
 de stage).
+
+## Sub-fase 2.H.2 — Charging livre + cancel por jump
+
+### Charging deixa de ser PlayerState
+
+Antes (2.H): `Charging` era um estado que bloqueava movimento (vx=0, vy=0).
+Player ficava parado conjurando. Spec error — **GC original permite movimento
+durante charge**.
+
+Agora: charging é um **modificador paralelo** (campos `chargingActive: boolean`,
+`chargingMs: number`), não state. Player continua em Idle/Walk/Run/JumpRise/etc
+enquanto carrega. `PlayerState.Charging` foi removido.
+
+### Estados onde charging continua válido
+
+`chargingAllowed()`: Idle, Walk, Run, JumpRise, Fall, DoubleJump, AirDash,
+Land, Dash. Estados ofensivos/defensivos (Attack, Skill, DodgeStand,
+DodgeRoll, Parry, Hurt, Dead, DashAtk, JumpAtk) cancelam o charge.
+
+### Lógica em `update()` pós-state-tick
+
+```ts
+if (this.chargingActive) {
+  if (!this.chargingAllowed()) {
+    this.cancelCharge();           // estado bloqueia
+  } else if (input.justReleased('attack')) {
+    if (this.onGround) {
+      this.releaseChargeAndCast();  // cast tier mais alto que afford
+    } else {
+      this.cancelCharge();           // air release = cancel
+    }
+  } else {
+    this.chargingMs += dtMs;        // segue carregando
+  }
+}
+```
+
+`chargingActive` é setado em `tickAttack` no fim de Attack1 (apenas) com Z
+held + onGround. Player pode então sair andando/correndo/pulando enquanto
+o timer aumenta. Combo Z2/Z3 não inicia charge (player que comita combo
+abandona o charge).
+
+### Cancel via jump-release (skill expression)
+
+Player carrega até quase tier 3 mas percebe que só queria S1. Pula (state
+→ JumpRise, charge continua), depois solta Z no ar → `cancelCharge()`,
+sem cast, sem MP gasto.
+
+Trade: queima ~700ms de tempo de charge + jump cooldown = punição leve por
+"errar". Suficiente pra desencorajar charge-spam mas barato o bastante pra
+não frustrar.
+
+### Visual: bar contínua com tick marks
+
+Antes: 3 blocos discretos acendendo. Não comunica progresso entre tiers.
+
+Agora: barra única 50×5px acima da cabeça, fill contínuo de 0% a 100% ao
+longo de 950ms (chargeTier3Ms). Cor da fill muda nos thresholds:
+- 0–349ms: cinza muted (`0x666677`)
+- 350–649ms: amarelo (`0xffe066`) — S1 disponível
+- 650–949ms: laranja (`0xffaa44`) — S2 disponível
+- 950ms+: vermelho (`0xff5544`) — S3 disponível
+
+Tick marks brancos verticais nos pontos de tier1Ms/tier2Ms (tier3 = end).
+Player vê continuamente quanto falta pro próximo threshold.
+
+### 2.G.2 — Air skills revertidas
+
+Spec error: 2.G permitia skills no ar. User confirmou que skills devem ser
+ground-only (matching GC). Removido `consumeSkillBuffer()` de
+`tickFirstJumpAir`, `tickDoubleJump`, `tickAirDash`. Buffer de A/S/D press
+no ar ainda existe — quando player aterrissa em <400ms (skillBufferMs),
+skill dispara em tickGround. Press no ar continua "lembrado" mas nunca
+casts mid-air.
+
+`tickSkill` simplificado: removida a lógica de transição pra Fall pós-skill
+(não acessível agora que skills só rodam onGround).
 
 ## Backlog de polish — visual do parry timing
 

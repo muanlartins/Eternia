@@ -21,7 +21,6 @@ export const PlayerState = {
   Hurt: 'hurt',
   Dead: 'dead',
   Parry: 'parry',
-  Charging: 'charging',
 } as const;
 
 export type PlayerState = (typeof PlayerState)[keyof typeof PlayerState];
@@ -69,5 +68,4 @@ export const STATE_COLOR: Record<PlayerState, number> = {
   [PlayerState.Hurt]: 0xff4488,
   [PlayerState.Dead]: 0x666666,
   [PlayerState.Parry]: 0xfff066,
-  [PlayerState.Charging]: 0xfff8aa,
 };

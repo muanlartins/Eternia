@@ -56,6 +56,9 @@ export class Player {
 
   skillCooldowns: [number, number, number] = [0, 0, 0];
 
+  chargingActive = false;
+  chargingMs = 0;
+
   private currentAttackId = 0;
   private lastActiveHitIdx = -1;
   private activeHit: ActiveHit | null = null;
@@ -203,9 +206,20 @@ export class Player {
       case PlayerState.Parry:
         this.tickParry(dtMs);
         break;
-      case PlayerState.Charging:
-        this.tickCharging(input);
-        break;
+    }
+
+    if (this.chargingActive) {
+      if (!this.chargingAllowed()) {
+        this.cancelCharge();
+      } else if (input.justReleased('attack')) {
+        if (this.onGround) {
+          this.releaseChargeAndCast();
+        } else {
+          this.cancelCharge();
+        }
+      } else {
+        this.chargingMs += dtMs;
+      }
     }
 
     const dt = dtMs / 1000;
@@ -394,8 +408,6 @@ export class Player {
   }
 
   private tickFirstJumpAir(dtMs: number, input: Input, ax: number, rising: boolean) {
-    if (this.consumeSkillBuffer()) return;
-
     if (input.justPressed('attack') && !this.airAtkUsed) {
       this.startJumpAtk();
       return;
@@ -457,8 +469,6 @@ export class Player {
   }
 
   private tickDoubleJump(dtMs: number, input: Input, ax: number) {
-    if (this.consumeSkillBuffer()) return;
-
     if (input.justPressed('attack') && !this.airAtkUsed) {
       this.startJumpAtk();
       return;
@@ -525,8 +535,6 @@ export class Player {
   }
 
   private tickAirDash(dtMs: number, input: Input, ax: number) {
-    if (this.consumeSkillBuffer()) return;
-
     if (input.justPressed('attack') && !this.airAtkUsed) {
       this.startJumpAtk();
       return;
@@ -613,21 +621,21 @@ export class Player {
     }
 
     if (this.stateTimeMs >= spec.duration) {
+      this.setState(PlayerState.Idle);
       if (comboIdx === 0 && input.isHeld('attack') && this.onGround) {
-        this.setState(PlayerState.Charging);
-      } else {
-        this.setState(PlayerState.Idle);
+        this.chargingActive = true;
+        this.chargingMs = 0;
       }
     }
   }
 
   private tickSkill(_dtMs: number, input: Input, skillIdx: number) {
-    if (this.onGround && this.tryDefensiveCancel(input)) return;
+    if (this.tryDefensiveCancel(input)) return;
     this.vx = 0;
     this.vy = 0;
     const skill = this.skillByIdx(skillIdx);
     if (this.stateTimeMs >= skill.duration) {
-      this.setState(this.onGround ? PlayerState.Idle : PlayerState.Fall);
+      this.setState(PlayerState.Idle);
     }
   }
 
@@ -690,23 +698,28 @@ export class Player {
     }
   }
 
-  private tickCharging(input: Input) {
-    this.vx = 0;
-    this.vy = 0;
-
-    if (this.tryDefensiveCancel(input)) return;
-
-    if (!input.isHeld('attack')) {
-      this.releaseCharge();
-      return;
-    }
+  private chargingAllowed(): boolean {
+    const s = this.state;
+    return (
+      s === PlayerState.Idle ||
+      s === PlayerState.Walk ||
+      s === PlayerState.Run ||
+      s === PlayerState.JumpRise ||
+      s === PlayerState.Fall ||
+      s === PlayerState.DoubleJump ||
+      s === PlayerState.AirDash ||
+      s === PlayerState.Land ||
+      s === PlayerState.Dash
+    );
   }
 
-  private releaseCharge() {
-    this.skillBufferMs = 0;
-    this.skillBufferIdx = -1;
+  private cancelCharge() {
+    this.chargingActive = false;
+    this.chargingMs = 0;
+  }
 
-    const t = this.stateTimeMs;
+  private releaseChargeAndCast() {
+    const t = this.chargingMs;
     const skills = this.spec.skills;
     let tier = -1;
 
@@ -714,22 +727,18 @@ export class Player {
     else if (t >= this.spec.chargeTier2Ms && this.mp >= skills.s2.mpCost) tier = 1;
     else if (t >= this.spec.chargeTier1Ms && this.mp >= skills.s1.mpCost) tier = 0;
 
-    if (tier < 0) {
-      this.setState(PlayerState.Idle);
-      return;
-    }
+    this.chargingActive = false;
+    this.chargingMs = 0;
 
-    this.castSkillNoCooldown(tier);
-  }
+    if (tier < 0) return;
 
-  private castSkillNoCooldown(skillIdx: number) {
-    const skill = this.skillByIdx(skillIdx);
+    const skill = this.skillByIdx(tier);
     this.mp -= skill.mpCost;
     this.vx = 0;
     const state =
-      skillIdx === 0
+      tier === 0
         ? PlayerState.Skill1
-        : skillIdx === 1
+        : tier === 1
           ? PlayerState.Skill2
           : PlayerState.Skill3;
     this.setState(state);
@@ -778,6 +787,8 @@ export class Player {
     this.parryCooldownMs = 0;
     this.skillBufferMs = 0;
     this.skillBufferIdx = -1;
+    this.chargingActive = false;
+    this.chargingMs = 0;
     this.setState(PlayerState.Idle);
   }
 
@@ -1005,33 +1016,36 @@ export class Player {
       .stroke({ color: 0xffffff, width: 2 });
 
     this.chargeIndicator.clear();
-    if (this.state === PlayerState.Charging) {
-      const blockW = 12;
-      const blockH = 4;
-      const gap = 2;
-      const totalW = 3 * blockW + 2 * gap;
-      const startX = (this.spec.width - totalW) / 2;
-      const y = -12;
-      const tiers = [
-        { ms: this.spec.chargeTier1Ms, mp: this.spec.skills.s1.mpCost, color: 0xffe066 },
-        { ms: this.spec.chargeTier2Ms, mp: this.spec.skills.s2.mpCost, color: 0xffaa44 },
-        { ms: this.spec.chargeTier3Ms, mp: this.spec.skills.s3.mpCost, color: 0xff5544 },
-      ];
-      for (let i = 0; i < 3; i++) {
-        const tier = tiers[i]!;
-        const x = startX + i * (blockW + gap);
-        const reached = this.stateTimeMs >= tier.ms;
-        const affordable = this.mp >= tier.mp;
-        const lit = reached && affordable;
-        const color = lit ? tier.color : reached ? 0x664444 : 0x333344;
-        const alpha = lit ? 0.95 : 0.5;
-        this.chargeIndicator.rect(x, y, blockW, blockH).fill({ color, alpha });
-        if (lit) {
-          this.chargeIndicator
-            .rect(x, y, blockW, blockH)
-            .stroke({ color: 0xffffff, width: 1, alpha: 0.85 });
-        }
-      }
+    if (this.chargingActive) {
+      const barW = 50;
+      const barH = 5;
+      const startX = (this.spec.width - barW) / 2;
+      const y = -10;
+
+      this.chargeIndicator
+        .rect(startX, y, barW, barH)
+        .fill({ color: 0x1a1a22, alpha: 0.85 })
+        .stroke({ color: 0xffffff, width: 1, alpha: 0.4 });
+
+      const tier3Ms = this.spec.chargeTier3Ms;
+      const t = Math.min(1, this.chargingMs / tier3Ms);
+      const fillW = barW * t;
+
+      let fillColor = 0x666677;
+      if (this.chargingMs >= tier3Ms) fillColor = 0xff5544;
+      else if (this.chargingMs >= this.spec.chargeTier2Ms) fillColor = 0xffaa44;
+      else if (this.chargingMs >= this.spec.chargeTier1Ms) fillColor = 0xffe066;
+
+      this.chargeIndicator.rect(startX, y, fillW, barH).fill({ color: fillColor, alpha: 0.95 });
+
+      const tier1X = startX + (this.spec.chargeTier1Ms / tier3Ms) * barW;
+      const tier2X = startX + (this.spec.chargeTier2Ms / tier3Ms) * barW;
+      this.chargeIndicator
+        .rect(tier1X - 0.5, y - 1, 1, barH + 2)
+        .fill({ color: 0xffffff, alpha: 0.7 });
+      this.chargeIndicator
+        .rect(tier2X - 0.5, y - 1, 1, barH + 2)
+        .fill({ color: 0xffffff, alpha: 0.7 });
     }
 
     this.hitboxMarker.clear();
