@@ -35,6 +35,8 @@ export class Mob {
   facing: -1 | 1 = 1;
   koFlashMs = 0;
   private koFlashTotalMs = 220;
+  koFadeMs = 0;
+  private koFadeTotalMs = 0;
 
   private readonly originalX: number;
   private readonly originalY: number;
@@ -86,6 +88,10 @@ export class Mob {
     return this.spec.maxHp >= 200;
   }
 
+  isFading(): boolean {
+    return !this.alive && this.koFlashMs <= 0 && this.koFadeMs > 0;
+  }
+
   hurtbox(): AABB {
     return { x: this.x, y: this.y, w: this.spec.width, h: this.spec.height };
   }
@@ -104,6 +110,8 @@ export class Mob {
       this.deadTimerMs = this.spec.respawnMs;
       this.koFlashMs = this.isBoss() ? 500 : 220;
       this.koFlashTotalMs = this.koFlashMs;
+      this.koFadeMs = this.isBoss() ? 2500 : 0;
+      this.koFadeTotalMs = this.koFadeMs;
       this.setState(MobState.Dead);
       return { applied };
     }
@@ -185,6 +193,9 @@ export class Mob {
     this.attackCooldownMs = Math.max(0, this.attackCooldownMs - dtMs);
     this.hitFlashMs = Math.max(0, this.hitFlashMs - dtMs);
     this.koFlashMs = Math.max(0, this.koFlashMs - dtMs);
+    if (this.koFlashMs <= 0) {
+      this.koFadeMs = Math.max(0, this.koFadeMs - dtMs);
+    }
 
     if (this.vx !== 0) {
       const decel = this.spec.knockbackFriction * dt;
@@ -297,14 +308,24 @@ export class Mob {
     this.previewMarker.clear();
 
     if (!this.alive) {
-      const flashing = this.koFlashMs > 0;
-      const t = flashing && this.koFlashTotalMs > 0 ? this.koFlashMs / this.koFlashTotalMs : 0;
-      this.body
-        .rect(0, 0, this.spec.width, this.spec.height)
-        .fill({
-          color: flashing ? 0xffffff : MOB_COLOR.dead,
-          alpha: flashing ? 0.4 + 0.55 * t : 0.35,
-        });
+      if (this.koFlashMs > 0 && this.koFlashTotalMs > 0) {
+        const t = this.koFlashMs / this.koFlashTotalMs;
+        this.body
+          .rect(0, 0, this.spec.width, this.spec.height)
+          .fill({ color: 0xffffff, alpha: 0.4 + 0.55 * t });
+      } else if (this.koFadeMs > 0 && this.koFadeTotalMs > 0) {
+        const t = this.koFadeMs / this.koFadeTotalMs;
+        const drift = (1 - t) * 36;
+        const alpha = 0.7 * t;
+        this.body
+          .rect(0, -drift, this.spec.width, this.spec.height)
+          .fill({ color: 0xddddff, alpha })
+          .stroke({ color: 0xffd700, width: 2, alpha: alpha * 0.8 });
+      } else if (!this.isBoss()) {
+        this.body
+          .rect(0, 0, this.spec.width, this.spec.height)
+          .fill({ color: MOB_COLOR.dead, alpha: 0.35 });
+      }
       return;
     }
 

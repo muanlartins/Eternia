@@ -189,6 +189,7 @@ async function main() {
   let lives = MAX_LIVES;
 
   let hitPauseMs = 0;
+  let bossSparkCooldownMs = 0;
 
   function impactFromDamage(applied: number): { shake: number; shakeDur: number; pause: number } {
     if (applied >= 50) return { shake: 14, shakeDur: 260, pause: 90 };
@@ -223,7 +224,7 @@ async function main() {
           const result = m.receiveHit(hit.attackId, hit.damage, hit.knockback * hit.facing);
           if (result !== null) {
             const c = intersectionCenter(hit.bbox, hb);
-            hitFx.popup(c.x, c.y, result.applied);
+            hitFx.popup(c.x, c.y, result.applied, { parryBuff: player.hasParryBuff() });
             hitFx.spark(c.x, c.y);
             if (player.hasParryBuff()) {
               hitFx.spark(c.x + 10, c.y - 4);
@@ -362,6 +363,20 @@ async function main() {
         stageTransitionTimerMs = 1500;
         stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
       }
+    }
+
+    bossSparkCooldownMs -= realDtMs;
+    if (bossSparkCooldownMs <= 0) {
+      for (const m of stage.getMobs()) {
+        if (m.isFading() && m.isBoss()) {
+          const hb = m.hurtbox();
+          hitFx.spark(
+            hb.x + Math.random() * hb.w,
+            hb.y + Math.random() * hb.h * 0.7,
+          );
+        }
+      }
+      bossSparkCooldownMs = 160;
     }
 
     hitFx.update(dtMs);

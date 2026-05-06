@@ -9,8 +9,9 @@ forte com primitivas que já temos.
 |---|---|---|
 | **5.A** | Hit pause + screen shake + KO flash | implementado |
 | **5.A.2** | Parry buff redesign (mob → player) + boss death epic + parry radial burst | implementado |
+| **5.A.3** | Boss death slow fade (drift up + alpha decay 2.5s) + spark trail | implementado |
+| **5.C** | Damage number juiciness (tier color/size, pop animation, parry "!" suffix) | implementado |
 | **5.B** | Audio (SFX hit/parry/death/footstep, BGM) | pendente — precisa assets |
-| **5.C** | Damage number juiciness (scale, color tier, crit visual no parry) | pendente |
 
 ## 5.A — Hit pause + screen shake + KO flash
 
@@ -133,6 +134,66 @@ Adicionado: 8 sparks em ring de raio 28 ao redor do player no momento do
 parry. Antes: 3 sparks no centro do impact. Agora: 3 sparks no impact + 8
 sparks circulares no player. Reforça que o parry é o player que estourou
 o ataque.
+
+## 5.A.3 — Boss death slow fade
+
+**Antes**: boss morria, flash 500ms, depois escondido (fica gray dim invisível
+porque !alive draw é tomado pelo fluxo dead). Sem ceremonia.
+
+**Depois**: dois estágios sequenciais:
+
+1. **Flash phase** (500ms): branco brilhando com alpha decaindo (0.95 → 0.4)
+2. **Fade phase** (2500ms, só boss): alpha decai de 0.7 → 0, body drifta
+   36px pra cima (alma escapando), stroke gold ao redor
+3. Após fade: invisível (não desenha nada). Mob comum não tem fade phase,
+   continua com gray dim padrão.
+
+Total da morte do boss visível: **3 segundos** — Grand Chase moment pra
+curtir o "te derrotei".
+
+```ts
+// Mob.update
+this.koFlashMs = max(0, this.koFlashMs - dtMs);
+if (this.koFlashMs <= 0) {
+  this.koFadeMs = max(0, this.koFadeMs - dtMs);  // só decrementa após flash
+}
+```
+
+**Spark trail durante fade**: main.ts emite 1 spark/160ms em posição random
+dentro do hurtbox do boss (top 70% pra parecer subindo). Visual de "essência"
+escapando.
+
+**Trade-off**: clearAnnounce dura 1500ms, depois buffOffer. Se player escolhe
+buff rápido, fade é interrompido por stage.destroy(). Se demora ~2500ms+
+lendo cards, fade completa. Aceitável — recompensa player que para pra
+contemplar.
+
+## 5.C — Damage number juiciness
+
+Popup antes era texto monocromático amarelo de 18px. Agora:
+
+### Tier por damage value
+
+| Damage | Color | Size | Stroke |
+|---|---|---|---|
+| <12 | gray (`0xeeeeee`) | 15px | black |
+| 12–29 | yellow (`0xffe066`) | 18px | black |
+| 30–59 | orange (`0xffaa44`) | 21px | black |
+| ≥60 | red (`0xff5544`) | 24px | black |
+| **parry-buff (any)** | gold (`0xffd700`) | 22px (×1.15) | brown (`0x553300`) |
+
+Parry-buffed popup também ganha sufixo "!" (e.g., "37!" em vez de "37").
+
+### Pop animation
+
+Spawn com `scale = baseScale × 1.5`. Decai pra `baseScale × 1.0` linearmente
+nos primeiros 90ms. Após settle, mantém scale enquanto sobe + fade out.
+Lifetime estendido de 600ms → 700ms pra dar mais tempo de leitura.
+
+### Jitter
+
+`±7px X, ±3px Y` no spawn. Múltiplos hits no mesmo frame (S2 multi-hit, S3
+em múltiplos mobs) não empilham no exato pixel — visualmente espalham.
 
 ## Próximas sub-fases
 
