@@ -42,6 +42,7 @@ export class Mob {
   private currentAttackId = 0;
   private receivedAttackIds = new Set<number>();
   private hurtDurationMs = 0;
+  private parriedBuff = false;
 
   readonly view = new Container();
   private body: Graphics;
@@ -70,13 +71,15 @@ export class Mob {
     return { x: this.x, y: this.y, w: this.spec.width, h: this.spec.height };
   }
 
-  receiveHit(attackId: number, damage: number, knockbackVx: number): boolean {
-    if (!this.alive) return false;
-    if (this.receivedAttackIds.has(attackId)) return false;
+  receiveHit(attackId: number, damage: number, knockbackVx: number): { applied: number; bonus: boolean } | null {
+    if (!this.alive) return null;
+    if (this.receivedAttackIds.has(attackId)) return null;
     this.receivedAttackIds.add(attackId);
-    this.hp = Math.max(0, this.hp - damage);
+    const bonus = this.parriedBuff;
+    const applied = bonus ? Math.round(damage * this.spec.parriedDamageMultiplier) : damage;
+    this.hp = Math.max(0, this.hp - applied);
     this.vx += knockbackVx;
-    this.hitFlashMs = 90;
+    this.hitFlashMs = bonus ? 160 : 90;
 
     if (this.hp === 0) {
       this.alive = false;
@@ -86,7 +89,7 @@ export class Mob {
       this.hurtDurationMs = this.spec.hurtStunMs;
       this.setState(MobState.Hurt);
     }
-    return true;
+    return { applied, bonus };
   }
 
   parried(knockbackVx: number) {
@@ -94,6 +97,7 @@ export class Mob {
     this.vx += knockbackVx;
     this.hitFlashMs = 200;
     this.hurtDurationMs = this.spec.parriedStunMs;
+    this.parriedBuff = true;
     this.setState(MobState.Hurt);
   }
 
@@ -192,11 +196,15 @@ export class Mob {
     this.vx = 0;
     this.attackCooldownMs = 0;
     this.receivedAttackIds.clear();
+    this.parriedBuff = false;
     this.setState(MobState.Idle);
   }
 
   private setState(s: MobState) {
     if (this.state !== s) {
+      if (this.state === MobState.Hurt && s !== MobState.Hurt) {
+        this.parriedBuff = false;
+      }
       this.state = s;
       this.stateTimeMs = 0;
       if (s === MobState.Active) {
@@ -218,10 +226,12 @@ export class Mob {
 
     const baseColor = MOB_COLOR[this.state];
     const color = this.hitFlashMs > 0 ? 0xff8866 : baseColor;
+    const strokeColor = this.parriedBuff ? 0xffd700 : 0xffffff;
+    const strokeWidth = this.parriedBuff ? 2 : 1;
     this.body
       .rect(0, 0, this.spec.width, this.spec.height)
       .fill({ color, alpha: 0.95 })
-      .stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
+      .stroke({ color: strokeColor, width: strokeWidth, alpha: 0.95 });
 
     const barW = this.spec.width;
     const barH = 4;

@@ -13,8 +13,9 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.D** | DashAtk (ground dash + Z) + JumpAtk (Z no ar) | implementado |
 | **2.D.2** | GROUND_DOWN_DASH (slam vindo do air dash) | pendente |
 | **2.E** | Dodge (iframes) + colisão player↔mob | implementado |
-| **2.E.2** | Dodge bar (3 segments com refill) substituindo cooldown único | pendente |
+| **2.E.2** | Dodge bar (3 segments com refill) substituindo cooldown único | implementado |
 | **2.F** | Parry (timing window + reflect → stun no mob) | implementado |
+| **2.F.2** | Parry damage buff no mob stunado | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 
@@ -302,11 +303,21 @@ input `'dodge'`. Pode ser disparado de `Idle/Walk/Run` ou de `Dash` ground
   ataque, skill, etc), o que é uma decisão skill-expressive em situações
   apertadas
 
-### Sub-fase 2.E.2 (pendente)
+### Sub-fase 2.E.2 (implementada)
 
-- Dodge bar com 3 segments visíveis no HUD
-- Refill: 1 segment a cada 1.5s? Tunar com playtest
-- Dodge consome 1 segment, falha silencioso quando vazio
+Dodge bar substitui completamente os cooldowns de dodge. Player tem
+`dodgeBar: number` (0–3) que regenera 0.7/s (~1.4s por segment). HUD mostra
+o estado com `[█·]` characters (preenchidos vs vazios).
+
+**Custos:**
+- DodgeStand: 1 segment
+- DodgeRoll: +1 segment (total 2 do bar pra fazer stand→roll completo)
+
+Aperta Alt sem ter 1 segment → input ignorado silenciosamente. Estando em
+DodgeStand, double-tap direção sem ter 1 segment → fica no stand normalmente,
+não rola.
+
+Bar reseta full no respawn do player.
 
 ### Sub-fase 2.F (implementada)
 
@@ -366,3 +377,27 @@ removeria o risk side da equação.
 Único caso em que parry "vira" iframe: se acertar o timing, a hitbox do
 mob é absorvida (mob.parried interrompe Active state via setState(Hurt)),
 então o hit não conecta de novo durante esse swing.
+
+#### 2.F.2 — Parry damage buff
+
+Iter inicial 2.F: parry stunava 900ms mas dano normal. Playtest concluiu
+que faltava recompensa real — dodge era só "evite e siga o jogo", parry
+era "evite, gaste mais skill, mesmo retorno".
+
+Iter ajustada: mob ganha flag `parriedBuff = true` ao receber parry. Enquanto
+o flag estiver ativo (= durante todo o estado Hurt induzido por parry), todo
+hit recebido aplica `damage × parriedDamageMultiplier (1.7×)`. Visual: stroke
+dourado mais grosso ao redor do mob enquanto stunado.
+
+`Mob.receiveHit` agora retorna `{ applied, bonus } | null` em vez de
+boolean. `main.ts` usa `applied` no popup (mostra o número real causado) e
+spawna sparks extras ao redor se `bonus`. Combo Z→Z→Z normal vale 8+12+22 =
+42; durante parry-stun vale 14+20+37 = 71. Skills idem (S3 vai de 60 → 102).
+
+`parriedBuff` reseta quando mob sai do estado Hurt (em `setState`), e no
+respawn. Não persiste entre Hurt-via-parry e Hurt-normal subsequente.
+
+Trade-off agora calibrado:
+- Dodge: evita dano, mantém combo, baixo skill ceiling (timing genérico)
+- Parry: gasta mais skill (timing exato no telegraph), mas recompensa com
+  damage stack que pode encerrar o engagement

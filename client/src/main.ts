@@ -6,7 +6,7 @@ import { Player } from './game/Player.js';
 import { Camera } from './game/Camera.js';
 import { TargetDummy } from './game/TargetDummy.js';
 import { Mob } from './game/Mob.js';
-import { SLIM } from './data/mobs.js';
+import { SLIM, RACOON } from './data/mobs.js';
 import { HitFx } from './game/HitFx.js';
 import { PlayerState, type AABB } from './game/types.js';
 
@@ -34,6 +34,17 @@ function resolvePlayerVsBox(player: Player, box: AABB) {
   const minH = Math.min(overlapL, overlapR);
   const minV = Math.min(overlapT, overlapB);
 
+  if (minV < minH && overlapT < overlapB) {
+    const playerCenterX = p.x + p.w / 2;
+    const boxCenterX = box.x + box.w / 2;
+    if (playerCenterX < boxCenterX) {
+      player.x -= overlapL;
+    } else {
+      player.x += overlapR;
+    }
+    return;
+  }
+
   if (minH < minV) {
     if (overlapL < overlapR) {
       player.x -= overlapL;
@@ -43,13 +54,8 @@ function resolvePlayerVsBox(player: Player, box: AABB) {
       if (player.vx < 0) player.vx = 0;
     }
   } else {
-    if (overlapT < overlapB) {
-      player.y -= overlapT;
-      if (player.vy > 0) player.vy = 0;
-    } else {
-      player.y += overlapB;
-      if (player.vy < 0) player.vy = 0;
-    }
+    player.y += overlapB;
+    if (player.vy < 0) player.vy = 0;
   }
 }
 
@@ -111,6 +117,8 @@ async function main() {
   const mobs = [
     new Mob(SLIM, 480, GROUND_Y - SLIM.height),
     new Mob(SLIM, -520, GROUND_Y - SLIM.height),
+    new Mob(RACOON, 820, GROUND_Y - RACOON.height),
+    new Mob(RACOON, -880, GROUND_Y - RACOON.height),
   ];
   for (const m of mobs) worldStage.addChild(m.view);
 
@@ -195,11 +203,15 @@ async function main() {
         if (!m.alive) continue;
         const hb = m.hurtbox();
         if (rectsOverlap(hit.bbox, hb)) {
-          const accepted = m.receiveHit(hit.attackId, hit.damage, hit.knockback * hit.facing);
-          if (accepted) {
+          const result = m.receiveHit(hit.attackId, hit.damage, hit.knockback * hit.facing);
+          if (result !== null) {
             const c = intersectionCenter(hit.bbox, hb);
-            hitFx.popup(c.x, c.y, hit.damage);
+            hitFx.popup(c.x, c.y, result.applied);
             hitFx.spark(c.x, c.y);
+            if (result.bonus) {
+              hitFx.spark(c.x + 10, c.y - 4);
+              hitFx.spark(c.x - 10, c.y + 4);
+            }
             player.giveMp(ELESIS.mpPerHit);
           }
         }
@@ -234,12 +246,17 @@ async function main() {
     camera.follow(player.x + ELESIS.width / 2, player.y + ELESIS.height / 2);
     camera.update(dtMs);
 
+    const dodgeSegments =
+      '['.padEnd(1, '') +
+      '█'.repeat(Math.floor(player.dodgeBar)) +
+      '·'.repeat(ELESIS.dodgeBarMax - Math.floor(player.dodgeBar)) +
+      ']';
     hud.text =
       `state: ${player.state.padEnd(12, ' ')}  ` +
       `hp: ${player.hp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxHp}  ` +
       `mp: ${player.mp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxMp}  ` +
+      `dodge: ${dodgeSegments}  ` +
       `pos: (${player.x.toFixed(0)}, ${player.y.toFixed(0)})  ` +
-      `vel: (${player.vx.toFixed(0)}, ${player.vy.toFixed(0)})  ` +
       `face: ${player.facing > 0 ? '→' : '←'}  ` +
       `${serverInfo}`;
 

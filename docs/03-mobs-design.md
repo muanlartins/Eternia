@@ -5,7 +5,7 @@
 | Sub-fase | Escopo | Status |
 |---|---|---|
 | **3.A** | 1 mob (Slim) com AI básica (chase + telegraphed attack) + dano no player + HP/Hurt/Dead | implementado |
-| **3.B** | Tipos extras de mob (Racoon) com variedade de AI | pendente |
+| **3.B** | Racoon — variante mais lenta, pesada, com mais HP | implementado |
 | **3.C** | Mob spawning data-driven (replicar quest_zero stage_mon) | pendente |
 | **3.D** | Boss (Insectivorous) com 5 ataques diferenciados | pendente |
 
@@ -76,6 +76,32 @@ Mob também mantém `currentAttackId` próprio: incrementa ao entrar em estado
 serve como dedup natural (durante Hurt, `isInvincible()` retorna true,
 overlaps subsequentes não causam dano).
 
+## Mounting fix (Phase 3.A.2)
+
+**Bug**: ao pular em cima de um mob, o player ficava "montado" no topo,
+caindo continuamente. A resolução AABB original empurrava o player pra cima
+quando vy > 0 e top-overlap era menor — repetia frame a frame, criando o
+hover.
+
+**Fix**: em `resolvePlayerVsBox`, quando o overlap vertical é o menor E
+o player está acima do box (overlapT < overlapB), prioriza resolução
+horizontal "deslizando" pelo lado mais próximo:
+
+```ts
+if (minV < minH && overlapT < overlapB) {
+  if (playerCenterX < boxCenterX) player.x -= overlapL;  // slide left
+  else player.x += overlapR;                             // slide right
+  return;  // não zera vy — player continua caindo natural
+}
+```
+
+vy não é resetado, então o player continua caindo enquanto desliza
+horizontalmente pra fora. Visual: ao tentar pousar em cima do Slim, a Elesis
+escorrega pela borda mais próxima e cai até o chão ao lado.
+
+Outras direções de colisão (lateral e baixo→cima) seguem comportamento
+original.
+
 ## Player damage system (Phase 3.A)
 
 ### Estados novos
@@ -115,12 +141,53 @@ Player começa em x=0. Caminhar pra direita encontra dummy (220) e depois Slim
 
 ## Próximas sub-fases
 
-### 3.B (próxima)
+### 3.B (implementada)
 
-- Adicionar 1-2 tipos extras (Racoon, baseado em `monstertemplate` do GC).
-  Variedade de stats: HP, range, padrão de ataque
-- Optionally: AI de "kite" (mantém distância e ataca à distância) vs "rusher"
-  (chase agressivo, hit-and-run)
+`MobSpec` virou interface estrutural (era `typeof SLIM`) pra acomodar specs
+diferentes com mesmo shape mas valores literais distintos.
+
+#### Racoon spec
+
+| Campo | Valor | vs Slim |
+|---|---|---|
+| `width × height` | 46 × 52 | maior, ocupa mais espaço |
+| `maxHp` | 130 | +62% |
+| `walkSpeed` | 75 px/s | -17% (mais lento) |
+| `aggroRange` | 280 | maior alcance |
+| `attackRange` | 68 | maior range de ataque |
+| `attack.telegraphMs` | 500 | mais lento pra preparar (parry mais fácil) |
+| `attack.activeMs` | 200 | hitbox dura mais |
+| `attack.recoveryMs` | 620 | recovery longa |
+| `attack.damage` | 18 | +50% (hit pesado) |
+| `attack.knockback` | 360 | maior arremesso |
+| `attackCooldownMs` | 1800 | menos frequente |
+| `parriedStunMs` | 1100 | janela de stun maior pós-parry |
+
+AI permanece igual (Idle → Chase → Telegraph → Active → Recover). Diferença
+é puramente data-driven via specs distintas.
+
+#### Spawning atual
+
+| World x | Mob | Distância do player start (x=0) |
+|---|---|---|
+| ±220–260 | TargetDummy (treino) | perto |
+| ±480–520 | Slim | médio |
+| ±820–880 | Racoon | longe |
+
+Player progride: combo no dummy → engaja Slim (baixo risco) → enfrenta
+Racoon (alto risco, telegraph mais longo recompensa parry).
+
+### 3.C (próxima)
+
+- Sistema de spawn data-driven. JSON ou TS const com `stage_mon` format:
+  ```ts
+  stage_mon: [
+    { type: 'slim', x: 480, y: 416 },
+    { type: 'racoon', x: 800, y: 416 },
+    ...
+  ]
+  ```
+- Stage start carrega a lista, faz spawn
 
 ### 3.C
 

@@ -31,6 +31,7 @@ export class Player {
 
   mp: number;
   hp: number;
+  dodgeBar: number;
 
   private onGround = true;
   private jumpsUsed = 0;
@@ -53,7 +54,6 @@ export class Player {
   private activeHit: ActiveHit | null = null;
 
   private airAtkUsed = false;
-  private dodgeCooldownMs = 0;
   private respawnTimerMs = 0;
   private parryCooldownMs = 0;
 
@@ -65,6 +65,7 @@ export class Player {
   constructor(private readonly spec: ElesisSpec) {
     this.mp = spec.maxMp;
     this.hp = spec.maxHp;
+    this.dodgeBar = spec.dodgeBarMax;
     this.body = new Graphics();
     this.facingMarker = new Graphics();
     this.hitboxMarker = new Graphics();
@@ -80,10 +81,13 @@ export class Player {
     this.jumpBufferMs = Math.max(0, this.jumpBufferMs - dtMs);
     this.dashCooldownMs = Math.max(0, this.dashCooldownMs - dtMs);
     this.airDashBufferedMs = Math.max(0, this.airDashBufferedMs - dtMs);
-    this.dodgeCooldownMs = Math.max(0, this.dodgeCooldownMs - dtMs);
     this.parryCooldownMs = Math.max(0, this.parryCooldownMs - dtMs);
 
     this.mp = Math.min(this.spec.maxMp, this.mp + (this.spec.mpRegenPerSec * dtMs) / 1000);
+    this.dodgeBar = Math.min(
+      this.spec.dodgeBarMax,
+      this.dodgeBar + (this.spec.dodgeBarRegenPerSec * dtMs) / 1000,
+    );
 
     const ax = input.axisX();
 
@@ -260,7 +264,8 @@ export class Player {
       return;
     }
 
-    if (input.justPressed('dodge') && this.dodgeCooldownMs <= 0) {
+    if (input.justPressed('dodge') && this.dodgeBar >= this.spec.dodgeStandCost) {
+      this.dodgeBar -= this.spec.dodgeStandCost;
       this.startDodgeStand();
       return;
     }
@@ -392,7 +397,8 @@ export class Player {
   private tickDash(dtMs: number, input: Input, ax: number) {
     this.vy = 0;
 
-    if (input.justPressed('dodge') && this.dodgeCooldownMs <= 0) {
+    if (input.justPressed('dodge') && this.dodgeBar >= this.spec.dodgeStandCost) {
+      this.dodgeBar -= this.spec.dodgeStandCost;
       this.startDodgeStand();
       return;
     }
@@ -530,13 +536,13 @@ export class Player {
     this.vy = 0;
 
     const dt = input.consumeDoubleTap();
-    if (dt !== 0) {
+    if (dt !== 0 && this.dodgeBar >= this.spec.dodgeRollCost) {
+      this.dodgeBar -= this.spec.dodgeRollCost;
       this.startDodgeRoll(dt);
       return;
     }
 
     if (this.stateTimeMs >= this.spec.dodgeStandDurationMs) {
-      this.dodgeCooldownMs = this.spec.dodgeStandCooldownMs;
       this.setState(PlayerState.Idle);
     }
   }
@@ -546,7 +552,6 @@ export class Player {
     input.consumeDoubleTap();
 
     if (this.stateTimeMs >= this.spec.dodgeRollDurationMs) {
-      this.dodgeCooldownMs = this.spec.dodgeRollCooldownMs;
       this.setState(PlayerState.Idle);
     }
   }
@@ -602,7 +607,8 @@ export class Player {
     this.airAtkUsed = false;
     this.airDashUsed = false;
     this.jumpsUsed = 0;
-    this.dodgeCooldownMs = 0;
+    this.dodgeBar = this.spec.dodgeBarMax;
+    this.parryCooldownMs = 0;
     this.setState(PlayerState.Idle);
   }
 
