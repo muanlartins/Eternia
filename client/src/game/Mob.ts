@@ -87,7 +87,7 @@ export class Mob {
   }
 
   isBoss(): boolean {
-    return this.spec.maxHp >= 200;
+    return this.spec.isBoss === true;
   }
 
   getId(): string {

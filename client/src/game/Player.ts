@@ -60,6 +60,7 @@ export class Player {
   chargingActive = false;
   chargingMs = 0;
   private attackHeldMs = 0;
+  private dropThroughMs = 0;
 
   private currentAttackId = 0;
   private lastActiveHitIdx = -1;
@@ -102,9 +103,14 @@ export class Player {
     this.parryCooldownMs = Math.max(0, this.parryCooldownMs - dtMs);
     this.parryBuffMs = Math.max(0, this.parryBuffMs - dtMs);
     this.skillBufferMs = Math.max(0, this.skillBufferMs - dtMs);
+    this.dropThroughMs = Math.max(0, this.dropThroughMs - dtMs);
 
     for (let i = 0; i < this.skillCooldowns.length; i++) {
       this.skillCooldowns[i] = Math.max(0, this.skillCooldowns[i]! - dtMs);
+    }
+
+    if (this.onGround && input.justPressed('down') && this.chargingAllowed()) {
+      this.dropThroughMs = 200;
     }
 
     for (let i = 0; i < SKILL_KEYS.length; i++) {
@@ -248,11 +254,13 @@ export class Player {
 
     let effectiveGroundY = GROUND_Y;
     const playerCenterX = this.x + this.spec.width / 2;
-    for (const p of platforms) {
-      if (playerCenterX < p.x || playerCenterX > p.x + p.w) continue;
-      const lastFeetY = this.y + this.spec.height - this.vy * dt;
-      if (this.vy >= 0 && lastFeetY <= p.y + 4 && p.y < effectiveGroundY) {
-        effectiveGroundY = p.y;
+    if (this.dropThroughMs <= 0) {
+      for (const p of platforms) {
+        if (playerCenterX < p.x || playerCenterX > p.x + p.w) continue;
+        const lastFeetY = this.y + this.spec.height - this.vy * dt;
+        if (this.vy >= 0 && lastFeetY <= p.y + 4 && p.y < effectiveGroundY) {
+          effectiveGroundY = p.y;
+        }
       }
     }
 
@@ -477,10 +485,6 @@ export class Player {
         ? this.spec.gravity * this.spec.fallGravityMultiplier
         : this.spec.gravity;
     this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
-
-    if (rising && input.justReleased('up') && this.vy < 0) {
-      this.vy *= this.spec.shortHopMultiplier;
-    }
 
     if (rising && this.vy >= 0) {
       this.setState(PlayerState.Fall);
@@ -838,7 +842,7 @@ export class Player {
   }
 
   teleportToStart() {
-    this.x = 0;
+    this.x = 80;
     this.y = GROUND_Y - this.spec.height;
     this.vx = 0;
     this.vy = 0;

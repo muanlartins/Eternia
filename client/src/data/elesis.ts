@@ -10,11 +10,11 @@ export const ELESIS = {
   walkToRunHoldMs: 180,
   doubleTapWindowMs: 250,
 
-  jumpInitialVy: -680,
-  doubleJumpInitialVy: -620,
+  jumpInitialVy: -600,
+  doubleJumpInitialVy: -660,
   gravity: 2200,
   fallGravityMultiplier: 1.4,
-  shortHopMultiplier: 0.7,
+  shortHopMultiplier: 1,
   maxFallSpeed: 1400,
 
   dashSpeed: 700,

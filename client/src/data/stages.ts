@@ -14,6 +14,7 @@ export const MOB_SPECS: Record<MobType, MobSpec> = {
 export interface MobSpawn {
   readonly type: MobType;
   readonly x: number;
+  readonly y?: number;
 }
 
 export interface PlatformSpec {
@@ -39,14 +40,14 @@ export const STAGES: readonly StageSpec[] = [
     spawns: [
       { type: 'slim', x: 280 },
       { type: 'slim', x: 480 },
-      { type: 'racoon', x: 700 },
-      { type: 'slim', x: 920 },
-      { type: 'racoon', x: 1120 },
+      { type: 'racoon', x: 720 },
+      { type: 'slim', x: 660, y: 308 },
+      { type: 'racoon', x: 1080 },
     ],
     platforms: [
-      { x: 240, y: 380, w: 180, h: 12 },
-      { x: 580, y: 290, w: 220, h: 12 },
-      { x: 880, y: 380, w: 180, h: 12 },
+      { x: 240, y: 400, w: 180, h: 12 },
+      { x: 580, y: 340, w: 220, h: 12 },
+      { x: 880, y: 400, w: 180, h: 12 },
     ],
   },
   {
@@ -55,15 +56,15 @@ export const STAGES: readonly StageSpec[] = [
     width: 1360,
     spawns: [
       { type: 'slim', x: 280 },
-      { type: 'archer', x: 540 },
-      { type: 'slim', x: 760 },
-      { type: 'archer', x: 1000 },
-      { type: 'racoon', x: 1180 },
+      { type: 'slim', x: 800 },
+      { type: 'archer', x: 660, y: 284 },
+      { type: 'archer', x: 1020 },
+      { type: 'racoon', x: 1200 },
     ],
     platforms: [
-      { x: 200, y: 360, w: 200, h: 12 },
-      { x: 560, y: 280, w: 220, h: 12 },
-      { x: 920, y: 360, w: 200, h: 12 },
+      { x: 200, y: 400, w: 200, h: 12 },
+      { x: 580, y: 340, w: 220, h: 12 },
+      { x: 940, y: 400, w: 200, h: 12 },
     ],
   },
   {
@@ -72,16 +73,16 @@ export const STAGES: readonly StageSpec[] = [
     width: 1440,
     spawns: [
       { type: 'racoon', x: 320 },
-      { type: 'brute', x: 600 },
-      { type: 'archer', x: 860 },
-      { type: 'brute', x: 1100 },
-      { type: 'archer', x: 1320 },
+      { type: 'brute', x: 620 },
+      { type: 'archer', x: 880 },
+      { type: 'brute', x: 1140 },
+      { type: 'archer', x: 1240, y: 244 },
     ],
     platforms: [
-      { x: 220, y: 380, w: 180, h: 12 },
-      { x: 480, y: 290, w: 200, h: 12 },
-      { x: 800, y: 350, w: 200, h: 12 },
-      { x: 1140, y: 280, w: 200, h: 12 },
+      { x: 220, y: 400, w: 180, h: 12 },
+      { x: 480, y: 340, w: 200, h: 12 },
+      { x: 820, y: 360, w: 200, h: 12 },
+      { x: 1180, y: 300, w: 200, h: 12 },
     ],
   },
   {
@@ -91,12 +92,12 @@ export const STAGES: readonly StageSpec[] = [
     spawns: [
       { type: 'racoon', x: 360 },
       { type: 'racoon', x: 620 },
-      { type: 'insectivorous', x: 1020 },
+      { type: 'insectivorous', x: 1000 },
     ],
     platforms: [
-      { x: 240, y: 380, w: 200, h: 12 },
-      { x: 540, y: 280, w: 240, h: 12 },
-      { x: 900, y: 360, w: 220, h: 12 },
+      { x: 240, y: 400, w: 200, h: 12 },
+      { x: 540, y: 340, w: 240, h: 12 },
+      { x: 900, y: 400, w: 220, h: 12 },
     ],
   },
 ];

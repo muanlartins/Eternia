@@ -5,8 +5,9 @@ import { Projectile } from './Projectile.js';
 import type { AABB } from './types.js';
 
 const GROUND_Y = 480;
-const PORTAL_W = 56;
-const PORTAL_H = 90;
+const PORTAL_RX = 44;
+const PORTAL_RY = 12;
+const PORTAL_HITBOX_H = 80;
 
 export class Stage {
   readonly spec: StageSpec;
@@ -54,7 +55,8 @@ export class Stage {
 
     for (const s of this.spec.spawns) {
       const spec = MOB_SPECS[s.type];
-      const mob = new Mob(spec, s.x, GROUND_Y - spec.height, { autoRespawn: false });
+      const y = s.y ?? GROUND_Y - spec.height;
+      const mob = new Mob(spec, s.x, y, { autoRespawn: false });
       this.mobs.push(mob);
       this.worldStage.addChild(mob.view);
     }
@@ -86,20 +88,26 @@ export class Stage {
       this.portal.visible = true;
       this.portalTimeMs += dtMs;
       this.portal.clear();
-      const px = this.spec.width - PORTAL_W - 16;
-      const py = GROUND_Y - PORTAL_H;
+      const cx = this.spec.width - 100;
+      const cy = GROUND_Y - 4;
       const t = this.portalTimeMs / 1000;
       const pulse = 0.7 + 0.25 * Math.sin(t * 4);
       this.portal
-        .ellipse(px + PORTAL_W / 2, py + PORTAL_H / 2, PORTAL_W / 2 + 4, PORTAL_H / 2 + 4)
-        .fill({ color: 0xfff066, alpha: 0.18 * pulse });
+        .ellipse(cx, cy, PORTAL_RX + 10, PORTAL_RY + 4)
+        .fill({ color: 0xfff066, alpha: 0.16 * pulse });
       this.portal
-        .ellipse(px + PORTAL_W / 2, py + PORTAL_H / 2, PORTAL_W / 2, PORTAL_H / 2)
-        .fill({ color: 0xffd700, alpha: 0.6 * pulse })
+        .ellipse(cx, cy, PORTAL_RX, PORTAL_RY)
+        .fill({ color: 0xffd700, alpha: 0.65 * pulse })
         .stroke({ color: 0xffffff, width: 2, alpha: 0.95 });
       this.portal
-        .ellipse(px + PORTAL_W / 2, py + PORTAL_H / 2, PORTAL_W / 2 - 8, PORTAL_H / 2 - 12)
-        .fill({ color: 0xffffff, alpha: 0.4 * pulse });
+        .ellipse(cx, cy, PORTAL_RX - 14, PORTAL_RY - 4)
+        .fill({ color: 0xffffff, alpha: 0.5 * pulse });
+      const arrowAlpha = 0.5 + 0.4 * Math.sin(t * 5);
+      this.portal
+        .moveTo(cx - 6, cy - 28)
+        .lineTo(cx + 6, cy - 28)
+        .lineTo(cx, cy - 18)
+        .fill({ color: 0xffffff, alpha: arrowAlpha });
     } else if (this.portal) {
       this.portal.visible = false;
     }
@@ -139,9 +147,13 @@ export class Stage {
 
   getPortalBox(): AABB | null {
     if (!this.isCleared() || !this.portal || this.hasBoss()) return null;
-    const px = this.spec.width - PORTAL_W - 16;
-    const py = GROUND_Y - PORTAL_H;
-    return { x: px, y: py, w: PORTAL_W, h: PORTAL_H };
+    const cx = this.spec.width - 100;
+    return {
+      x: cx - PORTAL_RX,
+      y: GROUND_Y - PORTAL_HITBOX_H,
+      w: PORTAL_RX * 2,
+      h: PORTAL_HITBOX_H,
+    };
   }
 
   destroy() {

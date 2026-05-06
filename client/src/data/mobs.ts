@@ -27,6 +27,7 @@ export interface AttackVariant {
 export interface MobSpec {
   readonly id: string;
   readonly displayName: string;
+  readonly isBoss?: boolean;
   readonly width: number;
   readonly height: number;
   readonly maxHp: number;
@@ -170,6 +171,7 @@ export const BRUTE: MobSpec = {
 export const INSECTIVOROUS: MobSpec = {
   id: 'insectivorous',
   displayName: 'Bosses',
+  isBoss: true,
   width: 80,
   height: 70,
   maxHp: 360,

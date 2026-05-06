@@ -174,10 +174,9 @@ async function main() {
 
   const controls = new Text({
     text:
-      'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
-      'Z = attack (tap = combo). HOLD Z after Attack1 = charge while moving; release on ground = cast S1/S2/S3 by tier (no cd). Release in air = cancel. ' +
-      'A/S/D = direct cast (faster but adds cooldown; ground only). Hold Z bypasses cooldown. ' +
-      'Alt = dodge. Space = parry (×1.5 dmg buff 3s on success). M = mute. Tab = stages map. ↓ at portal = next stage.',
+      'controls: ← → = move (hold = run), ↑ = jump, ↓ = drop through platform / enter portal. double-tap ← / → = dash. ' +
+      'Z = attack (tap = combo, hold = charge). A/S/D = direct cast skill. ' +
+      'Alt = dodge. Space = parry. Tab = stages map. M = mute.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
   controls.x = 12;
