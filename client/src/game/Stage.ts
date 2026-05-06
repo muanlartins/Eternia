@@ -5,6 +5,8 @@ import { Projectile } from './Projectile.js';
 import type { AABB } from './types.js';
 
 const GROUND_Y = 480;
+const PORTAL_W = 56;
+const PORTAL_H = 90;
 
 export class Stage {
   readonly spec: StageSpec;
@@ -13,6 +15,10 @@ export class Stage {
   private platformGfx: Graphics[] = [];
   private platformBoxes: AABB[] = [];
   private projectiles: Projectile[] = [];
+  private wallLeft: Graphics | null = null;
+  private wallRight: Graphics | null = null;
+  private portal: Graphics | null = null;
+  private portalTimeMs = 0;
 
   constructor(spec: StageSpec, worldStage: Container) {
     this.spec = spec;
@@ -20,6 +26,22 @@ export class Stage {
   }
 
   spawn() {
+    const wallH = 600;
+    const wallW = 24;
+    this.wallLeft = new Graphics();
+    this.wallLeft
+      .rect(-wallW, GROUND_Y - wallH, wallW, wallH + 200)
+      .fill({ color: 0x2a3340, alpha: 0.95 })
+      .stroke({ color: 0x5a6678, width: 2, alpha: 0.7 });
+    this.worldStage.addChild(this.wallLeft);
+
+    this.wallRight = new Graphics();
+    this.wallRight
+      .rect(this.spec.width, GROUND_Y - wallH, wallW, wallH + 200)
+      .fill({ color: 0x2a3340, alpha: 0.95 })
+      .stroke({ color: 0x5a6678, width: 2, alpha: 0.7 });
+    this.worldStage.addChild(this.wallRight);
+
     for (const p of this.spec.platforms ?? []) {
       const g = new Graphics();
       g.rect(p.x, p.y, p.w, p.h)
@@ -36,6 +58,10 @@ export class Stage {
       this.mobs.push(mob);
       this.worldStage.addChild(mob.view);
     }
+
+    this.portal = new Graphics();
+    this.portal.visible = false;
+    this.worldStage.addChild(this.portal);
   }
 
   update(dtMs: number, playerCenterX: number) {
@@ -55,6 +81,28 @@ export class Stage {
       }
       return true;
     });
+
+    if (this.portal && this.isCleared() && !this.hasBoss()) {
+      this.portal.visible = true;
+      this.portalTimeMs += dtMs;
+      this.portal.clear();
+      const px = this.spec.width - PORTAL_W - 16;
+      const py = GROUND_Y - PORTAL_H;
+      const t = this.portalTimeMs / 1000;
+      const pulse = 0.7 + 0.25 * Math.sin(t * 4);
+      this.portal
+        .ellipse(px + PORTAL_W / 2, py + PORTAL_H / 2, PORTAL_W / 2 + 4, PORTAL_H / 2 + 4)
+        .fill({ color: 0xfff066, alpha: 0.18 * pulse });
+      this.portal
+        .ellipse(px + PORTAL_W / 2, py + PORTAL_H / 2, PORTAL_W / 2, PORTAL_H / 2)
+        .fill({ color: 0xffd700, alpha: 0.6 * pulse })
+        .stroke({ color: 0xffffff, width: 2, alpha: 0.95 });
+      this.portal
+        .ellipse(px + PORTAL_W / 2, py + PORTAL_H / 2, PORTAL_W / 2 - 8, PORTAL_H / 2 - 12)
+        .fill({ color: 0xffffff, alpha: 0.4 * pulse });
+    } else if (this.portal) {
+      this.portal.visible = false;
+    }
   }
 
   getMobs(): readonly Mob[] {
@@ -73,6 +121,29 @@ export class Stage {
     return this.mobs.every((m) => !m.alive);
   }
 
+  hasBoss(): boolean {
+    return this.mobs.some((m) => m.isBoss());
+  }
+
+  bossKilled(): boolean {
+    return this.hasBoss() && this.mobs.every((m) => !m.isBoss() || !m.alive);
+  }
+
+  killNonBossMobs() {
+    for (const m of this.mobs) {
+      if (m.alive && !m.isBoss()) {
+        m.instakill();
+      }
+    }
+  }
+
+  getPortalBox(): AABB | null {
+    if (!this.isCleared() || !this.portal || this.hasBoss()) return null;
+    const px = this.spec.width - PORTAL_W - 16;
+    const py = GROUND_Y - PORTAL_H;
+    return { x: px, y: py, w: PORTAL_W, h: PORTAL_H };
+  }
+
   destroy() {
     for (const m of this.mobs) {
       this.worldStage.removeChild(m.view);
@@ -89,5 +160,21 @@ export class Stage {
     }
     this.platformGfx = [];
     this.platformBoxes = [];
+    if (this.wallLeft) {
+      this.worldStage.removeChild(this.wallLeft);
+      this.wallLeft.destroy();
+      this.wallLeft = null;
+    }
+    if (this.wallRight) {
+      this.worldStage.removeChild(this.wallRight);
+      this.wallRight.destroy();
+      this.wallRight = null;
+    }
+    if (this.portal) {
+      this.worldStage.removeChild(this.portal);
+      this.portal.destroy();
+      this.portal = null;
+    }
+    this.portalTimeMs = 0;
   }
 }

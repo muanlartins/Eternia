@@ -25,6 +25,7 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.H.5** | MP/charge 1:1 (75/150/225ms equal segments) + counter on charge-hit | implementado |
 | **2.H.6** | Min-hold deadzone (250ms) + cursor capped at MP + knockdown visual on counter | implementado |
 | **2.H.7** | Counter explicit countdown (5500ms) + parry window 220ms + parry cd 400ms | implementado |
+| **2.H.8** | Counter onLand bug fix + counter requires ≥S1 charge + 2000ms duration | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 

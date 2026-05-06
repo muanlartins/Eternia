@@ -102,6 +102,18 @@ export class Mob {
     return !this.alive && this.koFlashMs <= 0 && this.koFadeMs > 0;
   }
 
+  instakill() {
+    if (!this.alive) return;
+    this.hp = 0;
+    this.alive = false;
+    this.deadTimerMs = this.spec.respawnMs;
+    this.koFlashMs = this.isBoss() ? 500 : 220;
+    this.koFlashTotalMs = this.koFlashMs;
+    this.koFadeMs = this.isBoss() ? 2500 : 0;
+    this.koFadeTotalMs = this.koFadeMs;
+    this.setState(MobState.Dead);
+  }
+
   hurtbox(): AABB {
     return { x: this.x, y: this.y, w: this.spec.width, h: this.spec.height };
   }

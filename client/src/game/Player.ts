@@ -367,7 +367,9 @@ export class Player {
     if (this.isInvincible()) return;
 
     const wasCharging = this.chargingActive;
-    if (wasCharging) {
+    const counterEligible =
+      wasCharging && this.chargingMs >= this.spec.chargeTier1Ms;
+    if (counterEligible) {
       const chargedMp =
         (this.chargingMs / this.spec.chargeTier3Ms) * this.spec.skills.s3.mpCost;
       this.mp = Math.max(0, this.mp - chargedMp);
@@ -1047,6 +1049,9 @@ export class Player {
     this.airAtkUsed = false;
     this.airDashBufferedDir = 0;
     this.airDashBufferedMs = 0;
+    if (this.state === PlayerState.Hurt || this.state === PlayerState.Dead) {
+      return;
+    }
     this.setState(PlayerState.Land);
   }
 

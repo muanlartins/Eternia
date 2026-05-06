@@ -14,9 +14,23 @@ export class Camera {
     private readonly lerpRate = 0.15,
   ) {}
 
-  follow(worldX: number, worldY: number) {
-    this.targetX = worldX - this.viewportWidth / 2;
-    this.targetY = worldY - this.viewportHeight / 2;
+  follow(
+    worldX: number,
+    worldY: number,
+    minX?: number,
+    maxX?: number,
+  ) {
+    let tx = worldX - this.viewportWidth / 2;
+    const ty = worldY - this.viewportHeight / 2;
+    if (minX !== undefined && tx < minX) tx = minX;
+    if (maxX !== undefined && tx + this.viewportWidth > maxX) {
+      tx = maxX - this.viewportWidth;
+    }
+    if (maxX !== undefined && minX !== undefined && maxX - minX < this.viewportWidth) {
+      tx = minX + (maxX - minX - this.viewportWidth) / 2;
+    }
+    this.targetX = tx;
+    this.targetY = ty;
   }
 
   getOffsetX(): number {

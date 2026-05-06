@@ -15,6 +15,7 @@ import { Hud } from './game/Hud.js';
 import { Background } from './game/Background.js';
 import { RunModifierOffer } from './game/RunModifierOffer.js';
 import { pickRandomModifiers } from './data/modifiers.js';
+import { MiniMap } from './game/MiniMap.js';
 import {
   applyGameOverToRecords,
   applyVictoryToRecords,
@@ -167,12 +168,16 @@ async function main() {
   const modifierOffer = new RunModifierOffer(GAME_W, GAME_H);
   uiStage.addChild(modifierOffer.container);
 
+  const miniMap = new MiniMap(GAME_W, GAME_H);
+  uiStage.addChild(miniMap.container);
+  miniMap.setStages(STAGES.map((s) => ({ id: s.id, name: s.name })));
+
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
       'Z = attack (tap = combo). HOLD Z after Attack1 = charge while moving; release on ground = cast S1/S2/S3 by tier (no cd). Release in air = cancel. ' +
       'A/S/D = direct cast (faster but adds cooldown; ground only). Hold Z bypasses cooldown. ' +
-      'Alt = dodge. Space = parry (×1.5 dmg buff 3s on success). M = mute.',
+      'Alt = dodge. Space = parry (×1.5 dmg buff 3s on success). M = mute. Tab = stages map. ↓ at portal = next stage.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
   controls.x = 12;
@@ -199,6 +204,7 @@ async function main() {
 
   type StagePhase =
     | 'playing'
+    | 'awaitingPortal'
     | 'clearAnnounce'
     | 'buffOffer'
     | 'nextAnnounce'
@@ -280,6 +286,7 @@ async function main() {
 
   let hitPauseMs = 0;
   let bossSparkCooldownMs = 0;
+  let bossDramaTimerMs = 0;
 
   const audio = new GameAudio();
 
@@ -347,6 +354,9 @@ async function main() {
               camera.shake(isBoss ? 26 : 8, isBoss ? 700 : 200);
               hitPauseMs = Math.max(hitPauseMs, isBoss ? 220 : 50);
               audio.playMobDeath(isBoss);
+              if (isBoss && bossDramaTimerMs <= 0) {
+                bossDramaTimerMs = 1000;
+              }
               if (isBoss) {
                 const bb = m.hurtbox();
                 const bcx = bb.x + bb.w / 2;
@@ -510,10 +520,27 @@ async function main() {
         stageBanner.text = 'VICTORY!';
         stageBanner.visible = true;
       } else {
-        stagePhase = 'clearAnnounce';
-        stageTransitionTimerMs = 1500;
-        stageBanner.text = `STAGE ${currentStageIdx + 1} CLEAR!`;
+        stagePhase = 'awaitingPortal';
+        stageBanner.text = `STAGE ${currentStageIdx + 1} CLEAR! → portal open`;
         stageBanner.visible = true;
+        stageTransitionTimerMs = 1200;
+      }
+    } else if (stagePhase === 'awaitingPortal') {
+      if (stageTransitionTimerMs > 0) {
+        stageTransitionTimerMs -= dtMs;
+        if (stageTransitionTimerMs <= 0) {
+          stageBanner.visible = false;
+        }
+      }
+      const portalBox = stage.getPortalBox();
+      if (portalBox) {
+        const playerBox = player.aabb();
+        if (rectsOverlap(playerBox, portalBox) && input.justPressed('down')) {
+          stagePhase = 'clearAnnounce';
+          stageTransitionTimerMs = 800;
+          stageBanner.text = `STAGE ${currentStageIdx + 1} CLEAR!`;
+          stageBanner.visible = true;
+        }
       }
     } else if (stagePhase === 'clearAnnounce') {
       stageTransitionTimerMs -= dtMs;
@@ -615,12 +642,43 @@ async function main() {
       bossSparkCooldownMs = 160;
     }
 
+    if (bossDramaTimerMs > 0) {
+      bossDramaTimerMs -= dtMs;
+      if (bossDramaTimerMs <= 0) {
+        stage.killNonBossMobs();
+      }
+    }
+
+    {
+      const stageW = stage.spec.width;
+      if (player.x < 0) {
+        player.x = 0;
+        if (player.vx < 0) player.vx = 0;
+      }
+      const maxX = stageW - ELESIS.width;
+      if (player.x > maxX) {
+        player.x = maxX;
+        if (player.vx > 0) player.vx = 0;
+      }
+    }
+
     hitFx.update(dtMs);
 
-    camera.follow(player.x + ELESIS.width / 2, player.y + ELESIS.height / 2);
+    camera.follow(
+      player.x + ELESIS.width / 2,
+      player.y + ELESIS.height / 2,
+      0,
+      stage.spec.width,
+    );
     camera.update(realDtMs);
 
     background.update(camera.getOffsetX(), camera.getOffsetY());
+
+    if (input.isHeld('minimap')) {
+      miniMap.show(currentStageIdx);
+    } else {
+      miniMap.hide();
+    }
 
     const aliveCount = stage.getMobs().filter((m) => m.alive).length;
     const elapsedMs =
