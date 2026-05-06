@@ -6,7 +6,7 @@ import { Player } from './game/Player.js';
 import { Camera } from './game/Camera.js';
 import { TargetDummy } from './game/TargetDummy.js';
 import { Mob } from './game/Mob.js';
-import { SLIM, RACOON } from './data/mobs.js';
+import { SLIM, RACOON, INSECTIVOROUS } from './data/mobs.js';
 import { HitFx } from './game/HitFx.js';
 import { PlayerState, type AABB } from './game/types.js';
 
@@ -119,6 +119,7 @@ async function main() {
     new Mob(SLIM, -520, GROUND_Y - SLIM.height),
     new Mob(RACOON, 820, GROUND_Y - RACOON.height),
     new Mob(RACOON, -880, GROUND_Y - RACOON.height),
+    new Mob(INSECTIVOROUS, 1400, GROUND_Y - INSECTIVOROUS.height),
   ];
   for (const m of mobs) worldStage.addChild(m.view);
 

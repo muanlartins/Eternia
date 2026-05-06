@@ -8,7 +8,7 @@
 | **3.B** | Racoon — variante mais lenta, pesada, com mais HP | implementado |
 | **3.B.2** | Combo break threshold + armor durante counter | implementado |
 | **3.C** | Mob spawning data-driven (replicar quest_zero stage_mon) | pendente |
-| **3.D** | Boss (Insectivorous) com 5 ataques diferenciados | pendente |
+| **3.D** | Insectivorous boss com 3 ataques (bite / stomp AoE / charge) | implementado |
 
 ## 3.A — Slim com AI
 
@@ -234,6 +234,80 @@ travava o mob indefinidamente. Sem resistência = combo infinito.
 - Dodge → 3 hits naturais → break → counter → repetir ciclo
 - Parry → 3 hits buffed (stun) + 3 hits naturais (post-stun) → break → counter
 - Parry rende ~6 hits com 3 deles a 1.7×, vs dodge que rende ~3 hits raw
+
+### 3.D (implementada) — Insectivorous boss
+
+#### Refactor MobSpec → multiple attacks
+
+Antes: `spec.attack` era um único objeto. Boss precisaria de variedade pra
+não ser entediante. Refatoração:
+
+```ts
+interface AttackVariant {
+  telegraphMs, activeMs, recoveryMs, damage, knockback, hitbox, weight,
+  moveDuringActiveVx?: number,  // optional — boss moves during active frame
+}
+
+interface MobSpec {
+  ...
+  attacks: readonly AttackVariant[],  // array, single mob = single-element
+}
+```
+
+`SLIM` e `RACOON` migrados para arrays de 1 elemento (weight: 1). Mob ganha
+`currentAttackIdx` que é setado em `pickAttack()` (weighted random pelos
+`weight` de cada variant) na transição Idle → Telegraph (ou no counter
+após combo break).
+
+#### Insectivorous spec
+
+| Campo | Valor |
+|---|---|
+| `width × height` | 80 × 70 (>2× Slim) |
+| `maxHp` | 360 |
+| `walkSpeed` | 60 (lento, ameaçador) |
+| `aggroRange` | 420 |
+| `attackRange` | 220 (alcance grande, charge atinge longe) |
+| `attackCooldownMs` | 1600 |
+| `comboBreakThreshold` | 6 (mais durável que mobs normais) |
+| `parriedDamageMultiplier` | 1.6 (parry um pouco menos rentável que em mobs) |
+| `respawnMs` | 8000 |
+
+#### 3 ataques
+
+**Bite (50% weight)** — Ataque básico, alcance médio
+- telegraph 360ms / active 180ms / recovery 540ms
+- damage 16, knockback 320, hitbox (cx 56, y 4, w 76, h 60)
+
+**Stomp AoE (25% weight)** — Hitbox enorme centrada
+- telegraph 540ms (mais lento, dá tempo de fugir/parry) / active 220 / recovery 720
+- damage 24, knockback 460, hitbox (cx 0, y 10, w 200, h 90) — cobre área inteira ao redor
+
+**Charge forward (25% weight)** — Avança enquanto ataca
+- telegraph 480 / active 380 (longa) / recovery 640
+- damage 22, knockback 440, hitbox (cx 64, y 0, w 90, h 66)
+- `moveDuringActiveVx: 280` — durante o active, vx é setado pra `facing * 280` por frame, sobrescrevendo a fricção de knockback. Boss "atravessa" o player se ele não dodge
+
+#### Pickagem por peso
+
+`pickAttack()` faz cumulative-weight random:
+```ts
+let r = Math.random() * total;
+for each attack:
+  r -= weight
+  if r <= 0: return idx
+```
+
+Não tenta ser smart sobre distância — só aleatório. Pode dar Stomp quando
+player está longe (que erra) ou Bite quando player está fora de melee
+(também erra). Aceito por simplicidade na v1; Phase 4 ou tuning futuro
+pode adicionar seleção range-based.
+
+#### Spawn
+
+1 boss em world x=1400. Player progressão: dummies (x=±220) → Slims
+(x=±480) → Racoons (x=±820) → Boss (x=1400). Andar pra direita revela
+inimigos cada vez mais difíceis.
 
 ### 3.C (próxima)
 

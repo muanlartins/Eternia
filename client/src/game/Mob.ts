@@ -1,5 +1,5 @@
 import { Container, Graphics } from 'pixi.js';
-import type { MobSpec } from '../data/mobs.js';
+import type { AttackVariant, MobSpec } from '../data/mobs.js';
 import type { AABB, ActiveHit } from './types.js';
 
 export const MobState = {
@@ -45,6 +45,7 @@ export class Mob {
   private parriedBuff = false;
   private consecutiveHits = 0;
   private armorActive = false;
+  private currentAttackIdx = 0;
 
   readonly view = new Container();
   private body: Graphics;
@@ -103,6 +104,7 @@ export class Mob {
       else if (knockbackVx < 0) this.facing = 1;
       this.consecutiveHits = 0;
       this.armorActive = true;
+      this.currentAttackIdx = this.pickAttack();
       this.setState(MobState.Telegraph);
     } else {
       this.hurtDurationMs = this.spec.hurtStunMs;
@@ -124,15 +126,30 @@ export class Mob {
 
   getActiveHit(): ActiveHit | null {
     if (this.state !== MobState.Active) return null;
-    const hb = this.spec.attack.hitbox;
+    const atk = this.currentAttack();
+    const hb = atk.hitbox;
     const localX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
     return {
       bbox: { x: this.x + localX, y: this.y + hb.y, w: hb.w, h: hb.h },
-      damage: this.spec.attack.damage,
-      knockback: this.spec.attack.knockback,
+      damage: atk.damage,
+      knockback: atk.knockback,
       attackId: this.currentAttackId,
       facing: this.facing,
     };
+  }
+
+  private currentAttack(): AttackVariant {
+    return this.spec.attacks[this.currentAttackIdx]!;
+  }
+
+  private pickAttack(): number {
+    const total = this.spec.attacks.reduce((s, a) => s + a.weight, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < this.spec.attacks.length; i++) {
+      r -= this.spec.attacks[i]!.weight;
+      if (r <= 0) return i;
+    }
+    return 0;
   }
 
   update(dtMs: number, playerCenterX: number) {
@@ -153,17 +170,22 @@ export class Mob {
         this.tickIdleOrChase(playerCenterX);
         break;
       case MobState.Telegraph:
-        if (this.stateTimeMs >= this.spec.attack.telegraphMs) {
+        if (this.stateTimeMs >= this.currentAttack().telegraphMs) {
           this.setState(MobState.Active);
         }
         break;
-      case MobState.Active:
-        if (this.stateTimeMs >= this.spec.attack.activeMs) {
+      case MobState.Active: {
+        const atk = this.currentAttack();
+        if (atk.moveDuringActiveVx !== undefined) {
+          this.vx = this.facing * atk.moveDuringActiveVx;
+        }
+        if (this.stateTimeMs >= atk.activeMs) {
           this.setState(MobState.Recover);
         }
         break;
+      }
       case MobState.Recover:
-        if (this.stateTimeMs >= this.spec.attack.recoveryMs) {
+        if (this.stateTimeMs >= this.currentAttack().recoveryMs) {
           this.attackCooldownMs = this.spec.attackCooldownMs;
           this.armorActive = false;
           this.setState(MobState.Idle);
@@ -196,6 +218,7 @@ export class Mob {
     if (dist <= this.spec.attackRange && this.attackCooldownMs <= 0) {
       this.facing = dir;
       this.vx = 0;
+      this.currentAttackIdx = this.pickAttack();
       this.setState(MobState.Telegraph);
       return;
     }
