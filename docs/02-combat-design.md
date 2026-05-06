@@ -20,6 +20,7 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.G.2** | **Reverted**: skills voltam a ser ground-only (air skills cancelados por design) | implementado |
 | **2.H** | Hold-Z charging (GC-style MP block tiers) + cooldown apenas no direct cast | implementado |
 | **2.H.2** | Charging não-bloqueante (movimento livre) + cancel via jump-release + visual contínuo | implementado |
+| **2.H.3** | Charging começa no Z press (qualquer estado) + 1.5x slower thresholds | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 
@@ -615,6 +616,59 @@ casts mid-air.
 
 `tickSkill` simplificado: removida a lógica de transição pra Fall pós-skill
 (não acessível agora que skills só rodam onGround).
+
+## Sub-fase 2.H.3 — Charging desde o press, qualquer ataque
+
+### Trigger no press, não no fim de Attack1
+
+Antes (2.H.2): charge só ativava após Attack1 completar (280ms wasted).
+User feedback: charge deve acumular **desde o instante do Z press**,
+independente do ataque que vai disparar (Attack1, DashAtk, JumpAtk).
+
+Implementação em `update()` após o skill buffer:
+
+```ts
+if (input.justPressed('attack') && !this.chargingActive && this.chargingAllowed()) {
+  this.chargingActive = true;
+  this.chargingMs = 0;
+}
+```
+
+Disparo é **antes do state tick** (que vai transicionar pra Attack1/DashAtk/etc).
+Charge inicia no estado "incoming". Como Attack1/2/3, DashAtk e JumpAtk agora
+estão em `chargingAllowed`, o charge persiste durante o swing.
+
+### chargingAllowed expandido
+
+Agora inclui também: `Attack1`, `Attack2`, `Attack3`, `DashAtk`, `JumpAtk`.
+Player carrega enquanto:
+- Walk/Run + Z (Attack1 + charge)
+- Ground dash + Z (DashAtk + charge)
+- Air dash/jump + Z (JumpAtk + charge)
+- Tudo isso enquanto a barra enche
+
+Estados que cancelam continuam: Skill1/2/3, DodgeStand/Roll, Parry, Hurt, Dead.
+
+### Tap-combo não acumula
+
+Cada Z press faz `chargingActive=true, chargingMs=0`. Cada release faz
+`chargingActive=false` (cast attempt com tier=-1 se chargingMs<525). Tap
+rapidamente Z Z Z para combo: cada tap cria/limpa charge breve, nunca
+acumula tier suficiente.
+
+Hold contínuo: charge começa no primeiro press, persiste através de
+Attack1 → Idle → Walk → ... até release.
+
+### Slowdown 1.5x
+
+Tiers reescalados: 350/650/950 → **525/975/1425**ms. Charge enche mais
+devagar pra dar tempo de parar antes da skill maior se quiser uma menor.
+Total para S3: 1.4s desde o press (era 1.23s pelo design anterior).
+
+### Removido: trigger no fim de Attack1
+
+O bloco em `tickAttack` que setava `chargingActive` no fim de Attack1
+foi removido. Charge agora vem só do trigger no press.
 
 ## Backlog de polish — visual do parry timing
 

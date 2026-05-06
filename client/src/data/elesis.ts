@@ -79,9 +79,9 @@ export const ELESIS = {
   parryBuffDurationMs: 3000,
   parryBuffDamageMul: 1.5,
 
-  chargeTier1Ms: 350,
-  chargeTier2Ms: 650,
-  chargeTier3Ms: 950,
+  chargeTier1Ms: 525,
+  chargeTier2Ms: 975,
+  chargeTier3Ms: 1425,
 
   skills: {
     s1: {

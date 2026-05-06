@@ -113,6 +113,11 @@ export class Player {
       }
     }
 
+    if (input.justPressed('attack') && !this.chargingActive && this.chargingAllowed()) {
+      this.chargingActive = true;
+      this.chargingMs = 0;
+    }
+
     this.mp = Math.min(
       this.spec.maxMp,
       this.mp + (this.spec.mpRegenPerSec * this.modifiers.mpRegenMul * dtMs) / 1000,
@@ -622,10 +627,6 @@ export class Player {
 
     if (this.stateTimeMs >= spec.duration) {
       this.setState(PlayerState.Idle);
-      if (comboIdx === 0 && input.isHeld('attack') && this.onGround) {
-        this.chargingActive = true;
-        this.chargingMs = 0;
-      }
     }
   }
 
@@ -709,7 +710,12 @@ export class Player {
       s === PlayerState.DoubleJump ||
       s === PlayerState.AirDash ||
       s === PlayerState.Land ||
-      s === PlayerState.Dash
+      s === PlayerState.Dash ||
+      s === PlayerState.Attack1 ||
+      s === PlayerState.Attack2 ||
+      s === PlayerState.Attack3 ||
+      s === PlayerState.DashAtk ||
+      s === PlayerState.JumpAtk
     );
   }
 
