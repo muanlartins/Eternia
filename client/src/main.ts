@@ -10,6 +10,7 @@ import { STAGES } from './data/stages.js';
 import { HitFx } from './game/HitFx.js';
 import { BuffOffer } from './game/BuffOffer.js';
 import { GameAudio, type HitIntensity } from './game/Audio.js';
+import { VictoryStats, type RunStatsView } from './game/VictoryStats.js';
 import { PlayerState, type AABB } from './game/types.js';
 
 function rectsOverlap(a: AABB, b: AABB): boolean {
@@ -148,6 +149,9 @@ async function main() {
   const buffOffer = new BuffOffer(GAME_W, GAME_H);
   uiStage.addChild(buffOffer.container);
 
+  const victoryStats = new VictoryStats(GAME_W, GAME_H);
+  uiStage.addChild(victoryStats.container);
+
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
@@ -178,7 +182,14 @@ async function main() {
   ws.addEventListener('close', () => (serverInfo = 'disconnected'));
   ws.addEventListener('error', () => (serverInfo = 'ws error'));
 
-  type StagePhase = 'playing' | 'clearAnnounce' | 'buffOffer' | 'nextAnnounce' | 'gameOver';
+  type StagePhase =
+    | 'playing'
+    | 'clearAnnounce'
+    | 'buffOffer'
+    | 'nextAnnounce'
+    | 'gameOver'
+    | 'victoryAnnounce'
+    | 'victoryStats';
   let stagePhase: StagePhase = 'nextAnnounce';
   let stageTransitionTimerMs = 1500;
   stageBanner.text = `STAGE 1: ${STAGES[currentStageIdx]!.name}`;
@@ -187,6 +198,59 @@ async function main() {
 
   const MAX_LIVES = 3;
   let lives = MAX_LIVES;
+
+  interface RunStats {
+    startedAtMs: number;
+    endedAtMs: number | null;
+    damageDealt: number;
+    damageTaken: number;
+    killCounts: Record<string, { name: string; count: number }>;
+    buffsPicked: string[];
+    deaths: number;
+  }
+
+  function makeStats(): RunStats {
+    return {
+      startedAtMs: performance.now(),
+      endedAtMs: null,
+      damageDealt: 0,
+      damageTaken: 0,
+      killCounts: {},
+      buffsPicked: [],
+      deaths: 0,
+    };
+  }
+
+  let runStats = makeStats();
+
+  function statsView(): RunStatsView {
+    const ended = runStats.endedAtMs ?? performance.now();
+    return {
+      durationMs: ended - runStats.startedAtMs,
+      damageDealt: Math.round(runStats.damageDealt),
+      damageTaken: Math.round(runStats.damageTaken),
+      killCounts: runStats.killCounts,
+      buffsPicked: runStats.buffsPicked,
+      deaths: runStats.deaths,
+    };
+  }
+
+  function startNewRun() {
+    lives = MAX_LIVES;
+    currentStageIdx = 0;
+    player.resetBuffs();
+    stage.destroy();
+    stage = new Stage(STAGES[currentStageIdx]!, worldStage);
+    stage.spawn();
+    player.teleportToStart();
+    runStats = makeStats();
+    victoryStats.hide();
+    buffOffer.hide();
+    stagePhase = 'nextAnnounce';
+    stageTransitionTimerMs = 1500;
+    stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+    stageBanner.visible = true;
+  }
 
   let hitPauseMs = 0;
   let bossSparkCooldownMs = 0;
@@ -230,6 +294,7 @@ async function main() {
           const result = m.receiveHit(hit.attackId, hit.damage, hit.knockback * hit.facing);
           if (result !== null) {
             const c = intersectionCenter(hit.bbox, hb);
+            runStats.damageDealt += result.applied;
             hitFx.popup(c.x, c.y, result.applied, { parryBuff: player.hasParryBuff() });
             hitFx.spark(c.x, c.y);
             if (player.hasParryBuff()) {
@@ -248,6 +313,11 @@ async function main() {
 
             if (!m.alive) {
               const isBoss = m.isBoss();
+              const id = m.getId();
+              const name = m.getDisplayName();
+              const entry = runStats.killCounts[id];
+              if (entry) entry.count += 1;
+              else runStats.killCounts[id] = { name, count: 1 };
               camera.shake(isBoss ? 26 : 8, isBoss ? 700 : 200);
               hitPauseMs = Math.max(hitPauseMs, isBoss ? 220 : 50);
               audio.playMobDeath(isBoss);
@@ -298,6 +368,7 @@ async function main() {
           audio.playParrySuccess();
         } else if (!player.isInvincible()) {
           player.takeDamage(proj.damage, proj.facing * proj.knockback);
+          runStats.damageTaken += proj.damage;
           hitFx.popup(c.x, c.y, proj.damage);
           hitFx.spark(c.x, c.y);
           camera.shake(6, 140);
@@ -333,6 +404,7 @@ async function main() {
             audio.playParrySuccess();
           } else if (!player.isInvincible()) {
             player.takeDamage(mobHit.damage, mobHit.knockback * mobHit.facing);
+            runStats.damageTaken += mobHit.damage;
             hitFx.popup(c.x, c.y, mobHit.damage);
             hitFx.spark(c.x, c.y);
             camera.shake(6, 140);
@@ -368,11 +440,13 @@ async function main() {
     }
 
     if (prevPlayerState === PlayerState.Dead && player.state !== PlayerState.Dead) {
+      runStats.deaths += 1;
       lives -= 1;
       if (lives <= 0) {
         lives = MAX_LIVES;
         currentStageIdx = 0;
         player.resetBuffs();
+        runStats = makeStats();
         stage.destroy();
         stage = new Stage(STAGES[currentStageIdx]!, worldStage);
         stage.spawn();
@@ -390,10 +464,18 @@ async function main() {
     prevPlayerState = player.state;
 
     if (stagePhase === 'playing' && stage.isCleared()) {
-      stagePhase = 'clearAnnounce';
-      stageTransitionTimerMs = 1500;
-      stageBanner.text = `STAGE ${currentStageIdx + 1} CLEAR!`;
-      stageBanner.visible = true;
+      if (currentStageIdx === STAGES.length - 1) {
+        runStats.endedAtMs = performance.now();
+        stagePhase = 'victoryAnnounce';
+        stageTransitionTimerMs = 2500;
+        stageBanner.text = 'VICTORY!';
+        stageBanner.visible = true;
+      } else {
+        stagePhase = 'clearAnnounce';
+        stageTransitionTimerMs = 1500;
+        stageBanner.text = `STAGE ${currentStageIdx + 1} CLEAR!`;
+        stageBanner.visible = true;
+      }
     } else if (stagePhase === 'clearAnnounce') {
       stageTransitionTimerMs -= dtMs;
       if (stageTransitionTimerMs <= 0) {
@@ -409,7 +491,10 @@ async function main() {
       if (pickIdx >= 0) {
         const offers = buffOffer.getOffers();
         const buff = offers[pickIdx];
-        if (buff) player.applyBuff(buff);
+        if (buff) {
+          player.applyBuff(buff);
+          runStats.buffsPicked.push(buff.name);
+        }
         buffOffer.hide();
         currentStageIdx = (currentStageIdx + 1) % STAGES.length;
         stage.destroy();
@@ -434,6 +519,28 @@ async function main() {
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
         stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+      }
+    } else if (stagePhase === 'victoryAnnounce') {
+      stageTransitionTimerMs -= dtMs;
+      if (stageTransitionTimerMs <= 0) {
+        stageBanner.visible = false;
+        victoryStats.show(statsView());
+        stagePhase = 'victoryStats';
+      }
+    } else if (stagePhase === 'victoryStats') {
+      const anyAction =
+        input.justPressed('attack') ||
+        input.justPressed('skill1') ||
+        input.justPressed('skill2') ||
+        input.justPressed('skill3') ||
+        input.justPressed('parry') ||
+        input.justPressed('dodge') ||
+        input.justPressed('pick1') ||
+        input.justPressed('pick2') ||
+        input.justPressed('pick3') ||
+        input.justPressed('up');
+      if (anyAction) {
+        startNewRun();
       }
     }
 

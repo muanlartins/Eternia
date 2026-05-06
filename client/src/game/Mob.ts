@@ -90,6 +90,14 @@ export class Mob {
     return this.spec.maxHp >= 200;
   }
 
+  getId(): string {
+    return this.spec.id;
+  }
+
+  getDisplayName(): string {
+    return this.spec.displayName;
+  }
+
   isFading(): boolean {
     return !this.alive && this.koFlashMs <= 0 && this.koFadeMs > 0;
   }

@@ -25,6 +25,8 @@ export interface AttackVariant {
 }
 
 export interface MobSpec {
+  readonly id: string;
+  readonly displayName: string;
   readonly width: number;
   readonly height: number;
   readonly maxHp: number;
@@ -42,6 +44,8 @@ export interface MobSpec {
 }
 
 export const SLIM: MobSpec = {
+  id: 'slim',
+  displayName: 'Slims',
   width: 36,
   height: 32,
   maxHp: 80,
@@ -69,6 +73,8 @@ export const SLIM: MobSpec = {
 };
 
 export const RACOON: MobSpec = {
+  id: 'racoon',
+  displayName: 'Racoons',
   width: 46,
   height: 52,
   maxHp: 130,
@@ -96,6 +102,8 @@ export const RACOON: MobSpec = {
 };
 
 export const ARCHER: MobSpec = {
+  id: 'archer',
+  displayName: 'Archers',
   width: 36,
   height: 56,
   maxHp: 90,
@@ -131,6 +139,8 @@ export const ARCHER: MobSpec = {
 };
 
 export const INSECTIVOROUS: MobSpec = {
+  id: 'insectivorous',
+  displayName: 'Bosses',
   width: 80,
   height: 70,
   maxHp: 360,

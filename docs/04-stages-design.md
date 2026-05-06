@@ -11,6 +11,7 @@
 | **4.A.5** | Mob attack flow committed + dodge regen 0.4 + mobs persist progress on death + post-parry cooldown | implementado |
 | **4.B** | Buff offer scene entre stages (Hades cards) + effects aplicados | implementado |
 | **4.C** | Buff rarity tiers + behavioral rares (lifesteal, parry duration) | implementado |
+| **4.D** | Run completion + victory screen + run stats tracking | implementado |
 | **4.D** | Run record / save no servidor | pendente |
 
 ## 4.A — Stage system
@@ -360,9 +361,81 @@ Cards de rare:
 `[N]` cor matches border (gold pra common, orange pra rare). Diferença óbvia
 visualmente sem ser overwhelming.
 
+## 4.D — Run completion + victory screen
+
+### FSM expandida
+
+```
+playing → cleared (last stage?) → victoryAnnounce (2.5s) → victoryStats (any key) → new run
+                              ↓ no
+                              → clearAnnounce → buffOffer → nextAnnounce → playing
+```
+
+`StagePhase` ganha `victoryAnnounce` e `victoryStats`. Banner "VICTORY!"
+mostra por 2.5s, depois `VictoryStats` overlay aparece e espera input.
+
+### Detecção de vitória
+
+`if (currentStageIdx === STAGES.length - 1) → victoryAnnounce` em vez de
+clearAnnounce. `runStats.endedAtMs = performance.now()` capturado neste
+momento (timer congela).
+
+### `RunStats` tracking
+
+Em `main.ts`:
+
+```ts
+interface RunStats {
+  startedAtMs: number;
+  endedAtMs: number | null;
+  damageDealt: number;
+  damageTaken: number;
+  killCounts: Record<string, { name: string; count: number }>;
+  buffsPicked: string[];
+  deaths: number;
+}
+```
+
+Updates:
+- **damageDealt**: `+= result.applied` no hit-vs-mob
+- **damageTaken**: `+= mobHit.damage` ou `proj.damage` quando player toma hit
+- **killCounts**: incrementa por `m.getId()` quando `!m.alive` pós-receiveHit
+- **buffsPicked**: append `buff.name` no buffOffer pick
+- **deaths**: `+= 1` no death detection
+
+### MobSpec.id + displayName
+
+`MobSpec` ganha `id: string` (slim/racoon/archer/insectivorous) e
+`displayName: string` (Slims/Racoons/Archers/Bosses) pra label do stats.
+`Mob.getId()` e `Mob.getDisplayName()` expostos.
+
+### `VictoryStats` Pixi component
+
+`client/src/game/VictoryStats.ts` — painel 480×440 centrado com:
+- Title "RUN COMPLETE" gold com stroke preto
+- Body multi-line: time formatted m:ss, damage dealt/taken, deaths,
+  kill breakdown por mob, buffs picked
+- Hint "press any key to start a new run" no fundo
+
+Border gold com `stroke({ color: 0xfff066, width: 4 })`. Container
+visible toggled via show/hide.
+
+### startNewRun()
+
+Reset completo: lives = MAX_LIVES, currentStageIdx = 0, buffs reset,
+stats reset, stage destruído + recriado, player teleport, banner mostra
+stage 1. victoryStats hide. Funciona pra qualquer key (attack, skills,
+dodge, parry, picks, up arrow).
+
+### Game over também reseta stats
+
+Game over (lives=0) já resetava lives/buffs/stage. Adicionado:
+`runStats = makeStats()`. Não é uma vitória, então não mostra
+VictoryStats. Player começa fresh.
+
 ## Próximas sub-fases
 
-### 4.D — Run records
+### 4.E — Server-side run records
 
-Servidor salva: stages cleared, time per stage, buffs picked, death count.
-Stretch: leaderboard por classe + stage.
+Salvar runStats no servidor após victory (POST /api/runs com payload).
+Stretch: leaderboard global por tempo / damage / deaths por stage count.
