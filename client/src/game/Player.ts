@@ -54,6 +54,8 @@ export class Player {
   private skillBufferIdx = -1;
   private skillBufferMs = 0;
 
+  skillCooldowns: [number, number, number] = [0, 0, 0];
+
   private currentAttackId = 0;
   private lastActiveHitIdx = -1;
   private activeHit: ActiveHit | null = null;
@@ -70,6 +72,7 @@ export class Player {
   private body: Graphics;
   private facingMarker: Graphics;
   private hitboxMarker: Graphics;
+  private chargeIndicator: Graphics;
 
   constructor(private readonly spec: ElesisSpec) {
     this.mp = spec.maxMp;
@@ -78,9 +81,11 @@ export class Player {
     this.body = new Graphics();
     this.facingMarker = new Graphics();
     this.hitboxMarker = new Graphics();
+    this.chargeIndicator = new Graphics();
     this.view.addChild(this.body);
     this.view.addChild(this.facingMarker);
     this.view.addChild(this.hitboxMarker);
+    this.view.addChild(this.chargeIndicator);
     this.redraw();
   }
 
@@ -93,6 +98,10 @@ export class Player {
     this.parryCooldownMs = Math.max(0, this.parryCooldownMs - dtMs);
     this.parryBuffMs = Math.max(0, this.parryBuffMs - dtMs);
     this.skillBufferMs = Math.max(0, this.skillBufferMs - dtMs);
+
+    for (let i = 0; i < this.skillCooldowns.length; i++) {
+      this.skillCooldowns[i] = Math.max(0, this.skillCooldowns[i]! - dtMs);
+    }
 
     for (let i = 0; i < SKILL_KEYS.length; i++) {
       if (input.justPressed(SKILL_KEYS[i]!)) {
@@ -194,6 +203,9 @@ export class Player {
       case PlayerState.Parry:
         this.tickParry(dtMs);
         break;
+      case PlayerState.Charging:
+        this.tickCharging(input);
+        break;
     }
 
     const dt = dtMs / 1000;
@@ -275,6 +287,7 @@ export class Player {
     this.hp = this.spec.maxHp;
     this.mp = this.spec.maxMp;
     this.dodgeBar = this.spec.dodgeBarMax;
+    this.skillCooldowns = [0, 0, 0];
   }
 
   isInvincible(): boolean {
@@ -600,7 +613,11 @@ export class Player {
     }
 
     if (this.stateTimeMs >= spec.duration) {
-      this.setState(PlayerState.Idle);
+      if (comboIdx === 0 && input.isHeld('attack') && this.onGround) {
+        this.setState(PlayerState.Charging);
+      } else {
+        this.setState(PlayerState.Idle);
+      }
     }
   }
 
@@ -673,6 +690,51 @@ export class Player {
     }
   }
 
+  private tickCharging(input: Input) {
+    this.vx = 0;
+    this.vy = 0;
+
+    if (this.tryDefensiveCancel(input)) return;
+
+    if (!input.isHeld('attack')) {
+      this.releaseCharge();
+      return;
+    }
+  }
+
+  private releaseCharge() {
+    this.skillBufferMs = 0;
+    this.skillBufferIdx = -1;
+
+    const t = this.stateTimeMs;
+    const skills = this.spec.skills;
+    let tier = -1;
+
+    if (t >= this.spec.chargeTier3Ms && this.mp >= skills.s3.mpCost) tier = 2;
+    else if (t >= this.spec.chargeTier2Ms && this.mp >= skills.s2.mpCost) tier = 1;
+    else if (t >= this.spec.chargeTier1Ms && this.mp >= skills.s1.mpCost) tier = 0;
+
+    if (tier < 0) {
+      this.setState(PlayerState.Idle);
+      return;
+    }
+
+    this.castSkillNoCooldown(tier);
+  }
+
+  private castSkillNoCooldown(skillIdx: number) {
+    const skill = this.skillByIdx(skillIdx);
+    this.mp -= skill.mpCost;
+    this.vx = 0;
+    const state =
+      skillIdx === 0
+        ? PlayerState.Skill1
+        : skillIdx === 1
+          ? PlayerState.Skill2
+          : PlayerState.Skill3;
+    this.setState(state);
+  }
+
   private startParry() {
     this.vx = 0;
     this.vy = 0;
@@ -724,6 +786,7 @@ export class Player {
     this.hp = this.getMaxHp();
     this.mp = this.spec.maxMp;
     this.dodgeBar = this.spec.dodgeBarMax;
+    this.skillCooldowns = [0, 0, 0];
   }
 
   private startGroundJump() {
@@ -777,7 +840,9 @@ export class Player {
   private startSkill(skillIdx: number): boolean {
     const skill = this.skillByIdx(skillIdx);
     if (this.mp < skill.mpCost) return false;
+    if (this.skillCooldowns[skillIdx]! > 0) return false;
     this.mp -= skill.mpCost;
+    this.skillCooldowns[skillIdx] = skill.cooldownMs;
     this.vx = 0;
     const state =
       skillIdx === 0
@@ -938,6 +1003,36 @@ export class Player {
       .moveTo(cx, cy)
       .lineTo(tipX, cy)
       .stroke({ color: 0xffffff, width: 2 });
+
+    this.chargeIndicator.clear();
+    if (this.state === PlayerState.Charging) {
+      const blockW = 12;
+      const blockH = 4;
+      const gap = 2;
+      const totalW = 3 * blockW + 2 * gap;
+      const startX = (this.spec.width - totalW) / 2;
+      const y = -12;
+      const tiers = [
+        { ms: this.spec.chargeTier1Ms, mp: this.spec.skills.s1.mpCost, color: 0xffe066 },
+        { ms: this.spec.chargeTier2Ms, mp: this.spec.skills.s2.mpCost, color: 0xffaa44 },
+        { ms: this.spec.chargeTier3Ms, mp: this.spec.skills.s3.mpCost, color: 0xff5544 },
+      ];
+      for (let i = 0; i < 3; i++) {
+        const tier = tiers[i]!;
+        const x = startX + i * (blockW + gap);
+        const reached = this.stateTimeMs >= tier.ms;
+        const affordable = this.mp >= tier.mp;
+        const lit = reached && affordable;
+        const color = lit ? tier.color : reached ? 0x664444 : 0x333344;
+        const alpha = lit ? 0.95 : 0.5;
+        this.chargeIndicator.rect(x, y, blockW, blockH).fill({ color, alpha });
+        if (lit) {
+          this.chargeIndicator
+            .rect(x, y, blockW, blockH)
+            .stroke({ color: 0xffffff, width: 1, alpha: 0.85 });
+        }
+      }
+    }
 
     this.hitboxMarker.clear();
     if (this.activeHit !== null) {

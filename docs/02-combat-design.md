@@ -17,6 +17,7 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.F** | Parry (timing window + reflect → stun no mob) | implementado |
 | **2.F.2** | Parry damage buff no mob stunado | implementado |
 | **2.G** | Skills usáveis no ar + ground dash + skill input buffer | implementado |
+| **2.H** | Hold-Z charging (GC-style MP block tiers) + cooldown apenas no direct cast | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 
@@ -455,6 +456,86 @@ até parry terminar. Próximo tick em Idle → tickGround → consumeSkillBuffer
 `tickSkill` agora só roda `tryDefensiveCancel` se `this.onGround`. Skills
 no ar comprometem (igual jumpAtk). Evita estados absurdos como "air parry"
 ou "air dodge roll".
+
+## Sub-fase 2.H — Hold-Z charging (GC heritage)
+
+### Mecânica
+
+GC original usava blocos de MP (3 segments) e o "hold attack" enchia através
+desses blocos visualmente. Replicado com timing fixo (não MP-flow):
+
+| Hold time | Tier | Skill ao release | Custo MP |
+|---|---|---|---|
+| 0–350ms | 0 | (nada) | — |
+| 350–650ms | 1 | S1 | 25 |
+| 650–950ms | 2 | S2 | 50 |
+| 950ms+ | 3 | S3 | 80 |
+
+`Player.releaseCharge()` calcula tier baseado em `stateTimeMs` E em
+`mp >= cost`. Player só "atinge" o tier se MP afford. Release com tier=−1
+(MP insuficiente OU < 350ms) → volta pra Idle (charge wasted).
+
+### Entrada no Charging state
+
+Apenas via Attack1 (combo idx 0):
+
+```ts
+if (this.stateTimeMs >= spec.duration) {
+  if (comboIdx === 0 && input.isHeld('attack') && this.onGround) {
+    this.setState(PlayerState.Charging);
+  } else {
+    this.setState(PlayerState.Idle);
+  }
+}
+```
+
+Player que tap Z + Z + Z faz combo normal. Player que pressiona Z e segura
+faz Attack1 (280ms) → enters Charging. Combo Z2/Z3 sempre vai pra Idle no
+fim — só Attack1 transiciona pra Charge.
+
+Charging é **ground-only** — manter o Z held no ar não vira charge (muito
+caos). Air Z continua sendo JumpAtk via `tickFirstJumpAir`.
+
+### Direct cast vs Hold-cast
+
+`startSkill(idx)` (direct A/S/D press):
+- Checa `mp >= cost` E `skillCooldowns[idx] <= 0`
+- Set `skillCooldowns[idx] = cooldownMs` ao caster
+
+`castSkillNoCooldown(idx)` (release de Charging):
+- Só checa MP
+- NÃO seta cooldown
+- NÃO checa cooldown — pode caster mesmo durante cooldown ativo
+
+Cooldowns: S1=5s, S2=10s, S3=16s.
+
+**Trade-off real**:
+- Direct: ~50ms cast, mas locked em cooldown
+- Hold-Z: 280ms (Attack1) + 350-950ms (charge) = 630-1230ms cast, mas
+  no-cooldown (apenas MP gate). Player pode spam-cast S3 a cada 1.2s
+  contanto que MP afford.
+
+Decisão tática: emergência → direct (consume cooldown), tempo livre →
+hold-Z (preserva cooldown pra emergência futura).
+
+### Visual
+
+`chargeIndicator` (Graphics) acima da cabeça do player durante Charging.
+3 blocos 12×4px com gap 2px. Cada bloco:
+- Lit (alpha 0.95 + outline branco): `t >= tierMs && mp >= cost`
+- Reached but unaffordable (alpha 0.5, brown): `t >= tierMs && mp < cost`
+- Not reached (alpha 0.5, dark): `t < tierMs`
+
+Color tier: yellow (T1), orange (T2), red (T3).
+
+HUD ganha `cd: A✓ S5.2 D12.0` mostrando cooldown remaining por skill
+(seg, ou ✓ se ready).
+
+### Reset de cooldowns
+
+`respawn()` e `resetBuffs()` zeram `skillCooldowns = [0, 0, 0]`. Lives
+preservadas: cooldowns só resetam na morte (não através de transitions
+de stage).
 
 ## Backlog de polish — visual do parry timing
 

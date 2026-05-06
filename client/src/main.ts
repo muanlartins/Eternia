@@ -150,10 +150,9 @@ async function main() {
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
-      'Z = attack (combo Z→Z→Z; ground dash + Z = dash-atk; air + Z = jump-atk 1×/cycle). ' +
-      'A = S1 (25 MP), S = S2 (50 MP), D = S3 (80 MP). Alt/⌥ = dodge stand (then double-tap ←/→ to roll, iframes throughout). ' +
-      'Space = parry (150ms active window — time the orange telegraph to stun the mob). ' +
-      '↑ during ground dash = jump out, ↓ during air dash = drop, opposite hold mid-dash = decelerate.',
+      'Z = attack (combo Z→Z→Z). HOLD Z after Attack1 = charge; release at tier 1/2/3 to cast skill (no cooldown, just MP). ' +
+      'A/S/D = direct cast S1/S2/S3 (faster but adds cooldown). Hold Z bypasses cooldown. ' +
+      'Alt/⌥ = dodge (then double-tap ←/→ to roll). Space = parry (×1.5 dmg buff 3s on success).',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
   controls.x = 12;
@@ -401,6 +400,9 @@ async function main() {
     const parryBuffLine = player.hasParryBuff()
       ? `  ★PARRY×${ELESIS.parryBuffDamageMul.toFixed(1)} ${(player.parryBuffMs / 1000).toFixed(1)}s`
       : '';
+    const skillCdSegment = (label: string, ms: number) =>
+      ms > 0 ? `${label}${(ms / 1000).toFixed(1)}` : `${label}✓`;
+    const cdLine = `cd: ${skillCdSegment('A', player.skillCooldowns[0]!)} ${skillCdSegment('S', player.skillCooldowns[1]!)} ${skillCdSegment('D', player.skillCooldowns[2]!)}`;
     hud.text =
       `stage ${currentStageIdx + 1}/${STAGES.length}  ` +
       `lives: ${livesDisplay}  ` +
@@ -408,7 +410,7 @@ async function main() {
       `state: ${player.state.padEnd(12, ' ')}  ` +
       `hp: ${player.hp.toFixed(0).padStart(3, ' ')}/${player.getMaxHp()}  ` +
       `mp: ${player.mp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxMp}  ` +
-      `dodge: ${dodgeSegments}${parryBuffLine}  ` +
+      `dodge: ${dodgeSegments}  ${cdLine}${parryBuffLine}  ` +
       `${serverInfo}${buffsLine}`;
 
     input.endFrame();
