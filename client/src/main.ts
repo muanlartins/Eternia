@@ -188,8 +188,20 @@ async function main() {
   const MAX_LIVES = 3;
   let lives = MAX_LIVES;
 
+  let hitPauseMs = 0;
+
+  function impactFromDamage(applied: number): { shake: number; shakeDur: number; pause: number } {
+    if (applied >= 50) return { shake: 14, shakeDur: 260, pause: 90 };
+    if (applied >= 30) return { shake: 10, shakeDur: 200, pause: 60 };
+    if (applied >= 18) return { shake: 6, shakeDur: 140, pause: 30 };
+    if (applied >= 10) return { shake: 4, shakeDur: 100, pause: 12 };
+    return { shake: 2, shakeDur: 60, pause: 0 };
+  }
+
   app.ticker.add(() => {
-    const dtMs = app.ticker.deltaMS;
+    const realDtMs = app.ticker.deltaMS;
+    const dtMs = hitPauseMs > 0 ? 0 : realDtMs;
+    hitPauseMs = Math.max(0, hitPauseMs - realDtMs);
 
     player.update(dtMs, input, stage.getPlatforms());
 
@@ -218,6 +230,16 @@ async function main() {
               hitFx.spark(c.x - 10, c.y + 4);
             }
             player.giveMp(ELESIS.mpPerHit);
+
+            const impact = impactFromDamage(result.applied);
+            camera.shake(impact.shake, impact.shakeDur);
+            hitPauseMs = Math.max(hitPauseMs, impact.pause);
+
+            if (!m.alive) {
+              const isBoss = m.isBoss();
+              camera.shake(isBoss ? 18 : 8, isBoss ? 500 : 200);
+              hitPauseMs = Math.max(hitPauseMs, isBoss ? 140 : 50);
+            }
           }
         }
       }
@@ -237,10 +259,14 @@ async function main() {
             hitFx.spark(c.x, c.y);
             hitFx.spark(c.x + 8, c.y - 4);
             hitFx.spark(c.x - 8, c.y + 4);
+            camera.shake(14, 280);
+            hitPauseMs = Math.max(hitPauseMs, 90);
           } else if (!player.isInvincible()) {
             player.takeDamage(mobHit.damage, mobHit.knockback * mobHit.facing);
             hitFx.popup(c.x, c.y, mobHit.damage);
             hitFx.spark(c.x, c.y);
+            camera.shake(6, 140);
+            hitPauseMs = Math.max(hitPauseMs, 30);
           }
         }
       }
@@ -319,7 +345,7 @@ async function main() {
     hitFx.update(dtMs);
 
     camera.follow(player.x + ELESIS.width / 2, player.y + ELESIS.height / 2);
-    camera.update(dtMs);
+    camera.update(realDtMs);
 
     const dodgeSegments =
       '['.padEnd(1, '') +

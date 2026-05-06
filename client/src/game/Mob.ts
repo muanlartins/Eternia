@@ -33,6 +33,7 @@ export class Mob {
   state: MobState = MobState.Idle;
   stateTimeMs = 0;
   facing: -1 | 1 = 1;
+  koFlashMs = 0;
 
   private readonly originalX: number;
   private readonly originalY: number;
@@ -80,6 +81,10 @@ export class Mob {
     this.redraw();
   }
 
+  isBoss(): boolean {
+    return this.spec.maxHp >= 200;
+  }
+
   hurtbox(): AABB {
     return { x: this.x, y: this.y, w: this.spec.width, h: this.spec.height };
   }
@@ -97,6 +102,7 @@ export class Mob {
     if (this.hp === 0) {
       this.alive = false;
       this.deadTimerMs = this.spec.respawnMs;
+      this.koFlashMs = 220;
       this.setState(MobState.Dead);
       return { applied, bonus };
     }
@@ -179,6 +185,7 @@ export class Mob {
     this.stateTimeMs += dtMs;
     this.attackCooldownMs = Math.max(0, this.attackCooldownMs - dtMs);
     this.hitFlashMs = Math.max(0, this.hitFlashMs - dtMs);
+    this.koFlashMs = Math.max(0, this.koFlashMs - dtMs);
 
     if (this.vx !== 0) {
       const decel = this.spec.knockbackFriction * dt;
@@ -291,9 +298,14 @@ export class Mob {
     this.previewMarker.clear();
 
     if (!this.alive) {
+      const flashing = this.koFlashMs > 0;
+      const t = flashing ? this.koFlashMs / 220 : 0;
       this.body
         .rect(0, 0, this.spec.width, this.spec.height)
-        .fill({ color: MOB_COLOR.dead, alpha: 0.35 });
+        .fill({
+          color: flashing ? 0xffffff : MOB_COLOR.dead,
+          alpha: flashing ? 0.4 + 0.55 * t : 0.35,
+        });
       return;
     }
 
