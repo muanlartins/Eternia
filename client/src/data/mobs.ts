@@ -40,7 +40,7 @@ export const SLIM: MobSpec = {
   attackRange: 54,
   attacks: [
     {
-      telegraphMs: 460,
+      telegraphMs: 420,
       activeMs: 160,
       recoveryMs: 480,
       damage: 12,
@@ -67,7 +67,7 @@ export const RACOON: MobSpec = {
   attackRange: 68,
   attacks: [
     {
-      telegraphMs: 580,
+      telegraphMs: 540,
       activeMs: 200,
       recoveryMs: 620,
       damage: 18,

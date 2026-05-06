@@ -173,12 +173,15 @@ async function main() {
   ws.addEventListener('close', () => (serverInfo = 'disconnected'));
   ws.addEventListener('error', () => (serverInfo = 'ws error'));
 
-  type StagePhase = 'playing' | 'clearAnnounce' | 'nextAnnounce';
+  type StagePhase = 'playing' | 'clearAnnounce' | 'nextAnnounce' | 'gameOver';
   let stagePhase: StagePhase = 'nextAnnounce';
   let stageTransitionTimerMs = 1500;
   stageBanner.text = `STAGE 1: ${STAGES[currentStageIdx]!.name}`;
   stageBanner.visible = true;
   let prevPlayerState: PlayerState = player.state;
+
+  const MAX_LIVES = 3;
+  let lives = MAX_LIVES;
 
   app.ticker.add(() => {
     const dtMs = app.ticker.deltaMS;
@@ -239,12 +242,24 @@ async function main() {
     }
 
     if (prevPlayerState === PlayerState.Dead && player.state !== PlayerState.Dead) {
-      stage.destroy();
-      stage = new Stage(STAGES[currentStageIdx]!, worldStage);
-      stage.spawn();
-      stagePhase = 'nextAnnounce';
-      stageTransitionTimerMs = 1500;
-      stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+      lives -= 1;
+      if (lives <= 0) {
+        lives = MAX_LIVES;
+        currentStageIdx = 0;
+        stage.destroy();
+        stage = new Stage(STAGES[currentStageIdx]!, worldStage);
+        stage.spawn();
+        stagePhase = 'gameOver';
+        stageTransitionTimerMs = 2000;
+        stageBanner.text = 'GAME OVER';
+      } else {
+        stage.destroy();
+        stage = new Stage(STAGES[currentStageIdx]!, worldStage);
+        stage.spawn();
+        stagePhase = 'nextAnnounce';
+        stageTransitionTimerMs = 1500;
+        stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+      }
       stageBanner.visible = true;
     }
     prevPlayerState = player.state;
@@ -272,6 +287,14 @@ async function main() {
         stageBanner.visible = false;
         stagePhase = 'playing';
       }
+    } else if (stagePhase === 'gameOver') {
+      stageTransitionTimerMs -= dtMs;
+      if (stageTransitionTimerMs <= 0) {
+        player.teleportToStart();
+        stagePhase = 'nextAnnounce';
+        stageTransitionTimerMs = 1500;
+        stageBanner.text = `STAGE ${currentStageIdx + 1}: ${STAGES[currentStageIdx]!.name}`;
+      }
     }
 
     hitFx.update(dtMs);
@@ -285,8 +308,10 @@ async function main() {
       '·'.repeat(ELESIS.dodgeBarMax - Math.floor(player.dodgeBar)) +
       ']';
     const aliveCount = stage.getMobs().filter((m) => m.alive).length;
+    const livesDisplay = '♥'.repeat(lives) + '·'.repeat(MAX_LIVES - lives);
     hud.text =
       `stage ${currentStageIdx + 1}/${STAGES.length}  ` +
+      `lives: ${livesDisplay}  ` +
       `mobs: ${aliveCount}  ` +
       `state: ${player.state.padEnd(12, ' ')}  ` +
       `hp: ${player.hp.toFixed(0).padStart(3, ' ')}/${ELESIS.maxHp}  ` +

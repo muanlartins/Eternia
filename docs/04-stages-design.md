@@ -7,6 +7,7 @@
 | **4.A** | Stages data-driven + win condition + transição com banner + restart no death | implementado |
 | **4.A.2** | Mob facing marker + hitbox preview no telegraph + skill iframes + dodge/parry cancel + teleport stage transition | implementado |
 | **4.A.3** | Telegraphs estendidos + dodge bar 5 + plataformas one-way no stage 2 | implementado |
+| **4.A.4** | Walk-off-platform fall fix + 3 vidas (GC-style) + telegraph/dodgeStand re-tuning | implementado |
 | **4.B** | Buff offer scene entre stages (Hades cards) | pendente |
 | **4.C** | Effects de buffs aplicados ao player | pendente |
 | **4.D** | Run record / save no servidor | pendente |
@@ -170,6 +171,33 @@ preservados** (run progression).
 
 `Player.respawn()` (no death) reusa `teleportToStart()` e adiciona reset
 de stats. Mantém DRY.
+
+## 4.A.4 — Walk-off fix + 3 vidas + retuning
+
+### Walk-off-platform bug fix
+
+Quando o player saía lateralmente de uma plataforma sem pular, ele "flutuava"
+no ar. Causa: `tickGround` (Idle/Walk/Run) não aplicava gravidade. A transição
+pra `Fall` estava guardada por `vy > 0`, e como `vy` estava 0, nunca disparava.
+
+Fix em `Player.tickGround`: aplicar gravidade quando `!onGround`. Coyote time
+preservado — `startGroundJump` continua aceitando `coyoteMs > 0`, e o frame
+de gravidade leva o estado pra `Fall` onde air handling toma conta.
+
+### 3 vidas (GC heritage)
+
+`main.ts` agora rastreia `lives` (default 3). Cada morte decrementa. Ao chegar
+em 0: banner `GAME OVER` por 2s, run reseta pra stage 0 com 3 vidas.
+Lives **persistem entre stages** (não regen automático ao limpar stage). HUD
+exibe `♥♥♥` segments.
+
+Banner phases: `playing | clearAnnounce | nextAnnounce | gameOver`.
+
+### Re-tuning leve
+
+Slim telegraph 460→420, Racoon 580→540 (boss intacto: 440/600/540 — boss é
+pra ser desafiador). DodgeStand 460→400. Dodge regen continua só por tempo
+(0.8/seg, confirmado bom pelo user).
 
 ## Próximas sub-fases
 

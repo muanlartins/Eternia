@@ -59,7 +59,7 @@ export const ELESIS = {
     hitbox: { cx: 30, y: 22, w: 50, h: 50 },
   },
 
-  dodgeStandDurationMs: 460,
+  dodgeStandDurationMs: 400,
   dodgeRollSpeed: 500,
   dodgeRollDurationMs: 280,
   dodgeBarMax: 5,

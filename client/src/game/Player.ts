@@ -271,7 +271,13 @@ export class Player {
     return { x: this.x, y: this.y, w: this.spec.width, h: this.spec.height };
   }
 
-  private tickGround(_dtMs: number, input: Input, ax: number) {
+  private tickGround(dtMs: number, input: Input, ax: number) {
+    if (!this.onGround) {
+      const dt = dtMs / 1000;
+      const g = this.spec.gravity * this.spec.fallGravityMultiplier;
+      this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
+    }
+
     if (input.justPressed('parry') && this.parryCooldownMs <= 0) {
       this.startParry();
       return;
