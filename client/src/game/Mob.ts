@@ -24,12 +24,19 @@ const MOB_COLOR: Record<MobState, number> = {
   dead: 0x4b5563,
 };
 
+const MOB_GRAVITY = 2200;
+const MOB_FALL_GRAVITY_MULTIPLIER = 1.4;
+const MOB_MAX_FALL_SPEED = 1400;
+const GROUND_Y = 480;
+
 export class Mob {
   x: number;
   y: number;
   vx = 0;
+  vy = 0;
   hp: number;
   alive = true;
+  private onGround = true;
 
   state: MobState = MobState.Idle;
   stateTimeMs = 0;
@@ -217,7 +224,7 @@ export class Mob {
     return 0;
   }
 
-  update(dtMs: number, playerCenterX: number) {
+  update(dtMs: number, playerCenterX: number, platforms: readonly AABB[] = []) {
     const dt = dtMs / 1000;
     this.stateTimeMs += dtMs;
     this.attackCooldownMs = Math.max(0, this.attackCooldownMs - dtMs);
@@ -276,6 +283,33 @@ export class Mob {
     }
 
     this.x += this.vx * dt;
+
+    if (this.alive) {
+      const g =
+        this.vy >= 0 ? MOB_GRAVITY * MOB_FALL_GRAVITY_MULTIPLIER : MOB_GRAVITY;
+      this.vy = Math.min(MOB_MAX_FALL_SPEED, this.vy + g * dt);
+      this.y += this.vy * dt;
+
+      let effectiveGroundY = GROUND_Y - this.spec.height;
+      const mobCenterX = this.x + this.spec.width / 2;
+      for (const p of platforms) {
+        if (mobCenterX < p.x || mobCenterX > p.x + p.w) continue;
+        const lastFeetY = this.y + this.spec.height - this.vy * dt;
+        const platformTop = p.y - this.spec.height;
+        if (this.vy >= 0 && lastFeetY <= p.y + 4 && platformTop < effectiveGroundY) {
+          effectiveGroundY = platformTop;
+        }
+      }
+
+      if (this.y >= effectiveGroundY) {
+        this.y = effectiveGroundY;
+        if (this.vy > 0) this.vy = 0;
+        this.onGround = true;
+      } else {
+        this.onGround = false;
+      }
+    }
+
     this.view.x = this.x;
     this.view.y = this.y;
     this.redraw();

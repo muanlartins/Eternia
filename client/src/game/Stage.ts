@@ -68,7 +68,7 @@ export class Stage {
 
   update(dtMs: number, playerCenterX: number) {
     for (const m of this.mobs) {
-      m.update(dtMs, playerCenterX);
+      m.update(dtMs, playerCenterX, this.platformBoxes);
       const newProjectiles = m.flushPendingProjectiles();
       for (const p of newProjectiles) {
         this.projectiles.push(p);

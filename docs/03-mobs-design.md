@@ -11,6 +11,7 @@
 | **3.D** | Insectivorous boss com 3 ataques (bite / stomp AoE / charge) | implementado |
 | **3.E** | Goblin Archer + sistema de projétil (parryable + sourceMob stun) | implementado |
 | **3.F** | Brute (heavy melee) — slow telegraph, big damage, high combo break threshold | implementado |
+| **3.G** | Mob gravity (vy + platform/ground collision; mobs fall when knocked off platforms) | implementado |
 
 ## 3.A — Slim com AI
 

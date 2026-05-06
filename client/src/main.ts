@@ -299,7 +299,15 @@ async function main() {
 
   app.ticker.add(() => {
     const realDtMs = app.ticker.deltaMS;
-    const dtMs = hitPauseMs > 0 ? 0 : realDtMs;
+    const isCinematic =
+      stagePhase === 'modifierPick' ||
+      stagePhase === 'clearAnnounce' ||
+      stagePhase === 'buffOffer' ||
+      stagePhase === 'victoryAnnounce' ||
+      stagePhase === 'victoryStats' ||
+      stagePhase === 'gameOver';
+    const gameDtMs = isCinematic ? 0 : realDtMs;
+    const dtMs = hitPauseMs > 0 ? 0 : gameDtMs;
     hitPauseMs = Math.max(0, hitPauseMs - realDtMs);
 
     if (input.justPressed('mute')) {

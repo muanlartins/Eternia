@@ -71,6 +71,7 @@ export class Player {
   private parryCooldownMs = 0;
   parryBuffMs = 0;
   private counterHurtMs = 0;
+  spawnInvincibleMs = 0;
 
   modifiers: PlayerModifiers = { ...DEFAULT_MODIFIERS };
   acquiredBuffs: BuffSpec[] = [];
@@ -102,6 +103,7 @@ export class Player {
     this.airDashBufferedMs = Math.max(0, this.airDashBufferedMs - dtMs);
     this.parryCooldownMs = Math.max(0, this.parryCooldownMs - dtMs);
     this.parryBuffMs = Math.max(0, this.parryBuffMs - dtMs);
+    this.spawnInvincibleMs = Math.max(0, this.spawnInvincibleMs - dtMs);
     this.skillBufferMs = Math.max(0, this.skillBufferMs - dtMs);
     this.dropThroughMs = Math.max(0, this.dropThroughMs - dtMs);
 
@@ -340,6 +342,7 @@ export class Player {
   }
 
   isInvincible(): boolean {
+    if (this.spawnInvincibleMs > 0) return true;
     return (
       this.state === PlayerState.DodgeStand ||
       this.state === PlayerState.DodgeRoll ||
@@ -465,6 +468,8 @@ export class Player {
   }
 
   private tickFirstJumpAir(dtMs: number, input: Input, ax: number, rising: boolean) {
+    if (this.tryDefensiveCancel(input)) return;
+
     if (input.justPressed('attack') && !this.airAtkUsed) {
       this.startJumpAtk();
       return;
@@ -522,6 +527,8 @@ export class Player {
   }
 
   private tickDoubleJump(dtMs: number, input: Input, ax: number) {
+    if (this.tryDefensiveCancel(input)) return;
+
     if (input.justPressed('attack') && !this.airAtkUsed) {
       this.startJumpAtk();
       return;
@@ -588,6 +595,8 @@ export class Player {
   }
 
   private tickAirDash(dtMs: number, input: Input, ax: number) {
+    if (this.tryDefensiveCancel(input)) return;
+
     if (input.justPressed('attack') && !this.airAtkUsed) {
       this.startJumpAtk();
       return;
@@ -855,6 +864,7 @@ export class Player {
     this.chargingActive = false;
     this.chargingMs = 0;
     this.counterHurtMs = 0;
+    this.spawnInvincibleMs = 1500;
     this.setState(PlayerState.Idle);
   }
 
@@ -1069,7 +1079,13 @@ export class Player {
 
   private redraw() {
     this.body.clear();
-    const bodyAlpha = this.isInvincible() ? 0.4 : 0.95;
+    let bodyAlpha = 0.95;
+    if (this.spawnInvincibleMs > 0) {
+      const t = this.spawnInvincibleMs / 60;
+      bodyAlpha = 0.35 + 0.5 * Math.abs(Math.sin(t));
+    } else if (this.isInvincible()) {
+      bodyAlpha = 0.4;
+    }
     const buffActive = this.parryBuffMs > 0;
     const strokeColor = buffActive ? 0xffd700 : 0xffffff;
     const strokeWidth = buffActive ? 3 : 1;
