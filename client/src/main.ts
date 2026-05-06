@@ -9,6 +9,7 @@ import { Stage } from './game/Stage.js';
 import { STAGES } from './data/stages.js';
 import { HitFx } from './game/HitFx.js';
 import { BuffOffer } from './game/BuffOffer.js';
+import { GameAudio, type HitIntensity } from './game/Audio.js';
 import { PlayerState, type AABB } from './game/types.js';
 
 function rectsOverlap(a: AABB, b: AABB): boolean {
@@ -152,7 +153,7 @@ async function main() {
       'controls: ← → = move (hold = run), ↑ = jump, double-tap ← / → = dash. ' +
       'Z = attack (tap = combo). HOLD Z after Attack1 = charge while moving; release on ground = cast S1/S2/S3 by tier (no cd). Release in air = cancel. ' +
       'A/S/D = direct cast (faster but adds cooldown; ground only). Hold Z bypasses cooldown. ' +
-      'Alt = dodge. Space = parry (×1.5 dmg buff 3s on success).',
+      'Alt = dodge. Space = parry (×1.5 dmg buff 3s on success). M = mute.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
   controls.x = 12;
@@ -190,18 +191,24 @@ async function main() {
   let hitPauseMs = 0;
   let bossSparkCooldownMs = 0;
 
-  function impactFromDamage(applied: number): { shake: number; shakeDur: number; pause: number } {
-    if (applied >= 50) return { shake: 14, shakeDur: 260, pause: 90 };
-    if (applied >= 30) return { shake: 10, shakeDur: 200, pause: 60 };
-    if (applied >= 18) return { shake: 6, shakeDur: 140, pause: 30 };
-    if (applied >= 10) return { shake: 4, shakeDur: 100, pause: 12 };
-    return { shake: 2, shakeDur: 60, pause: 0 };
+  const audio = new GameAudio();
+
+  function impactFromDamage(applied: number): { shake: number; shakeDur: number; pause: number; intensity: HitIntensity } {
+    if (applied >= 50) return { shake: 14, shakeDur: 260, pause: 90, intensity: 'massive' };
+    if (applied >= 30) return { shake: 10, shakeDur: 200, pause: 60, intensity: 'heavy' };
+    if (applied >= 18) return { shake: 6, shakeDur: 140, pause: 30, intensity: 'medium' };
+    if (applied >= 10) return { shake: 4, shakeDur: 100, pause: 12, intensity: 'light' };
+    return { shake: 2, shakeDur: 60, pause: 0, intensity: 'light' };
   }
 
   app.ticker.add(() => {
     const realDtMs = app.ticker.deltaMS;
     const dtMs = hitPauseMs > 0 ? 0 : realDtMs;
     hitPauseMs = Math.max(0, hitPauseMs - realDtMs);
+
+    if (input.justPressed('mute')) {
+      audio.setMuted(!audio.isMuted());
+    }
 
     player.update(dtMs, input, stage.getPlatforms());
 
@@ -237,11 +244,13 @@ async function main() {
             const impact = impactFromDamage(result.applied);
             camera.shake(impact.shake, impact.shakeDur);
             hitPauseMs = Math.max(hitPauseMs, impact.pause);
+            audio.playHit(impact.intensity);
 
             if (!m.alive) {
               const isBoss = m.isBoss();
               camera.shake(isBoss ? 26 : 8, isBoss ? 700 : 200);
               hitPauseMs = Math.max(hitPauseMs, isBoss ? 220 : 50);
+              audio.playMobDeath(isBoss);
               if (isBoss) {
                 const bb = m.hurtbox();
                 const bcx = bb.x + bb.w / 2;
@@ -286,15 +295,41 @@ async function main() {
             }
             camera.shake(14, 280);
             hitPauseMs = Math.max(hitPauseMs, 90);
+            audio.playParrySuccess();
           } else if (!player.isInvincible()) {
             player.takeDamage(mobHit.damage, mobHit.knockback * mobHit.facing);
             hitFx.popup(c.x, c.y, mobHit.damage);
             hitFx.spark(c.x, c.y);
             camera.shake(6, 140);
             hitPauseMs = Math.max(hitPauseMs, 30);
+            audio.playPlayerHurt();
           }
         }
       }
+    }
+
+    const skillIdxOf = (s: PlayerState): number | null =>
+      s === PlayerState.Skill1 ? 0 : s === PlayerState.Skill2 ? 1 : s === PlayerState.Skill3 ? 2 : null;
+    const curSkillIdx = skillIdxOf(player.state);
+    const prevSkillIdx = skillIdxOf(prevPlayerState);
+    if (curSkillIdx !== null) {
+      if (prevSkillIdx === null || prevSkillIdx !== curSkillIdx) {
+        audio.playSkillCast(curSkillIdx);
+      } else if (player.stateTimeMs < dtMs * 1.5) {
+        audio.playSkillCast(curSkillIdx);
+      }
+    }
+    if (player.state === PlayerState.JumpRise && prevPlayerState !== PlayerState.JumpRise) {
+      audio.playJump();
+    }
+    if (player.state === PlayerState.DoubleJump && prevPlayerState !== PlayerState.DoubleJump) {
+      audio.playJump();
+    }
+    if (player.state === PlayerState.Dash && prevPlayerState !== PlayerState.Dash) {
+      audio.playDash();
+    }
+    if (player.state === PlayerState.AirDash && prevPlayerState !== PlayerState.AirDash) {
+      audio.playDash();
     }
 
     if (prevPlayerState === PlayerState.Dead && player.state !== PlayerState.Dead) {

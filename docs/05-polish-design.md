@@ -11,7 +11,8 @@ forte com primitivas que já temos.
 | **5.A.2** | Parry buff redesign (mob → player) + boss death epic + parry radial burst | implementado |
 | **5.A.3** | Boss death slow fade (drift up + alpha decay 2.5s) + spark trail | implementado |
 | **5.C** | Damage number juiciness (tier color/size, pop animation, parry "!" suffix) | implementado |
-| **5.B** | Audio (SFX hit/parry/death/footstep, BGM) | pendente — precisa assets |
+| **5.B** | SFX sintéticos via Web Audio API (hit/parry/death/skill/jump/dash) | implementado |
+| **5.D** | BGM + assets de áudio profissionais | pendente |
 
 ## 5.A — Hit pause + screen shake + KO flash
 
@@ -195,9 +196,66 @@ Lifetime estendido de 600ms → 700ms pra dar mais tempo de leitura.
 `±7px X, ±3px Y` no spawn. Múltiplos hits no mesmo frame (S2 multi-hit, S3
 em múltiplos mobs) não empilham no exato pixel — visualmente espalham.
 
+## 5.B — SFX sintéticos (Web Audio API)
+
+Sem assets externos: oscillators + envelopes + filtros geram tudo
+proceduralmente. `client/src/game/Audio.ts` (`GameAudio` class).
+
+### Sons implementados
+
+| Evento | Wave | Freq base | Dur | Notas |
+|---|---|---|---|---|
+| `playHit('light')` | sawtooth | 280→140Hz | 100ms | combo Z1 |
+| `playHit('medium')` | sawtooth | 200→90Hz | 140ms | combo Z2, jumpAtk |
+| `playHit('heavy')` | sawtooth | 130→55Hz | 180ms | combo Z3, dashAtk, S1 |
+| `playHit('massive')` | sawtooth | 90→38Hz | 240ms | S3, parry-buffed S2 |
+| `playParrySuccess()` | triangle + sine | 880→1760Hz + 1320→2200Hz | 450ms | bright dual-osc chime |
+| `playPlayerHurt()` | square | 220→110Hz | 280ms | pitched-down growl |
+| `playMobDeath(false)` | square | 440→80Hz | 250ms | quick downward squeak |
+| `playMobDeath(true)` | dual sawtooth (detuned) | 120→40Hz, 80→28Hz | 1400ms | low rumble com filter sweep |
+| `playSkillCast(0)` | sine + saw + lowpass | 330→660Hz | 320ms | rising tone |
+| `playSkillCast(1)` | sine + saw + lowpass | 440→880Hz | 450ms | maior, tier 2 |
+| `playSkillCast(2)` | sine + saw + lowpass | 550→1100Hz | 650ms | massive, tier 3 |
+| `playJump()` | square | 440→880Hz | 100ms | rising blip |
+| `playDash()` | white noise + bandpass | ~900Hz center | 120ms | swoosh |
+
+Hit intensity é derivada de `applied damage`:
+- < 10: light
+- 10–17: light
+- 18–29: medium
+- 30–49: heavy
+- ≥ 50: massive
+
+### Lazy AudioContext init
+
+Browsers bloqueiam AudioContext sem user gesture. `ensureCtx()` cria/resume
+no primeiro `playXxx()` call. Como o primeiro hit/cast vem de input do
+player (gesture), funciona sem prompt explícito. Se context está
+suspended, chama `.resume()`.
+
+### Detecção de eventos em main.ts
+
+- **Hit/death/parry/hurt**: já capturadas no hit-resolution loop (depois
+  de `m.receiveHit` e `player.takeDamage`/`player.isParryActive`)
+- **Skill cast**: state transition detection (Skill1/2/3 entered ou
+  re-entered com stateTimeMs ~0) — single-shot per cast
+- **Jump**: state transition pra JumpRise ou DoubleJump (separadamente —
+  cada um trigga playJump uma vez)
+- **Dash/AirDash**: state transition pra Dash ou AirDash (cada um single
+  trigger)
+
+### Mute toggle
+
+`KeyM` toggla mute. `audio.setMuted(true)` faz cada `playXxx` virar no-op.
+
+### Master volume
+
+`masterGain.gain.value = 0.4` por default — não deafening em laptop
+speakers, mas audível. Configurável via `audio.setVolume(0..1)`.
+
 ## Próximas sub-fases
 
-### 5.B — Audio
+### 5.D — Audio profissional
 
 Precisa de SFX assets (hit light/medium/heavy, parry success, mob death,
 boss roar, footstep, jump, dash). Free packs do Kenney.nl ou similar.
