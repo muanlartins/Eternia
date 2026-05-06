@@ -58,6 +58,7 @@ export class Player {
 
   chargingActive = false;
   chargingMs = 0;
+  private attackHeldMs = 0;
 
   private currentAttackId = 0;
   private lastActiveHitIdx = -1;
@@ -111,7 +112,18 @@ export class Player {
       }
     }
 
-    if (input.isHeld('attack') && !this.chargingActive && this.chargingAllowed()) {
+    if (input.isHeld('attack')) {
+      this.attackHeldMs += dtMs;
+    } else {
+      this.attackHeldMs = 0;
+    }
+
+    if (
+      input.isHeld('attack') &&
+      this.attackHeldMs >= this.spec.chargeMinHoldMs &&
+      !this.chargingActive &&
+      this.chargingAllowed()
+    ) {
       this.chargingActive = true;
       this.chargingMs = 0;
     }
@@ -221,7 +233,10 @@ export class Player {
           this.cancelCharge();
         }
       } else {
-        this.chargingMs += dtMs;
+        const maxByMp =
+          (this.mp / this.spec.skills.s3.mpCost) * this.spec.chargeTier3Ms;
+        const target = Math.min(this.spec.chargeTier3Ms, this.chargingMs + dtMs);
+        this.chargingMs = Math.min(target, maxByMp);
       }
     }
 
@@ -1038,19 +1053,39 @@ export class Player {
     const strokeColor = buffActive ? 0xffd700 : 0xffffff;
     const strokeWidth = buffActive ? 3 : 1;
     const strokeAlpha = buffActive ? 0.95 : 0.6;
-    this.body
-      .rect(0, 0, this.spec.width, this.spec.height)
-      .fill({ color: STATE_COLOR[this.state], alpha: bodyAlpha })
-      .stroke({ color: strokeColor, width: strokeWidth, alpha: strokeAlpha });
+
+    const isProne = this.state === PlayerState.Hurt && this.counterHurtMs > 0;
+    if (isProne) {
+      const proneW = this.spec.height * 0.85;
+      const proneH = this.spec.width * 0.7;
+      const proneX = (this.spec.width - proneW) / 2;
+      const proneY = this.spec.height - proneH;
+      this.body
+        .rect(proneX, proneY, proneW, proneH)
+        .fill({ color: 0x664466, alpha: bodyAlpha })
+        .stroke({ color: 0xffffff, width: 2, alpha: 0.5 });
+      this.body
+        .moveTo(proneX + proneW * 0.3, proneY - 6)
+        .lineTo(proneX + proneW * 0.3 + 6, proneY - 12)
+        .lineTo(proneX + proneW * 0.3 + 12, proneY - 6)
+        .stroke({ color: 0xffd700, width: 2, alpha: 0.7 });
+    } else {
+      this.body
+        .rect(0, 0, this.spec.width, this.spec.height)
+        .fill({ color: STATE_COLOR[this.state], alpha: bodyAlpha })
+        .stroke({ color: strokeColor, width: strokeWidth, alpha: strokeAlpha });
+    }
 
     this.facingMarker.clear();
-    const cx = this.spec.width / 2;
-    const cy = this.spec.height * 0.3;
-    const tipX = cx + this.facing * (this.spec.width * 0.6);
-    this.facingMarker
-      .moveTo(cx, cy)
-      .lineTo(tipX, cy)
-      .stroke({ color: 0xffffff, width: 2 });
+    if (!isProne) {
+      const cx = this.spec.width / 2;
+      const cy = this.spec.height * 0.3;
+      const tipX = cx + this.facing * (this.spec.width * 0.6);
+      this.facingMarker
+        .moveTo(cx, cy)
+        .lineTo(tipX, cy)
+        .stroke({ color: 0xffffff, width: 2 });
+    }
 
     this.hitboxMarker.clear();
     if (this.activeHit !== null) {

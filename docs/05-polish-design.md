@@ -13,6 +13,7 @@ forte com primitivas que já temos.
 | **5.C** | Damage number juiciness (tier color/size, pop animation, parry "!" suffix) | implementado |
 | **5.B** | SFX sintéticos via Web Audio API (hit/parry/death/skill/jump/dash) | implementado |
 | **5.E** | HUD redesign — Pixi bars (HP/MP/Dodge/Skills) + run timer + stage banner | implementado |
+| **5.F** | Parallax backgrounds (3 layers, palette per stage) | implementado |
 | **5.D** | BGM + assets de áudio profissionais | pendente |
 
 ## 5.A — Hit pause + screen shake + KO flash
@@ -308,6 +309,71 @@ ficar disponível. Visual prep pra futura integração charge+MP em uma
 `hud.update({ player, lives, maxLives, stageIdx, stageName, totalStages,
 aliveCount, serverInfo, runMs })`. Cada frame em `main.ts`. Run timer
 calculado de `runStats.startedAtMs` ou `endedAtMs` se vitória.
+
+## 5.F — Parallax backgrounds
+
+`client/src/game/Background.ts` — 3 camadas Pixi Graphics geradas
+proceduralmente. Sem assets externos.
+
+### Estrutura
+
+```
+app.stage
+├── bgStage      ← Background.container (não scrolla com camera)
+├── worldStage   ← câmera transformada
+└── uiStage      ← HUD/banners/overlays
+```
+
+`bgStage` adicionado primeiro = renderizado atrás. As 3 camadas dentro do
+container scrollam manualmente baseado em `camera.getOffsetX()`.
+
+### Camadas
+
+1. **Sky**: gradient vertical em 12 strips (skyTop → skyBottom), full screen,
+   não move.
+2. **Stars**: 60 estrelas seeded random no top 55% da tela. Não move.
+3. **Far silhouettes**: triângulos (montanhas distantes) ao longo de 4000px,
+   altura/largura random seeded. Parallax 0.18 (slow).
+4. **Mid silhouettes**: árvores (tronco rect + crown circle + detail circle)
+   espaçadas seeded random. Parallax 0.5 (medium).
+
+Player view ainda no foreground, parallax 1.0 (1:1 com camera).
+
+### Palettes por stage
+
+```ts
+const PALETTES = {
+  default: { skyTop: 0x0d1018, skyBottom: 0x1a2638, far: 0x1a2030, mid: 0x223040, accent: 0x3a5a72 },
+  forest:  { skyTop: 0x0a1410, skyBottom: 0x1a2820, far: 0x152018, mid: 0x1f3326, accent: 0x3d6446 },
+  boss:    { skyTop: 0x180810, skyBottom: 0x301420, far: 0x261020, mid: 0x371624, accent: 0x782e3e },
+};
+```
+
+`paletteIdFor(stageId)`:
+- `forest-1-3` ou stageId contém 'boss' → `boss` (vermelho/dark, ominous)
+- `forest-*` → `forest` (verde escuro, atmosfera de floresta)
+- otherwise → `default` (gray-blue)
+
+`background.setStage(stageId)` chamado em todas as transições de stage:
+inicial, advance pra próximo, game over reset, new run reset.
+
+### Seeded RNG (mulberry32)
+
+Stars/montanhas/árvores usam seed fixo (424242, 8675309, 13371337). Layout
+determinístico — mesmas árvores nas mesmas posições toda vez. Player não
+nota mas é importante: cada redraw depois de palette change tem mesmo
+layout, sem flicker de posições random.
+
+### Camera coupling
+
+`Camera.getOffsetX/Y()` retornam `stage.x/y`. Background.update lê e
+aplica fração:
+- farLayer.x = offsetX × 0.18
+- midLayer.x = offsetX × 0.5
+- skyLayer/starLayer.x = 0 (não scrollam)
+
+Quando worldStage.x = -200 (player andou 200 pra direita), midLayer.x =
+-100, farLayer.x = -36. Sensação de profundidade.
 
 ## Próximas sub-fases
 

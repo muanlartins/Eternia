@@ -12,6 +12,7 @@ import { BuffOffer } from './game/BuffOffer.js';
 import { GameAudio, type HitIntensity } from './game/Audio.js';
 import { VictoryStats, type RunStatsView } from './game/VictoryStats.js';
 import { Hud } from './game/Hud.js';
+import { Background } from './game/Background.js';
 import {
   applyGameOverToRecords,
   applyVictoryToRecords,
@@ -87,10 +88,15 @@ async function main() {
   if (!container) throw new Error('#game-container missing');
   container.appendChild(app.canvas);
 
+  const bgStage = new Container();
   const worldStage = new Container();
   const uiStage = new Container();
+  app.stage.addChild(bgStage);
   app.stage.addChild(worldStage);
   app.stage.addChild(uiStage);
+
+  const background = new Background(GAME_W, GAME_H);
+  bgStage.addChild(background.container);
 
   const ground = new Graphics();
   ground
@@ -122,6 +128,7 @@ async function main() {
   let currentStageIdx = 0;
   let stage = new Stage(STAGES[currentStageIdx]!, worldStage);
   stage.spawn();
+  background.setStage(STAGES[currentStageIdx]!.id);
 
   worldStage.addChild(player.view);
 
@@ -253,6 +260,7 @@ async function main() {
     stage.destroy();
     stage = new Stage(STAGES[currentStageIdx]!, worldStage);
     stage.spawn();
+    background.setStage(STAGES[currentStageIdx]!.id);
     player.teleportToStart();
     runStats = makeStats();
     pendingFlags = { newBestTime: false, newBestDamage: false, newFewestDeaths: false };
@@ -464,6 +472,7 @@ async function main() {
         stage.destroy();
         stage = new Stage(STAGES[currentStageIdx]!, worldStage);
         stage.spawn();
+        background.setStage(STAGES[currentStageIdx]!.id);
         stagePhase = 'gameOver';
         stageTransitionTimerMs = 2000;
         stageBanner.text = 'GAME OVER';
@@ -524,6 +533,7 @@ async function main() {
         stage.destroy();
         stage = new Stage(STAGES[currentStageIdx]!, worldStage);
         stage.spawn();
+        background.setStage(STAGES[currentStageIdx]!.id);
         player.teleportToStart();
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
@@ -586,6 +596,8 @@ async function main() {
 
     camera.follow(player.x + ELESIS.width / 2, player.y + ELESIS.height / 2);
     camera.update(realDtMs);
+
+    background.update(camera.getOffsetX());
 
     const aliveCount = stage.getMobs().filter((m) => m.alive).length;
     const elapsedMs =

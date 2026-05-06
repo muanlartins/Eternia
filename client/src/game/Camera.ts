@@ -19,6 +19,14 @@ export class Camera {
     this.targetY = worldY - this.viewportHeight / 2;
   }
 
+  getOffsetX(): number {
+    return this.stage.x;
+  }
+
+  getOffsetY(): number {
+    return this.stage.y;
+  }
+
   shake(intensity: number, durationMs: number) {
     if (intensity * durationMs > this.shakeIntensity * (this.shakeDurationMs - this.shakeElapsedMs)) {
       this.shakeIntensity = intensity;

@@ -23,6 +23,7 @@ sub-fases (2.A, 2.B, ...) com playtest entre cada.
 | **2.H.3** | Charging começa no Z press (qualquer estado) + 1.5x slower thresholds | implementado |
 | **2.H.4** | Charge durante skills + skill override + isHeld trigger + force state reset | implementado |
 | **2.H.5** | MP/charge 1:1 (75/150/225ms equal segments) + counter on charge-hit | implementado |
+| **2.H.6** | Min-hold deadzone (250ms) + cursor capped at MP + knockdown visual on counter | implementado |
 
 ## Por que primitivas (não sprites) na Phase 2
 
@@ -805,6 +806,76 @@ cuidar do telegraph vira presa fácil:
 
 Alta skill ceiling: posicionamento + leitura de telegraph importam mais
 que damage stats.
+
+## Sub-fase 2.H.6 — Deadzone + MP cap + knockdown
+
+### Deadzone de 250ms (chargeMinHoldMs)
+
+Antes: hold trivial de Z (mesmo tap-combo ~50ms) já setava chargingActive,
+e qualquer hit triggerava counter. Frustrava combo gameplay.
+
+Agora: `Player.attackHeldMs` tracka quanto Z está continuamente held. Charge
+só inicia se `attackHeldMs >= chargeMinHoldMs (250ms)`. Tap rápidos não
+chegam a 250ms, então não disparam chargingActive. Combos Z Z Z funcionam
+sem risco de counter.
+
+```ts
+if (input.isHeld('attack')) {
+  this.attackHeldMs += dtMs;
+} else {
+  this.attackHeldMs = 0;
+}
+
+if (
+  input.isHeld('attack') &&
+  this.attackHeldMs >= this.spec.chargeMinHoldMs &&
+  !this.chargingActive &&
+  this.chargingAllowed()
+) {
+  this.chargingActive = true;
+  this.chargingMs = 0;
+}
+```
+
+User intent: "considere que o z só começa a acumular quando passa pelo
+menos de meia barra" — meia barra = ~12.5 MP em tempo = 237ms. 250ms
+arredondado.
+
+### Charge cursor capped at current MP
+
+Antes: cursor avançava livremente até chargeTier3Ms. Player com pouco MP
+via cursor passar do seu fill, sem feedback claro de "não vou conseguir".
+
+Agora: `chargingMs` capped at `(mp / s3.mpCost) * chargeTier3Ms`. Cursor
+literalmente para na barra de MP. Player vê "minha mana só dá pra esse
+tier".
+
+```ts
+const maxByMp = (this.mp / this.spec.skills.s3.mpCost) * this.spec.chargeTier3Ms;
+const target = Math.min(this.spec.chargeTier3Ms, this.chargingMs + dtMs);
+this.chargingMs = Math.min(target, maxByMp);
+```
+
+Side effect: MP regen durante charge faz cursor advance progressivamente.
+Hold Z com MP baixo: cursor avança devagar conforme MP regen catches up.
+
+### Knockdown visual
+
+Antes: counter só era visualmente identificável pela duração do stun.
+Player podia confundir com hurt normal.
+
+Agora: durante `state === Hurt && counterHurtMs > 0`, body é desenhado
+horizontal:
+- proneW = `spec.height * 0.85` (largura ≈ altura normal)
+- proneH = `spec.width * 0.7` (altura ≈ largura normal)
+- proneX = centralizado horizontalmente
+- proneY = colado no chão (`spec.height - proneH`)
+- Cor `0x664466` (purple acinzentado, dazed)
+- Stars overhead: 3-line "swirl" gold acima do body indicando "stunned"
+
+facingMarker hide durante prone. Ao sair de Hurt (`counterHurtMs` zerado em
+tickHurt), body volta a desenhar normal upright. "Get up" via state
+transition pra Idle. Sem animação interpolada — clip-cut, mas claro.
 
 ## Backlog de polish — visual do parry timing
 

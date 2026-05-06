@@ -1,0 +1,156 @@
+import { Container, Graphics } from 'pixi.js';
+
+interface Palette {
+  readonly skyTop: number;
+  readonly skyBottom: number;
+  readonly far: number;
+  readonly mid: number;
+  readonly accent: number;
+}
+
+const PALETTES: Record<string, Palette> = {
+  default: {
+    skyTop: 0x0d1018,
+    skyBottom: 0x1a2638,
+    far: 0x1a2030,
+    mid: 0x223040,
+    accent: 0x3a5a72,
+  },
+  forest: {
+    skyTop: 0x0a1410,
+    skyBottom: 0x1a2820,
+    far: 0x152018,
+    mid: 0x1f3326,
+    accent: 0x3d6446,
+  },
+  boss: {
+    skyTop: 0x180810,
+    skyBottom: 0x301420,
+    far: 0x261020,
+    mid: 0x371624,
+    accent: 0x782e3e,
+  },
+};
+
+export class Background {
+  readonly container = new Container();
+  private skyLayer: Graphics;
+  private starLayer: Graphics;
+  private farLayer: Graphics;
+  private midLayer: Graphics;
+  private currentPaletteId: string | null = null;
+  private readonly gameW: number;
+  private readonly gameH: number;
+
+  constructor(gameW: number, gameH: number) {
+    this.gameW = gameW;
+    this.gameH = gameH;
+    this.skyLayer = new Graphics();
+    this.starLayer = new Graphics();
+    this.farLayer = new Graphics();
+    this.midLayer = new Graphics();
+    this.container.addChild(this.skyLayer);
+    this.container.addChild(this.starLayer);
+    this.container.addChild(this.farLayer);
+    this.container.addChild(this.midLayer);
+    this.setStage('default');
+  }
+
+  setStage(stageId: string) {
+    const paletteId = this.paletteIdFor(stageId);
+    if (this.currentPaletteId === paletteId) return;
+    this.currentPaletteId = paletteId;
+    const palette = PALETTES[paletteId] ?? PALETTES.default!;
+    this.redraw(palette);
+  }
+
+  private paletteIdFor(stageId: string): string {
+    if (stageId.includes('1-3') || stageId.toLowerCase().includes('boss')) return 'boss';
+    if (stageId.includes('forest')) return 'forest';
+    return 'default';
+  }
+
+  private redraw(palette: Palette) {
+    this.skyLayer.clear();
+    const halves = 12;
+    for (let i = 0; i < halves; i++) {
+      const t = i / (halves - 1);
+      const r = lerp((palette.skyTop >> 16) & 0xff, (palette.skyBottom >> 16) & 0xff, t);
+      const g = lerp((palette.skyTop >> 8) & 0xff, (palette.skyBottom >> 8) & 0xff, t);
+      const b = lerp(palette.skyTop & 0xff, palette.skyBottom & 0xff, t);
+      const color = (r << 16) | (g << 8) | b;
+      const yStart = (i / halves) * this.gameH;
+      const yEnd = ((i + 1) / halves) * this.gameH;
+      this.skyLayer.rect(0, yStart, this.gameW, yEnd - yStart).fill({ color });
+    }
+
+    this.starLayer.clear();
+    const seed = mulberry32(424242);
+    const starCount = 60;
+    for (let i = 0; i < starCount; i++) {
+      const x = seed() * this.gameW;
+      const y = seed() * this.gameH * 0.55;
+      const r = 0.6 + seed() * 0.9;
+      const alpha = 0.3 + seed() * 0.55;
+      this.starLayer.circle(x, y, r).fill({ color: 0xffffff, alpha });
+    }
+
+    this.farLayer.clear();
+    const farY = this.gameH - 110;
+    const farSeed = mulberry32(8675309);
+    let cx = -200;
+    while (cx < 4000) {
+      const w = 80 + farSeed() * 120;
+      const h = 50 + farSeed() * 60;
+      const peakX = cx + w / 2;
+      const peakY = farY - h;
+      this.farLayer
+        .poly([cx, farY + 40, peakX, peakY, cx + w, farY + 40])
+        .fill({ color: palette.far, alpha: 0.95 });
+      cx += w * 0.6;
+    }
+
+    this.midLayer.clear();
+    const midSeed = mulberry32(13371337);
+    let mx = -100;
+    while (mx < 4000) {
+      const treeW = 6 + midSeed() * 4;
+      const treeH = 50 + midSeed() * 35;
+      const treeY = this.gameH - 70 - treeH;
+      this.midLayer
+        .rect(mx, treeY + treeH * 0.55, treeW, treeH * 0.5)
+        .fill({ color: 0x1a1010, alpha: 0.9 });
+      const crownR = 14 + midSeed() * 10;
+      this.midLayer
+        .circle(mx + treeW / 2, treeY + crownR * 0.6, crownR)
+        .fill({ color: palette.mid, alpha: 0.95 });
+      const detailR = crownR * 0.55;
+      this.midLayer
+        .circle(mx + treeW / 2 - 4, treeY + crownR * 0.7, detailR)
+        .fill({ color: palette.accent, alpha: 0.4 });
+      mx += treeW + 18 + midSeed() * 22;
+    }
+  }
+
+  update(cameraOffsetX: number) {
+    this.skyLayer.x = 0;
+    this.starLayer.x = 0;
+    this.farLayer.x = cameraOffsetX * 0.18;
+    this.midLayer.x = cameraOffsetX * 0.5;
+  }
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return Math.round(a + (b - a) * t);
+}
+
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
