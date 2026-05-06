@@ -405,6 +405,29 @@ async function main() {
       }
     }
 
+    for (const m of stageMobs) {
+      if (m.consumePhaseChange()) {
+        const bb = m.hurtbox();
+        const bcx = bb.x + bb.w / 2;
+        const bcy = bb.y + bb.h / 2;
+        for (let i = 0; i < 16; i++) {
+          const ang = (i / 16) * Math.PI * 2;
+          hitFx.spark(bcx + Math.cos(ang) * 70, bcy + Math.sin(ang) * 70);
+        }
+        for (let i = 0; i < 8; i++) {
+          const ang = (i / 8) * Math.PI * 2 + Math.PI / 8;
+          hitFx.spark(bcx + Math.cos(ang) * 36, bcy + Math.sin(ang) * 36);
+        }
+        hitFx.textPopup(bcx, bcy - 50, 'PHASE 2!', { color: 0xff3344, fontSize: 28 });
+        camera.shake(20, 500);
+        hitPauseMs = Math.max(hitPauseMs, 180);
+        audio.playBossPhase2();
+        if (m.isBoss()) {
+          audio.playBgm('bossRage');
+        }
+      }
+    }
+
     stage.update(dtMs, player.x + ELESIS.width / 2);
 
     for (const proj of stage.getProjectiles()) {

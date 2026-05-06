@@ -1,6 +1,6 @@
 export type HitIntensity = 'light' | 'medium' | 'heavy' | 'massive';
 
-export type BgmId = 'forest' | 'deep' | 'boss';
+export type BgmId = 'forest' | 'deep' | 'boss' | 'bossRage';
 
 interface BgmSpec {
   rootHz: number;
@@ -70,6 +70,14 @@ const BGM_SPECS: Record<BgmId, BgmSpec> = {
     bpm: 110,
     melody: [12, 14, 15, 14, 17, 15, 14, 12, 12, 14, 15, 17, 19, 17, 15, 14],
     bass: [-12, -12, -7, -7, -12, -12, -10, -10, -12, -12, -7, -7, -12, -10, -7, -5],
+    voice: 'aggressive',
+    bassDurBeats: 1,
+  },
+  bossRage: {
+    rootHz: 146.83,
+    bpm: 130,
+    melody: [12, 14, 15, 17, 14, 15, 17, 19, 15, 17, 19, 22, 19, 17, 15, 14],
+    bass: [-12, -10, -7, -5, -12, -10, -7, -5, -12, -10, -7, -5, -12, -10, -8, -5],
     voice: 'aggressive',
     bassDurBeats: 1,
   },
@@ -510,6 +518,45 @@ export class GameAudio {
     osc.connect(gain).connect(this.sfxBus);
     osc.start(now);
     osc.stop(now + 0.12);
+  }
+
+  playBossPhase2() {
+    if (this.settings.muted) return;
+    this.ensureCtx();
+    if (!this.ctx || !this.sfxBus) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(80, now);
+    osc1.frequency.exponentialRampToValueAtTime(180, now + 0.4);
+    osc1.frequency.exponentialRampToValueAtTime(110, now + 0.9);
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'square';
+    osc2.frequency.setValueAtTime(60, now);
+    osc2.frequency.exponentialRampToValueAtTime(140, now + 0.5);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(300, now);
+    filter.frequency.exponentialRampToValueAtTime(1600, now + 0.3);
+    filter.frequency.exponentialRampToValueAtTime(700, now + 1.0);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.5, now + 0.05);
+    gain.gain.linearRampToValueAtTime(0.4, now + 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(gain).connect(this.sfxBus);
+    osc1.start(now);
+    osc1.stop(now + 1.15);
+    osc2.start(now);
+    osc2.stop(now + 1.15);
   }
 
   playDash() {

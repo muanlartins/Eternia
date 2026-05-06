@@ -58,6 +58,30 @@ export class HitFx {
     this.popups.push({ text, ageMs: 0, baseScale });
   }
 
+  textPopup(
+    x: number,
+    y: number,
+    label: string,
+    opts: { color?: number; fontSize?: number; stroke?: number } = {},
+  ) {
+    const text = new Text({
+      text: label,
+      style: {
+        fontFamily: 'monospace',
+        fontSize: opts.fontSize ?? 26,
+        fill: opts.color ?? 0xff4444,
+        fontWeight: 'bold',
+        stroke: { color: opts.stroke ?? 0x000000, width: 4 },
+      },
+    });
+    text.anchor.set(0.5, 0.5);
+    text.x = x;
+    text.y = y;
+    text.scale.set(1.5);
+    this.container.addChild(text);
+    this.popups.push({ text, ageMs: 0, baseScale: 1.0 });
+  }
+
   spark(x: number, y: number) {
     const gfx = new Graphics();
     gfx.x = x;

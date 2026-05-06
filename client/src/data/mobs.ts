@@ -24,6 +24,15 @@ export interface AttackVariant {
   readonly projectile?: ProjectileSpec;
 }
 
+export interface Phase2Spec {
+  readonly hpThresholdPct: number;
+  readonly attackCooldownMul: number;
+  readonly telegraphMul: number;
+  readonly damageMul: number;
+  readonly walkSpeedMul: number;
+  readonly comboBreakThresholdMul: number;
+}
+
 export interface MobSpec {
   readonly id: string;
   readonly displayName: string;
@@ -42,6 +51,7 @@ export interface MobSpec {
   readonly parriedDamageMultiplier: number;
   readonly comboBreakThreshold: number;
   readonly respawnMs: number;
+  readonly phase2?: Phase2Spec;
 }
 
 export const SLIM: MobSpec = {
@@ -215,4 +225,12 @@ export const INSECTIVOROUS: MobSpec = {
   parriedDamageMultiplier: 1.6,
   comboBreakThreshold: 6,
   respawnMs: 8000,
+  phase2: {
+    hpThresholdPct: 0.5,
+    attackCooldownMul: 0.55,
+    telegraphMul: 0.7,
+    damageMul: 1.2,
+    walkSpeedMul: 1.4,
+    comboBreakThresholdMul: 0.7,
+  },
 };

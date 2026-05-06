@@ -37,6 +37,8 @@ export class Mob {
   hp: number;
   alive = true;
   private onGround = true;
+  private phase: 1 | 2 = 1;
+  private justEnteredPhase2 = false;
 
   state: MobState = MobState.Idle;
   stateTimeMs = 0;
@@ -105,6 +107,41 @@ export class Mob {
     return this.spec.displayName;
   }
 
+  getPhase(): 1 | 2 {
+    return this.phase;
+  }
+
+  consumePhaseChange(): boolean {
+    if (this.justEnteredPhase2) {
+      this.justEnteredPhase2 = false;
+      return true;
+    }
+    return false;
+  }
+
+  private attackCooldownMul(): number {
+    return this.phase === 2 && this.spec.phase2 ? this.spec.phase2.attackCooldownMul : 1;
+  }
+
+  private telegraphMul(): number {
+    return this.phase === 2 && this.spec.phase2 ? this.spec.phase2.telegraphMul : 1;
+  }
+
+  private damageMul(): number {
+    return this.phase === 2 && this.spec.phase2 ? this.spec.phase2.damageMul : 1;
+  }
+
+  private walkSpeedMul(): number {
+    return this.phase === 2 && this.spec.phase2 ? this.spec.phase2.walkSpeedMul : 1;
+  }
+
+  private effectiveComboBreakThreshold(): number {
+    if (this.phase === 2 && this.spec.phase2) {
+      return Math.max(1, Math.floor(this.spec.comboBreakThreshold * this.spec.phase2.comboBreakThresholdMul));
+    }
+    return this.spec.comboBreakThreshold;
+  }
+
   isFading(): boolean {
     return !this.alive && this.koFlashMs <= 0 && this.koFadeMs > 0;
   }
@@ -145,6 +182,17 @@ export class Mob {
       return { applied };
     }
 
+    if (
+      this.spec.phase2 &&
+      this.phase === 1 &&
+      this.hp / this.spec.maxHp <= this.spec.phase2.hpThresholdPct
+    ) {
+      this.phase = 2;
+      this.justEnteredPhase2 = true;
+      this.consecutiveHits = 0;
+      this.armorActive = false;
+    }
+
     const inAttackFlow =
       this.state === MobState.Telegraph ||
       this.state === MobState.Active ||
@@ -156,7 +204,7 @@ export class Mob {
 
     this.consecutiveHits++;
 
-    if (this.consecutiveHits >= this.spec.comboBreakThreshold) {
+    if (this.consecutiveHits >= this.effectiveComboBreakThreshold()) {
       this.consecutiveHits = 0;
       this.armorActive = true;
       this.currentAttackIdx = this.pickAttack();
@@ -176,7 +224,8 @@ export class Mob {
     this.parriedBuff = true;
     this.consecutiveHits = 0;
     this.armorActive = false;
-    this.attackCooldownMs = Math.max(this.attackCooldownMs, this.spec.attackCooldownMs);
+    const cd = this.spec.attackCooldownMs * this.attackCooldownMul();
+    this.attackCooldownMs = Math.max(this.attackCooldownMs, cd);
     this.setState(MobState.Hurt);
   }
 
@@ -196,7 +245,7 @@ export class Mob {
     const localX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
     return {
       bbox: { x: this.x + localX, y: this.y + hb.y, w: hb.w, h: hb.h },
-      damage: atk.damage,
+      damage: atk.damage * this.damageMul(),
       knockback: atk.knockback,
       attackId: this.currentAttackId,
       facing: this.facing,
@@ -246,7 +295,7 @@ export class Mob {
         this.tickIdleOrChase(playerCenterX);
         break;
       case MobState.Telegraph:
-        if (this.stateTimeMs >= this.currentAttack().telegraphMs) {
+        if (this.stateTimeMs >= this.currentAttack().telegraphMs * this.telegraphMul()) {
           this.setState(MobState.Active);
         }
         break;
@@ -262,7 +311,7 @@ export class Mob {
       }
       case MobState.Recover:
         if (this.stateTimeMs >= this.currentAttack().recoveryMs) {
-          this.attackCooldownMs = this.spec.attackCooldownMs;
+          this.attackCooldownMs = this.spec.attackCooldownMs * this.attackCooldownMul();
           this.armorActive = false;
           this.setState(MobState.Idle);
         }
@@ -330,7 +379,7 @@ export class Mob {
 
     if (dist <= this.spec.aggroRange) {
       this.facing = dir;
-      this.vx = dir * this.spec.walkSpeed;
+      this.vx = dir * this.spec.walkSpeed * this.walkSpeedMul();
       if (this.state !== MobState.Chase) this.setState(MobState.Chase);
     } else {
       this.vx = 0;
@@ -349,6 +398,8 @@ export class Mob {
     this.parriedBuff = false;
     this.consecutiveHits = 0;
     this.armorActive = false;
+    this.phase = 1;
+    this.justEnteredPhase2 = false;
     this.setState(MobState.Idle);
   }
 
@@ -423,12 +474,22 @@ export class Mob {
       ? 0xffd700
       : this.armorActive
         ? 0xff3300
-        : 0xffffff;
-    const strokeWidth = this.parriedBuff || this.armorActive ? 3 : 1;
+        : this.phase === 2
+          ? 0xff2244
+          : 0xffffff;
+    const strokeWidth = this.parriedBuff || this.armorActive || this.phase === 2 ? 3 : 1;
     this.body
       .rect(0, 0, this.spec.width, this.spec.height)
       .fill({ color, alpha: 0.95 })
       .stroke({ color: strokeColor, width: strokeWidth, alpha: 0.95 });
+
+    if (this.phase === 2) {
+      const t = (Date.now() % 1000) / 1000;
+      const pulse = 0.5 + 0.5 * Math.sin(t * Math.PI * 2);
+      this.body
+        .rect(0, 0, this.spec.width, this.spec.height)
+        .fill({ color: 0xff2244, alpha: 0.18 + 0.12 * pulse });
+    }
 
     const fx = this.spec.width / 2;
     const fy = this.spec.height * 0.35;
@@ -445,7 +506,8 @@ export class Mob {
       const atk = this.currentAttack();
       const hb = atk.hitbox;
       const localX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
-      const t = Math.min(1, this.stateTimeMs / atk.telegraphMs);
+      const fullTelegraph = atk.telegraphMs * this.telegraphMul();
+      const t = Math.min(1, this.stateTimeMs / fullTelegraph);
       const pulse = 0.5 + 0.5 * Math.sin(this.stateTimeMs / 60);
       this.previewMarker
         .rect(localX, hb.y, hb.w, hb.h)
@@ -461,6 +523,6 @@ export class Mob {
       .fill({ color: 0x111827, alpha: 0.85 });
     this.hpBar
       .rect(0, -10, barW * hpPct, barH)
-      .fill({ color: 0xee5566, alpha: 0.95 });
+      .fill({ color: this.phase === 2 ? 0xff2244 : 0xee5566, alpha: 0.95 });
   }
 }

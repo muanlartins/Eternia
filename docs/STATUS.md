@@ -13,7 +13,7 @@
 | **0 — Foundation** | Monorepo (client+server+shared), pnpm, Vite, hello-world WS | ✅ done | inicial |
 | **1 — Movement** | walk/run/jump/double_jump/dash/dash_jump, camera, parallax | ✅ done | `01-movement-design.md` |
 | **2 — Combat** | Combo Z, S1/S2/S3, dash atk, dodge, parry, charge-Z, counter | ✅ done (2.A → 2.I) | `02-combat-design.md` |
-| **3 — Mobs/AI** | 5 mob types (slim, racoon, archer, brute, insectivorous boss) + gravity | ✅ done (3.A → 3.G) | `03-mobs-design.md` |
+| **3 — Mobs/AI** | 5 mob types (slim, racoon, archer, brute, insectivorous boss) + gravity + multi-phase boss | ✅ done (3.A → 3.H) | `03-mobs-design.md` |
 | **4 — Stage flow + buffs** | 4 stages, buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.J) | `04-stages-design.md` |
 | **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
 | **6 — Auth + persistence** | Login, save state per user, server-side records | ⏳ não iniciado | (futuro) |
@@ -65,9 +65,11 @@ Sequência: **1 → 2 → 3 → 4 → 5 → 6 → 7**.
 1. ✅ **5.D — BGM sintético** (~3-4h, feito 2026-05-06) — Phase 5 fechada.
    Web Audio API procedural com 3 perfis (forest / deep / boss) por stage.
    Crossfade 0.7s entre stages. Stop em bossDeathDrama / gameOver / new run.
-2. ⏳ **Multi-phase boss** — boss entra em Phase 2 abaixo de 50% HP com novo
-   padrão de ataque + visual diferente. Faz a luta final sentir épica em vez
-   de "mob com mais HP". ~4-6h.
+2. ✅ **Multi-phase boss** (feito 2026-05-06) — Insectivorous Phase 2 < 50%
+   HP. Cooldown ×0.55, telegraph ×0.7, damage ×1.2, walk ×1.4, combo break
+   ×0.7. Visual: red tint + pulse + red HP bar. Audio: sting + BGM crossfade
+   pra `bossRage` (130 BPM). Trigger FX: dual spark ring + screen shake +
+   PHASE 2! popup.
 3. ⏳ **Boss intro + healthbar dedicada** — banner "BOSS: NAME" ao entrar
    no stage 4 + barra de HP do boss persistente no topo da tela. Reforça
    presença do boss. ~2-3h.

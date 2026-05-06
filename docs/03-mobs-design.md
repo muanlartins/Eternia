@@ -12,6 +12,7 @@
 | **3.E** | Goblin Archer + sistema de projétil (parryable + sourceMob stun) | implementado |
 | **3.F** | Brute (heavy melee) — slow telegraph, big damage, high combo break threshold | implementado |
 | **3.G** | Mob gravity (vy + platform/ground collision; mobs fall when knocked off platforms) | implementado |
+| **3.H** | Multi-phase boss (Insectivorous Phase 2 < 50% HP: ×0.55 cooldown, ×0.7 telegraph, ×1.2 dmg, ×1.4 walk, red tint, audio sting, BGM swap to bossRage) | implementado |
 
 ## 3.A — Slim com AI
 
@@ -415,3 +416,81 @@ Inserido entre stage 1 e o boss:
 
 Run: Stage 1 (melee intro) → Stage 2 (ranged intro + buff offer) → Stage 3
 (boss). 3 buffs por loop em vez de 2.
+
+## 3.H — Multi-phase boss
+
+Insectivorous boss agora tem 2 fases. Phase 2 ativa quando HP cai abaixo
+de 50%. Sem state machine separada — o `phase: 1 | 2` field do `Mob`
+multiplica stats em runtime.
+
+### Phase 2 stat multipliers (no `MobSpec.phase2`)
+
+| Stat | Mul | Phase 1 → Phase 2 |
+|---|---|---|
+| `attackCooldownMs` | 0.55 | 1600ms → 880ms |
+| `telegraphMul` (todos os attacks) | 0.7 | 440-600ms → 308-420ms |
+| `damageMul` (todos os attacks) | 1.2 | 16-24 → 19-29 |
+| `walkSpeedMul` | 1.4 | 60 → 84 |
+| `comboBreakThresholdMul` | 0.7 | 6 → 4 (floor) |
+
+Resultado: boss vira muito mais agressivo. Telegraphs encurtados forçam o
+player a parry/dodge mais cedo. Cooldown menor entre attacks remove o
+window de safe damage. Combo break threshold menor → mais counter-attacks
+do boss.
+
+### Implementação
+
+`Mob` field:
+```ts
+private phase: 1 | 2 = 1;
+private justEnteredPhase2 = false;
+```
+
+Em `receiveHit`, após aplicar dano e antes do combo break check:
+```ts
+if (this.spec.phase2 && this.phase === 1 && this.hp / this.spec.maxHp <= phase2.hpThresholdPct) {
+  this.phase = 2;
+  this.justEnteredPhase2 = true;
+  this.consecutiveHits = 0;
+  this.armorActive = false;
+}
+```
+
+Multipliers aplicados via getters privados (`attackCooldownMul()` etc) que
+retornam 1 ou o `phase2.xxxMul`. Cada uso de stat (cooldown reset,
+telegraph check, getActiveHit damage, walk speed, combo break check) é
+multiplicado.
+
+### Trigger effects (em `main.ts`)
+
+`mob.consumePhaseChange()` retorna true uma vez após transição. main.ts
+itera mobs após hit detection e dispara:
+- 16 sparks em ring de raio 70 + 8 sparks em raio 36 (visual ring duplo)
+- `hitFx.textPopup('PHASE 2!', red, 28px)` acima do boss
+- `camera.shake(20, 500)` — tela treme forte
+- `hitPauseMs = 180` — pause dramatical
+- `audio.playBossPhase2()` — sting com 2 osc (saw + square) + filter sweep
+- `audio.playBgm('bossRage')` — crossfade 0.7s pra BGM mais agressiva
+  (130 BPM vs 110, melodia mais acima)
+
+### Visual indicator (persistente)
+
+Em `Mob.redraw`, se `phase === 2`:
+- Stroke vermelho (`0xff2244`) 3px (vs branco 1px)
+- Overlay vermelho pulsante (alpha 0.18-0.30, sin wave 1Hz) sobre o body
+- HP bar fill vira vermelho mais escuro (`0xff2244` vs `0xee5566`)
+
+Player sabe instantaneamente que tá lutando contra a versão raivosa.
+
+### `respawn()` reseta phase
+
+`Mob.respawn()` (usado em autoRespawn ou no respawn manual via stage
+recreate) volta `phase = 1`. Stage destroy + recreate (game over) zera
+naturalmente porque cria novo Mob.
+
+### Player death durante phase 2
+
+Quando player perde uma vida na fase 4, `stage.destroy()` NÃO é chamado
+(per 4.A.5: mobs persistem progresso). Boss continua em phase 2 com HP
+preservado. Player respawna em x=80 com full HP/MP. Justa: o phase
+transition aconteceu, deve continuar.
