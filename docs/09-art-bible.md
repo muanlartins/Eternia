@@ -159,13 +159,96 @@ background, single character framed centrally. Aspect ratio portrait
 
 #### Iteration log
 
-- v1 (data): rodado / 4 variantes / observações:
-  - [preencher após primeiro round]
+- **v1**: ficou idêntica à Elesis original. Razão: prompt mencionou Grand
+  Chase + red ponytail + knight skirt + red+white = receita exata de Elesis.
+  Solução pra v2: manter aesthetic do mundo (Korean MMORPG 2000s) mas
+  trocar os marcadores visuais específicos. Pedir 4 variações com axes:
+  hair style, outfit silhouette, color accents, distinguishing marker.
 
 #### Anchor (uma vez locked)
 
 - Path: `art/anchors/astrid-base-front.png` (a criar)
 - Image hash / Gemini conversation link: TBD
+
+#### Concept art prompt v2 — pede 4 variações
+
+Cole isto no Gemini. Ele deve gerar 4 designs distintos pra você comparar.
+
+```
+I need you to generate 4 distinct character design variations for a
+female swordswoman protagonist in a 2D anime-style 2000s Korean
+MMORPG aesthetic (cel-shaded, bold lineart, vibrant palette, slight
+chibi anatomy). DO NOT reproduce any existing copyrighted character —
+this is an original creation that shares the era's visual language but
+with its own design choices.
+
+CORE TRAITS that ALL 4 variations must keep:
+- 17-year-old female knight, slim athletic build (~165cm)
+- Crimson-scarlet red as her dominant color (hair AND outfit accent)
+- Red eyes
+- Confident, impulsive expression — slight playful smirk
+- Wields a one-handed sword (visible at her hip)
+- Full body, front view, neutral standing pose
+- Plain neutral cream/beige background (concept reference sheet style)
+- "Base form" outfit: form-fitting bodysuit-style (not armor) — meant
+  as the underclothes when she has no armor equipped
+- Tone: youthful shounen energy, adventurous
+
+VARY THESE AXES across the 4 designs (each variation should pick a
+DIFFERENT combination, not all the same):
+
+AXIS A — HAIR STYLE (avoid the standard high-ponytail trope):
+- side ponytail with bangs swept across forehead
+- loose long hair with a single braided strand on one side
+- asymmetric cut (shorter on one side, longer on the other) flowing
+- low ponytail with a wide bang and side locks framing the face
+
+AXIS B — OUTFIT SILHOUETTE (avoid the red+white skirt+leggings combo):
+- full-length scarlet bodysuit with black side panels and gold trim at
+  collar, cuffs, and waist (regal/princely)
+- crop-top jacket in scarlet with off-shoulder asymmetric sleeves over
+  a black under-layer, plus high-waist black shorts and tall boots
+- form-fitting scarlet bodysuit + a short hooded cape (hood down) with
+  fur-trimmed collar, cape pinned at one shoulder
+- two-tone outfit: deep crimson torso, black sleeves and pants, copper
+  bronze armor accents at shoulders and knees
+
+AXIS C — DISTINGUISHING MARKER (something Elesis canonically doesn't
+have, to set this character apart):
+- a small scar diagonally across one eyebrow (not blocking vision)
+- a tribal/clan marking tattoo on collarbone or upper arm
+- a black choker with a single red gem at the throat
+- asymmetric earrings (one cuff/stud on one ear, longer drop on the
+  other)
+
+AXIS D — SWORD VARIATION:
+- a slightly curved sabre with dark blade and red rune engraving on
+  the fuller
+- a straight longsword but with a flame-motif crossguard and red leather
+  scabbard
+- a shorter side-sword (slightly shorter than a longsword), simple
+  steel, with a bronze pommel shaped like a stylized claw
+- a slim straight blade in a dark red lacquered scabbard, white wrapped
+  hilt
+
+OUTPUT: 4 separate full-body character illustrations, side by side OR as
+a 2x2 grid in a single image, plain cream background, all four
+characters showing front view neutral pose. Make sure each variation is
+clearly distinct from the others while still being recognizably the
+same character archetype (red-haired young swordswoman).
+```
+
+#### Como usar
+
+1. Cole o prompt acima no Gemini. Pode demorar um pouco — ele vai
+   processar 4 designs.
+2. Se o Gemini gerar uma imagem só com 4 painéis, ótimo. Se gerar
+   apenas 1 personagem, pede follow-up: "Now generate 3 more
+   variations exploring different combinations of the axes A-D above".
+3. Manda **TODAS** as 4 variantes pro chat aqui — comentar quais
+   elementos (de qualquer variação) ressoam mais.
+4. Iteramos selecionando características das melhores variações pra
+   um v3 final-ish.
 
 ## Prompt format / anatomy
 
