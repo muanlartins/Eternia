@@ -36,6 +36,7 @@ type Room struct {
 	HostUserID int    `json:"hostUserId"`
 	Mission    string `json:"mission"`
 	Difficulty string `json:"difficulty"`
+	Mode       string `json:"mode"` // "solo" | "multiplayer"
 	Members    []int  `json:"members"`
 	Status     string `json:"status"`
 	CreatedAt  int64  `json:"createdAt"`
@@ -301,9 +302,12 @@ func (s *Store) roomByCodeUnsafe(code string) *Room {
 	return nil
 }
 
-func (s *Store) CreateRoom(hostUserID int, mission, difficulty string) (Room, error) {
+func (s *Store) CreateRoom(hostUserID int, mission, difficulty, mode string) (Room, error) {
 	if mission == "" {
 		return Room{}, errors.New("mission required")
+	}
+	if mode != "solo" && mode != "multiplayer" {
+		mode = "solo"
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -321,6 +325,7 @@ func (s *Store) CreateRoom(hostUserID int, mission, difficulty string) (Room, er
 		HostUserID: hostUserID,
 		Mission:    mission,
 		Difficulty: difficulty,
+		Mode:       mode,
 		Members:    []int{hostUserID},
 		Status:     "active",
 		CreatedAt:  now,
@@ -395,8 +400,24 @@ func (s *Store) ActiveRooms() []Room {
 	defer s.mu.Unlock()
 	out := make([]Room, 0, len(s.d.Rooms))
 	for _, r := range s.d.Rooms {
-		if r.Status == "active" {
+		if r.Status == "active" && r.Mode == "multiplayer" {
 			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func (s *Store) UsernamesByIDs(ids []int) map[int]string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	want := make(map[int]bool, len(ids))
+	for _, id := range ids {
+		want[id] = true
+	}
+	out := make(map[int]string, len(ids))
+	for _, u := range s.d.Users {
+		if want[u.ID] {
+			out[u.ID] = u.Username
 		}
 	}
 	return out

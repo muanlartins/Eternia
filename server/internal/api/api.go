@@ -123,6 +123,7 @@ type leaderboardResponse struct {
 type createRoomRequest struct {
 	Mission    string `json:"mission"`
 	Difficulty string `json:"difficulty"`
+	Mode       string `json:"mode"`
 }
 
 type roomResponse struct {
@@ -146,7 +147,7 @@ func HandleCreateRoom(s *store.Store) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "invalid json")
 			return
 		}
-		room, err := s.CreateRoom(user.ID, req.Mission, req.Difficulty)
+		room, err := s.CreateRoom(user.ID, req.Mission, req.Difficulty, req.Mode)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return

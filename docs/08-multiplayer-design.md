@@ -4,9 +4,9 @@ Setup de rede pra friends-only co-op via Tailscale. Phase 8 vai por 3 sub-fases:
 
 | Sub-fase | Escopo | Status |
 |---|---|---|
-| **8.A** | Network test — Tailscale install + Vite bind 0.0.0.0 + verificar conectividade entre máquinas | implementado (config) / pendente (teste do user) |
-| **8.B** | Lobby UI — listar rooms, create-room dialog, join-by-code, room presence | pendente |
-| **8.C** | Co-op gameplay — sincronizar player position + mob state via WS | pendente |
+| **8.A** | Network test — Tailscale install + Vite bind 0.0.0.0 + verificar conectividade entre máquinas | implementado |
+| **8.B** | Lobby UI — Solo / Create Public Room / Join by Code; mode flag em Room | implementado |
+| **8.C** | Position presence — clients streamam player state via WS, render remote players como ghosts | implementado |
 
 ## 8.A — Tailscale network test
 
@@ -185,3 +185,134 @@ continua sendo a transport — sem mudança.
 Você abre Eternia da segunda máquina via `http://100.x.y.z:5173`, faz
 login (qualquer username), pica char + mission, joga uma run, vê o save
 no leaderboard. Server e client logs sem erros relevantes.
+
+## 8.B — Lobby UI + room mode
+
+Após CharacterSelect, agora aparece **LobbyScreen** com 3 opções:
+
+```
++----------- LOBBY ------------+
+|                              |
+|   > Solo Run                 |
+|     Create Public Room       |
+|     Join Room by Code        |
+|                              |
+|   <description of selection> |
+|                              |
+|   ↑↓ select  ENTER confirm   |
++------------------------------+
+```
+
+**Solo Run**: caminho normal (player joga sozinho). Server cria room
+com `mode='solo'`. Esse mode é INVISÍVEL no list de active rooms — não
+aparece pra outros players.
+
+**Create Public Room**: vai pra MissionSelect, escolhe mission/diff,
+inicia. Server cria room com `mode='multiplayer'`. O code (6 chars)
+aparece no HUD top-right pra player compartilhar.
+
+**Join Room by Code**: text input pra 6 chars. ENTER joina. Server
+retorna a room (com mission/difficulty já decididas pelo host). Client
+pula MissionSelect e inicia a run direto com a config da room.
+
+### Server changes
+
+`Room` ganhou field `mode: "solo" | "multiplayer"`. `CreateRoom` aceita
+mode (default "solo"). `ActiveRooms` filtra apenas multiplayer + active —
+rooms solo são tracked no JSON mas não aparecem no list público.
+
+### Client changes
+
+- `LobbyScreen.ts` — novo overlay Pixi com state machine (menu / codeInput).
+  Code input é via keypress (alfanumérico, max 6, uppercased).
+- `Auth.createRoom(mission, difficulty, mode)` — `mode` agora obrigatório.
+- `Auth.roomByCode(code)` — fetch info de uma room (não autenticado).
+- `main.ts`: novo `startLobby(statusText?)` substitui `startMissionSelect`
+  como entry point após char select / game over / victory. `startMissionSelect`
+  agora aceita `(statusText, mode)` e é chamado a partir de lobby's onSolo
+  ou onCreatePublic.
+
+## 8.C — Position presence (player ghosts)
+
+Players num mesmo room multiplayer veem a posição um do outro em
+tempo real. Renderizado como "ghost" semitransparente com username
+acima e barrinha de HP.
+
+> Mob state e damage NÃO são sincronizados ainda. Cada client roda sua
+> própria simulação. Co-op real (compartilhar mobs, dano comum) fica
+> pra um 8.D futuro se quisermos.
+
+### Server (Go)
+
+Novo package `internal/hub/hub.go`:
+- `Hub.Join(code, member)` — adiciona conn ao room, retorna lista de
+  outros members (pra fazer roster initial)
+- `Hub.Leave(conn)` — remove de qualquer room que tava
+- `Hub.Broadcast(code, fromConn, payload)` — envia bytes pra todos os
+  outros conns no mesmo room
+
+`handleWS` (em main.go) agora dispatch baseado no `t` field:
+- `hello` → reply (mantido pra Phase 0 compat)
+- `enter_room` (com `code` + `token`) → autentica, registra no Hub, manda
+  `room_roster` pro joiner com lista de outros, broadcast `remote_join`
+  pros outros
+- `leave_room` → broadcast `remote_leave` pros outros
+- `player_state` (com `state` raw) → relay pra outros como `remote_state`
+
+Cleanup: ao fechar a WS connection, o defer no handleWS chama
+`Hub.Leave` + broadcast `remote_leave`.
+
+### Client (TS)
+
+`Network.ts` — abstração WS:
+- Reconnect automático com exponential backoff (max 8s)
+- Re-entra no room atual após reconnect (lembra `currentRoomCode` + token)
+- Handlers: `onHello`, `onRoster`, `onRemoteJoin`, `onRemoteLeave`,
+  `onRemoteState`, `onStatusChange`
+
+`RemotePlayer.ts` — ghost rendering:
+- Pixi Container com body rect (azulado, alpha 0.55), facing marker,
+  username text acima, mini HP bar
+- `applyState({x, y, vx, vy, facing, state, hp, maxHp})` — armazena
+  target. `update(dtMs)` — lerp current → target (rate 18/s)
+- Primeiro state recebido faz snap (sem lerp inicial)
+
+main.ts:
+- `remotePlayers: Map<userId, RemotePlayer>` — instância por player remoto
+- Adicionados ao worldStage assim que recebido roster ou remote_join
+- Removidos no remote_leave + ao trocar de room (`leaveCurrentRoom`)
+- Send loop: a cada 100ms (10Hz), `net.sendPlayerState(...)` se em room
+  multiplayer
+
+### Limitations / TODO
+
+- **No mob/dmg sync**: cada client mata seus próprios mobs. Em multiplayer,
+  player A pode estar fighting boss enquanto player B vê só ghost dele
+  parado. Aceitável pra alpha — co-op real precisa server-authoritative
+  mob state, big lift.
+- **Sem voice / chat**: não tem comunicação além de presence.
+- **Sem matching/lobby browse**: room list não tá no UI ainda. Player
+  entra via code compartilhado.
+- **Reconnect rejoin**: se o WS cair, ao reconectar tenta re-enter no
+  último room. Se a room já foi removida server-side, vai dar 404
+  silencioso e player fica desconectado de presence (mas o jogo continua
+  local).
+
+### Pra testar de duas máquinas (via Tailscale)
+
+1. Máquina A: lobby → Create Public Room → mission Forest, Normal → run inicia.
+   HUD mostra `@alice · ABCDEF`.
+2. Máquina B: abre `http://100.x.y.z:5173`, login como `bob`, char select,
+   lobby → Join Room by Code → digita `ABCDEF` → ENTER. Run inicia
+   com mesmo mission/diff.
+3. Cada machine vê o outro player como ghost azul-translúcido movendo
+   pelo mapa.
+4. Cada um mata seus próprios mobs (não compartilhado). Mas posições
+   sincronizadas em real-time.
+
+### Acceptance criteria 8.B/8.C
+
+- Da máquina A: criar room pública, ver code no HUD.
+- Da máquina B: joinar via code, ver mesmo stage/mission.
+- Mover na A, ver ghost se mexer na B (e vice-versa).
+- Sair (gameover, logout, ou refresh) → ghost desaparece da outra máquina.

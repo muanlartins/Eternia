@@ -1,5 +1,4 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
-import type { ClientMessage, ServerMessage } from '@eternia/shared';
 import { ELESIS } from './data/elesis.js';
 import { BUFFS, pickRandomBuffs } from './data/buffs.js';
 import { Input } from './game/Input.js';
@@ -21,6 +20,10 @@ import { Auth, fetchLeaderboard, type Room } from './game/Auth.js';
 import { LoginScreen } from './game/LoginScreen.js';
 import { CharacterSelect } from './game/CharacterSelect.js';
 import { MissionSelect } from './game/MissionSelect.js';
+import { LobbyScreen } from './game/LobbyScreen.js';
+import { Network } from './game/Network.js';
+import { RemotePlayer } from './game/RemotePlayer.js';
+import { findMission } from './data/missions.js';
 import { MOB_SPECS, stageById, type StageSpec } from './data/stages.js';
 import { MISSIONS, type MissionSpec } from './data/missions.js';
 import {
@@ -243,7 +246,28 @@ async function main() {
   const missionSelect = new MissionSelect(GAME_W, GAME_H);
   uiStage.addChild(missionSelect.container);
 
+  const lobbyScreen = new LobbyScreen(GAME_W, GAME_H);
+  uiStage.addChild(lobbyScreen.container);
+
   const audio = new GameAudio();
+
+  const remotePlayers = new Map<number, RemotePlayer>();
+  function clearRemotePlayers() {
+    for (const r of remotePlayers.values()) r.destroy();
+    remotePlayers.clear();
+  }
+  function addRemotePlayer(userId: number, username: string) {
+    if (remotePlayers.has(userId)) return;
+    const rp = new RemotePlayer(userId, username);
+    remotePlayers.set(userId, rp);
+    worldStage.addChild(rp.view);
+  }
+  function removeRemotePlayer(userId: number) {
+    const rp = remotePlayers.get(userId);
+    if (!rp) return;
+    rp.destroy();
+    remotePlayers.delete(userId);
+  }
 
   const controls = new Text({
     text:
@@ -257,22 +281,35 @@ async function main() {
   uiStage.addChild(controls);
 
   const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
-  const ws = new WebSocket(wsUrl);
   let serverInfo = 'connecting…';
-  ws.addEventListener('open', () => {
-    const hello: ClientMessage = { t: 'hello', v: '0.0.1' };
-    ws.send(JSON.stringify(hello));
+  const net = new Network(wsUrl);
+  net.setHandlers({
+    onHello: (v) => {
+      serverInfo = `server ${v}`;
+    },
+    onStatusChange: (status) => {
+      if (status === 'connecting') serverInfo = 'connecting…';
+      else if (status === 'closed') serverInfo = 'disconnected';
+      else if (status === 'error') serverInfo = 'ws error';
+    },
+    onRoster: (others) => {
+      for (const o of others) addRemotePlayer(o.userId, o.username);
+    },
+    onRemoteJoin: (entry) => {
+      addRemotePlayer(entry.userId, entry.username);
+    },
+    onRemoteLeave: (userId) => {
+      removeRemotePlayer(userId);
+    },
+    onRemoteState: (entry, state) => {
+      let rp = remotePlayers.get(entry.userId);
+      if (!rp) {
+        addRemotePlayer(entry.userId, entry.username);
+        rp = remotePlayers.get(entry.userId);
+      }
+      rp?.applyState(state);
+    },
   });
-  ws.addEventListener('message', (e) => {
-    try {
-      const msg: ServerMessage = JSON.parse(e.data);
-      if (msg.t === 'hello') serverInfo = `server ${msg.v}`;
-    } catch {
-      /* ignore */
-    }
-  });
-  ws.addEventListener('close', () => (serverInfo = 'disconnected'));
-  ws.addEventListener('error', () => (serverInfo = 'ws error'));
 
   type StagePhase =
     | 'playing'
@@ -337,7 +374,47 @@ async function main() {
     };
   }
 
-  function startMissionSelect(statusText?: string) {
+  function applyRunStart(mission: MissionSpec, difficulty: DifficultySpec) {
+    currentMission = mission;
+    currentStageIdx = 0;
+    currentDifficulty = difficulty;
+
+    MAX_LIVES = currentDifficulty.lives;
+    lives = MAX_LIVES;
+    player.resetBuffs();
+    runStats = makeStats();
+    pendingFlags = { newBestTime: false, newBestDamage: false, newFewestDeaths: false };
+
+    stage.destroy();
+    stage = newStage();
+    stage.spawn();
+    background.setStage(currentStageSpec().id);
+    refreshMiniMap();
+    player.teleportToStart();
+
+    modifierOffer.show(pickRandomModifiers(3));
+    stagePhase = 'modifierPick';
+    stageTransitionTimerMs = 0;
+    stageBanner.visible = false;
+  }
+
+  function joinWsRoom(room: Room) {
+    const token = auth.getToken();
+    if (token && room.mode === 'multiplayer') {
+      net.enterRoom(room.code, token);
+    }
+  }
+
+  function leaveCurrentRoom() {
+    if (currentRoom) {
+      void auth.leaveRoom(currentRoom.code);
+      net.leaveRoom();
+      currentRoom = null;
+    }
+    clearRemotePlayers();
+  }
+
+  function startMissionSelect(statusText: string | undefined, mode: 'solo' | 'multiplayer') {
     victoryStats.hide();
     buffOffer.hide();
     modifierOffer.hide();
@@ -345,39 +422,48 @@ async function main() {
     audio.stopBgm();
     stagePhase = 'modifierPick';
     stageTransitionTimerMs = 0;
-    if (currentRoom) {
-      void auth.leaveRoom(currentRoom.code);
-      currentRoom = null;
-    }
+    leaveCurrentRoom();
     missionSelect.show({
       ...(statusText !== undefined ? { statusText } : {}),
       onConfirm: (mission, difficulty) => {
-        currentMission = mission;
-        currentStageIdx = 0;
-        currentDifficulty = difficulty;
-
-        MAX_LIVES = currentDifficulty.lives;
-        lives = MAX_LIVES;
-        player.resetBuffs();
-        runStats = makeStats();
-        pendingFlags = { newBestTime: false, newBestDamage: false, newFewestDeaths: false };
-
-        stage.destroy();
-        stage = newStage();
-        stage.spawn();
-        background.setStage(currentStageSpec().id);
-        refreshMiniMap();
-        player.teleportToStart();
-
         missionSelect.hide();
-        modifierOffer.show(pickRandomModifiers(3));
-        stagePhase = 'modifierPick';
-        stageTransitionTimerMs = 0;
-        stageBanner.visible = false;
-
-        void auth.createRoom(mission.id, difficulty.id).then((room) => {
-          if (room) currentRoom = room;
+        applyRunStart(mission, difficulty);
+        void auth.createRoom(mission.id, difficulty.id, mode).then((room) => {
+          if (!room) return;
+          currentRoom = room;
+          joinWsRoom(room);
         });
+      },
+    });
+  }
+
+  function startLobby(statusText?: string) {
+    victoryStats.hide();
+    buffOffer.hide();
+    modifierOffer.hide();
+    stageBanner.visible = false;
+    audio.stopBgm();
+    leaveCurrentRoom();
+    lobbyScreen.show({
+      onSolo: () => {
+        lobbyScreen.hide();
+        startMissionSelect(statusText, 'solo');
+      },
+      onCreatePublic: () => {
+        lobbyScreen.hide();
+        startMissionSelect(statusText, 'multiplayer');
+      },
+      onJoinByCode: async (code) => {
+        const room = await auth.joinRoom(code);
+        if (!room) return { ok: false, error: 'room not found' };
+        const mission = findMission(room.mission);
+        if (!mission) return { ok: false, error: 'invalid mission in room' };
+        const difficulty = findDifficulty(room.difficulty as 'easy' | 'normal' | 'hard');
+        currentRoom = room;
+        lobbyScreen.hide();
+        applyRunStart(mission, difficulty);
+        joinWsRoom(room);
+        return { ok: true };
       },
     });
   }
@@ -389,7 +475,7 @@ async function main() {
     audio.stopBgm();
     characterSelect.show(() => {
       characterSelect.hide();
-      startMissionSelect();
+      startLobby();
     });
   }
 
@@ -418,6 +504,8 @@ async function main() {
   let bossSparkCooldownMs = 0;
   let bossDramaTimerMs = 0;
   let lastSaveRun: Promise<void> | null = null;
+  let netSendAccumMs = 0;
+  const NET_SEND_INTERVAL_MS = 100;
 
   function impactFromDamage(applied: number): { shake: number; shakeDur: number; pause: number; intensity: HitIntensity } {
     if (applied >= 50) return { shake: 14, shakeDur: 260, pause: 90, intensity: 'massive' };
@@ -442,6 +530,13 @@ async function main() {
       return;
     }
 
+    if (lobbyScreen.isOpen()) {
+      lobbyScreen.tick(realDtMs);
+      lobbyScreen.update(input);
+      input.endFrame();
+      return;
+    }
+
     if (missionSelect.isOpen()) {
       missionSelect.update(input);
       input.endFrame();
@@ -452,10 +547,7 @@ async function main() {
       menuScreen.update(audio, input, {
         username: auth.getUsername(),
         onLogout: () => {
-          if (currentRoom) {
-            void auth.leaveRoom(currentRoom.code);
-            currentRoom = null;
-          }
+          leaveCurrentRoom();
           auth.logout();
           menuScreen.close();
           loginScreen.show({
@@ -828,7 +920,7 @@ async function main() {
     } else if (stagePhase === 'gameOver') {
       stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
-        startMissionSelect('GAME OVER  ·  pick a mission to retry');
+        startLobby('GAME OVER  ·  pick a mission to retry');
       }
     } else if (stagePhase === 'victoryAnnounce') {
       stageTransitionTimerMs -= realDtMs;
@@ -873,7 +965,7 @@ async function main() {
         input.justPressed('pick3') ||
         input.justPressed('up');
       if (anyAction) {
-        startMissionSelect();
+        startLobby();
       }
     }
 
@@ -912,6 +1004,25 @@ async function main() {
     }
 
     hitFx.update(dtMs);
+
+    for (const rp of remotePlayers.values()) rp.update(realDtMs);
+
+    if (currentRoom && currentRoom.mode === 'multiplayer') {
+      netSendAccumMs += realDtMs;
+      if (netSendAccumMs >= NET_SEND_INTERVAL_MS) {
+        netSendAccumMs = 0;
+        net.sendPlayerState({
+          x: player.x,
+          y: player.y,
+          vx: player.vx,
+          vy: player.vy,
+          facing: player.facing,
+          state: player.state,
+          hp: player.hp,
+          maxHp: player.getMaxHp(),
+        });
+      }
+    }
 
     camera.follow(
       player.x + ELESIS.width / 2,

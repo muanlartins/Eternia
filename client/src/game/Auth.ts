@@ -25,6 +25,7 @@ export interface Room {
   hostUserId: number;
   mission: string;
   difficulty: string;
+  mode: 'solo' | 'multiplayer';
   members: number[];
   status: string;
   createdAt: number;
@@ -179,14 +180,18 @@ export class Auth {
     return { Authorization: `Bearer ${this.state.token}` };
   }
 
-  async createRoom(mission: string, difficulty: string): Promise<Room | null> {
+  async createRoom(
+    mission: string,
+    difficulty: string,
+    mode: 'solo' | 'multiplayer' = 'solo',
+  ): Promise<Room | null> {
     const auth = this.authHeader();
     if (!auth) return null;
     try {
       const res = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...auth },
-        body: JSON.stringify({ mission, difficulty }),
+        body: JSON.stringify({ mission, difficulty, mode }),
       });
       if (!res.ok) {
         console.warn(`[auth] createRoom failed: HTTP ${res.status}`);
@@ -198,6 +203,21 @@ export class Auth {
       console.warn('[auth] createRoom network error', e);
       return null;
     }
+  }
+
+  async roomByCode(code: string): Promise<Room | null> {
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(code.toUpperCase())}`);
+      if (!res.ok) return null;
+      const data = (await res.json()) as { room: Room };
+      return data.room;
+    } catch {
+      return null;
+    }
+  }
+
+  getToken(): string | null {
+    return this.state?.token ?? null;
   }
 
   async joinRoom(code: string): Promise<Room | null> {

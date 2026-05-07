@@ -18,7 +18,7 @@
 | **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
 | **6 — Auth + persistence** | Login, JSON store, run sync, leaderboard, MenuScreen + logout | ⏳ 6.A + 6.B + 6.C done; 6.D skipped (JSON suficiente) | `06-server-design.md` |
 | **7 — Lobby UX restructure** | Login → Character → Mission → Run flow + difficulty + room foundation | ✅ 7.A + 7.B + 7.C done | `07-lobby-design.md` |
-| **8 — Multiplayer (Tailscale alpha)** | Network test → lobby presence → co-op gameplay | ⏳ 8.A config done; teste do user pendente | `08-multiplayer-design.md` |
+| **8 — Multiplayer (Tailscale alpha)** | Network test + Lobby UI + position presence (ghosts) | ✅ 8.A + 8.B + 8.C done. Falta 8.D opcional (mob/dmg sync) | `08-multiplayer-design.md` |
 | **9 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (último, ~50-100h) |
 
 ## O que ainda falta dentro das phases "ativas"
@@ -111,12 +111,15 @@ sprites são o último polish.
      (POST/GET/join/leave/list). Cada run cria silenciosamente uma room
      no server. Room code aparece no HUD top-right (`@user · ABCDEF`).
      Sem UI de create/join ainda — vem em 8.B junto com lobby/MP.
-8. ⏳ **Phase 8 — Multiplayer (Tailscale alpha)** — em progresso.
-   - 8.A done (config 2026-05-06): Vite host: true, Tailscale setup
-     guide em `08-multiplayer-design.md`. Aguardando user testar de
-     duas máquinas no tailnet.
-   - 8.B pending: Lobby UI (room list + create/join dialog).
-   - 8.C pending: Co-op gameplay (synced state via WS).
+8. ✅ **Phase 8 — Multiplayer (Tailscale alpha)** — done.
+   - 8.A (Tailscale + Vite host: true): testado pelo user, funcionando.
+   - 8.B (lobby): LobbyScreen com Solo / Create Public / Join by Code +
+     Room.mode flag (solo invisível no list público).
+   - 8.C (presence): WS hub server-side, Network class client-side,
+     RemotePlayer ghost rendering. Players mesma room veem position um
+     do outro em real-time (~10Hz, lerp client). Mob/damage NÃO sync —
+     cada client roda sua própria sim.
+   - 8.D opcional (futuro): server-authoritative mob state pra co-op real.
 9. ⏳ **Phase 9 — Sprites/arte** — substitui primitivas. Decisão pendente:
    extrair do GC original vs gerar via SD. ~50-100h. (último).
 
