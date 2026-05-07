@@ -22,6 +22,7 @@ export interface AttackVariant {
   readonly weight: number;
   readonly moveDuringActiveVx?: number;
   readonly moveDuringActiveVy?: number;
+  readonly enterActiveJumpVy?: number;
   readonly projectile?: ProjectileSpec;
 }
 
@@ -180,6 +181,124 @@ export const BRUTE: MobSpec = {
   parriedDamageMultiplier: 1.6,
   comboBreakThreshold: 8,
   respawnMs: 6000,
+};
+
+export const BOG_FROG: MobSpec = {
+  id: 'bog-frog',
+  displayName: 'Bog Frogs',
+  width: 44,
+  height: 32,
+  maxHp: 110,
+  walkSpeed: 60,
+  aggroRange: 260,
+  attackRange: 110,
+  attacks: [
+    {
+      telegraphMs: 540,
+      activeMs: 280,
+      recoveryMs: 480,
+      damage: 16,
+      knockback: 320,
+      hitbox: { cx: 32, y: -2, w: 60, h: 36 },
+      weight: 1,
+      moveDuringActiveVx: 280,
+      enterActiveJumpVy: -380,
+    },
+  ],
+  attackCooldownMs: 1700,
+  knockbackFriction: 1500,
+  hurtStunMs: 280,
+  parriedStunMs: 1000,
+  parriedDamageMultiplier: 1.7,
+  comboBreakThreshold: 4,
+  respawnMs: 4500,
+};
+
+export const MIRE_WRAITH: MobSpec = {
+  id: 'mire-wraith',
+  displayName: 'Mire Wraiths',
+  width: 36,
+  height: 50,
+  maxHp: 75,
+  walkSpeed: 140,
+  aggroRange: 320,
+  attackRange: 64,
+  attacks: [
+    {
+      telegraphMs: 380,
+      activeMs: 140,
+      recoveryMs: 380,
+      damage: 22,
+      knockback: 300,
+      hitbox: { cx: 30, y: -4, w: 52, h: 48 },
+      weight: 1,
+    },
+  ],
+  attackCooldownMs: 1300,
+  knockbackFriction: 1400,
+  hurtStunMs: 240,
+  parriedStunMs: 950,
+  parriedDamageMultiplier: 1.7,
+  comboBreakThreshold: 3,
+  respawnMs: 4000,
+};
+
+export const DROWNED_KING: MobSpec = {
+  id: 'drowned-king',
+  displayName: 'Bosses',
+  isBoss: true,
+  bossName: 'Drowned King',
+  width: 90,
+  height: 80,
+  maxHp: 420,
+  walkSpeed: 50,
+  aggroRange: 460,
+  attackRange: 240,
+  attacks: [
+    {
+      telegraphMs: 460,
+      activeMs: 200,
+      recoveryMs: 580,
+      damage: 18,
+      knockback: 360,
+      hitbox: { cx: 64, y: 4, w: 84, h: 72 },
+      weight: 50,
+    },
+    {
+      telegraphMs: 660,
+      activeMs: 240,
+      recoveryMs: 760,
+      damage: 26,
+      knockback: 480,
+      hitbox: { cx: 0, y: 10, w: 220, h: 100 },
+      weight: 25,
+    },
+    {
+      telegraphMs: 580,
+      activeMs: 400,
+      recoveryMs: 680,
+      damage: 24,
+      knockback: 460,
+      hitbox: { cx: 70, y: 0, w: 96, h: 76 },
+      weight: 25,
+      moveDuringActiveVx: 300,
+    },
+  ],
+  attackCooldownMs: 1500,
+  knockbackFriction: 1900,
+  hurtStunMs: 220,
+  parriedStunMs: 800,
+  parriedDamageMultiplier: 1.6,
+  comboBreakThreshold: 5,
+  respawnMs: 8000,
+  phase2: {
+    hpThresholdPct: 0.5,
+    attackCooldownMul: 0.5,
+    telegraphMul: 0.7,
+    damageMul: 1.25,
+    walkSpeedMul: 1.5,
+    comboBreakThresholdMul: 0.7,
+  },
 };
 
 export const WISP: MobSpec = {

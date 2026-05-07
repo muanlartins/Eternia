@@ -1,7 +1,26 @@
 import type { MobSpec } from './mobs.js';
-import { SLIM, RACOON, INSECTIVOROUS, ARCHER, BRUTE, WISP } from './mobs.js';
+import {
+  SLIM,
+  RACOON,
+  INSECTIVOROUS,
+  ARCHER,
+  BRUTE,
+  WISP,
+  BOG_FROG,
+  MIRE_WRAITH,
+  DROWNED_KING,
+} from './mobs.js';
 
-export type MobType = 'slim' | 'racoon' | 'insectivorous' | 'archer' | 'brute' | 'wisp';
+export type MobType =
+  | 'slim'
+  | 'racoon'
+  | 'insectivorous'
+  | 'archer'
+  | 'brute'
+  | 'wisp'
+  | 'bog-frog'
+  | 'mire-wraith'
+  | 'drowned-king';
 
 export const MOB_SPECS: Record<MobType, MobSpec> = {
   slim: SLIM,
@@ -10,6 +29,9 @@ export const MOB_SPECS: Record<MobType, MobSpec> = {
   archer: ARCHER,
   brute: BRUTE,
   wisp: WISP,
+  'bog-frog': BOG_FROG,
+  'mire-wraith': MIRE_WRAITH,
+  'drowned-king': DROWNED_KING,
 };
 
 export interface MobSpawn {
@@ -91,12 +113,44 @@ export const STAGES: readonly StageSpec[] = [
   },
   {
     id: 'forest-1-4',
-    name: 'Floresta dos Elfos — Boss',
+    name: 'Floresta dos Elfos — Mid Boss',
     width: 1280,
     spawns: [
       { type: 'racoon', x: 360 },
       { type: 'racoon', x: 620 },
       { type: 'insectivorous', x: 1000 },
+    ],
+    platforms: [
+      { x: 240, y: 400, w: 200, h: 12 },
+      { x: 540, y: 340, w: 240, h: 12 },
+      { x: 900, y: 400, w: 220, h: 12 },
+    ],
+  },
+  {
+    id: 'swamp-1-1',
+    name: 'Pântano dos Esquecidos',
+    width: 1400,
+    spawns: [
+      { type: 'mire-wraith', x: 280 },
+      { type: 'bog-frog', x: 540 },
+      { type: 'wisp', x: 700 },
+      { type: 'mire-wraith', x: 980 },
+      { type: 'bog-frog', x: 1240 },
+    ],
+    platforms: [
+      { x: 220, y: 400, w: 200, h: 12 },
+      { x: 580, y: 340, w: 220, h: 12 },
+      { x: 940, y: 380, w: 200, h: 12 },
+    ],
+  },
+  {
+    id: 'swamp-1-2',
+    name: 'Antro do Rei Afogado',
+    width: 1320,
+    spawns: [
+      { type: 'mire-wraith', x: 360 },
+      { type: 'bog-frog', x: 640 },
+      { type: 'drowned-king', x: 1040 },
     ],
     platforms: [
       { x: 240, y: 400, w: 200, h: 12 },

@@ -19,6 +19,7 @@
 | **4.I** | Portal requires onGround + 6 new buffs + 3 new modifiers | implementado |
 | **4.J** | Boss death drama phase (game continues ticking enquanto boss completa fade antes do VICTORY!) | implementado |
 | **4.L** | Boss intro banner ("★ BOSS ★ NAME") + persistent boss HP bar no topo do HUD com Phase 2 indicator | implementado |
+| **4.M** | Pântano dos Esquecidos (segundo bioma): 2 stages novos (swamp-1-1, swamp-1-2) + isLastStage flag pra portal funcionar com mid-boss | implementado |
 | **4.K** | Run record / save no servidor | implementado em Phase 6.A (`06-server-design.md`) |
 
 ## 4.A — Stage system
@@ -606,6 +607,55 @@ bosses no mesmo stage (raro), retorna o primeiro vivo.
   adicionar depois se feedback for fraco.
 - **Stagger bar**: alguns jogos têm uma barra de "stagger" que enche com
   hits rápidos. Não tem aqui. Pode entrar com sistema de poise futuro.
+
+## 4.M — Pântano dos Esquecidos (segundo bioma)
+
+Adicionado segundo bioma após a Floresta. Run agora atravessa 6 stages
+total (4 forest + 2 swamp), com mid-boss (Insectivorous na fase 4) e
+final-boss (Drowned King na fase 6).
+
+### Stage list
+
+| Idx | ID | Name | Width | Mobs |
+|---|---|---|---|---|
+| 0 | `forest-1-1` | Floresta dos Elfos — 1 | 1280 | 3 slim + 2 racoon |
+| 1 | `forest-1-2` | Floresta dos Elfos — 2 | 1360 | 2 slim + 2 archer + 1 racoon + 1 wisp |
+| 2 | `forest-1-3` | Floresta Profunda | 1440 | 1 racoon + 2 brute + 2 archer + 2 wisp |
+| 3 | `forest-1-4` | Floresta dos Elfos — Mid Boss | 1280 | 2 racoon + Insectivorous |
+| 4 | `swamp-1-1` | Pântano dos Esquecidos | 1400 | 2 mire-wraith + 2 bog-frog + 1 wisp |
+| 5 | `swamp-1-2` | Antro do Rei Afogado | 1320 | 1 mire-wraith + 1 bog-frog + Drowned King |
+
+### `isLastStage` flag (Stage)
+
+Antes: `Stage` decidia portal visibility via `!hasBoss()`. Funcionava com 1
+boss = final stage. Agora com 2 bosses (mid + final), o mid-boss precisa
+exibir portal pra player avançar.
+
+Solução: `Stage` constructor aceita `{ isLastStage?: boolean }`. Portal
+mostra se `isCleared() && !isLastStage` (ignora `hasBoss`). main.ts passa
+`isLastStage: idx === STAGES.length - 1` em todas as criações de Stage.
+
+`getPortalBox()` similar — retorna null só se isLastStage.
+
+`hasBoss()` continua disponível pra outras checks (BossHpBar, kill drama),
+não foi removido.
+
+### BGM mapping
+
+`bgmIdForStage(stageId)`:
+- `forest-1-4`, `swamp-1-2` → `boss` (luta de boss padrão)
+- `forest-1-3` → `deep` (atmosfera ominosa pre-boss)
+- `swamp-*` → `swamp` (novo perfil: F3, 56 BPM, pad voice)
+- otherwise → `forest`
+
+Bg palette: `swamp` (verde escuro de pântano) e `swampBoss` (azul mais
+escuro pro antro do rei). Adicionados em `Background.PALETTES`.
+
+### Run length
+
+Antes: 4 stages, ~3-5 min/run. Agora: 6 stages, ~5-8 min/run. Buff
+choices também aumentaram (de 3 pra 5 ofertas, uma após cada não-final
+stage). Builds podem stackar mais — cuidado com runaway scaling depois.
 
 ## Próximas sub-fases
 

@@ -126,7 +126,10 @@ export class Auth {
   }
 
   async saveRun(payload: RunPayload): Promise<void> {
-    if (!this.state) return;
+    if (!this.state) {
+      console.warn('[auth] saveRun skipped: not authenticated (playing as guest)');
+      return;
+    }
     try {
       const res = await fetch('/api/runs', {
         method: 'POST',
@@ -137,14 +140,19 @@ export class Auth {
         body: JSON.stringify(payload),
       });
       if (res.status === 401) {
+        console.warn('[auth] saveRun got 401 — token invalid; logging out');
         this.logout();
         return;
       }
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.warn(`[auth] saveRun failed: HTTP ${res.status}`);
+        return;
+      }
       const data = (await res.json()) as { records: ServerRecords };
       this.serverRecords = data.records;
-    } catch {
-      /* network failure — local records still authoritative */
+      console.log('[auth] run saved', data.records);
+    } catch (e) {
+      console.warn('[auth] saveRun network error', e);
     }
   }
 

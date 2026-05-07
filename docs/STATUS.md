@@ -13,8 +13,8 @@
 | **0 — Foundation** | Monorepo (client+server+shared), pnpm, Vite, hello-world WS | ✅ done | inicial |
 | **1 — Movement** | walk/run/jump/double_jump/dash/dash_jump, camera, parallax | ✅ done | `01-movement-design.md` |
 | **2 — Combat** | Combo Z, S1/S2/S3, dash atk, dodge, parry, charge-Z, counter | ✅ done (2.A → 2.I) | `02-combat-design.md` |
-| **3 — Mobs/AI** | 6 mob types (slim, racoon, archer, brute, wisp aerial, insectivorous boss) + gravity + multi-phase boss | ✅ done (3.A → 3.I) | `03-mobs-design.md` |
-| **4 — Stage flow + buffs** | 4 stages, buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.J) | `04-stages-design.md` |
+| **3 — Mobs/AI** | 9 mob types (slim, racoon, archer, brute, wisp, bog-frog, mire-wraith, insectivorous, drowned-king) + gravity + multi-phase boss | ✅ done (3.A → 3.J) | `03-mobs-design.md` |
+| **4 — Stage flow + buffs** | 6 stages (forest 1-4 + swamp 1-2), buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.M) | `04-stages-design.md` |
 | **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
 | **6 — Auth + persistence** | Login, JSON store, run sync, leaderboard, MenuScreen + logout | ⏳ 6.A + 6.B + 6.C done; 6.D pendente | `06-server-design.md` |
 | **7 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (futuro, ~50-100h) |
@@ -32,8 +32,8 @@
 
 | Categoria | Quantidade | Detalhe |
 |---|---|---|
-| Stages | 4 | forest-1-1 → forest-1-4 (boss) |
-| Mob types | 6 | slim, racoon, archer, brute, wisp (aerial), insectivorous (boss multi-phase) |
+| Stages | 6 | forest-1-1 → forest-1-4 (mid-boss), swamp-1-1 → swamp-1-2 (final boss) |
+| Mob types | 9 | slim, racoon, archer, brute, wisp (aerial), bog-frog (leaper), mire-wraith (glass cannon), insectivorous (mid-boss), drowned-king (final boss) |
 | Buffs (run-pickup) | 15 | 11 common + 4 rare |
 | Modifiers (run-start) | 9 | tradeoffs grandes (glass cannon, tank, berserker, etc.) |
 | Skills | 3 | S1 (light), S2 (medium), S3 (heavy) — todas com MP cost + cooldown |
@@ -92,8 +92,11 @@ Sequência: **1 → 2 → 3 → 4 → 5 → 6 → 7**.
      toggle), Sound (volumes + mute), Logout. Logout limpa localStorage e
      reabre LoginScreen pra trocar de user.
    - 6.D pending: migrar JSON pra SQLite se escalar.
-6. ⏳ **Stage 5 / novo bioma** — sair de Floresta, ir para
-   Pântano/Caverna. Mais 2-3 mobs novos + boss novo. ~8-10h.
+6. ✅ **Pântano dos Esquecidos** (feito 2026-05-06) — segundo bioma. 2 stages
+   novos (swamp-1-1, swamp-1-2) + 3 mobs novos (Bog Frog leap-attack, Mire
+   Wraith glass-cannon, Drowned King boss multi-phase). Nova BGM 'swamp' +
+   palettes 'swamp'/'swampBoss'. Insectivorous virou mid-boss; Drowned King
+   é o final-boss. Run agora ~6-8min, 6 stages.
 7. ⏳ **Phase 7 — Sprites/arte** — substitui primitivas. Decisão pendente:
    extrair do GC original vs gerar via SD. ~50-100h.
 

@@ -1,6 +1,6 @@
 export type HitIntensity = 'light' | 'medium' | 'heavy' | 'massive';
 
-export type BgmId = 'forest' | 'deep' | 'boss' | 'bossRage';
+export type BgmId = 'forest' | 'deep' | 'boss' | 'bossRage' | 'swamp';
 
 interface BgmSpec {
   rootHz: number;
@@ -80,6 +80,14 @@ const BGM_SPECS: Record<BgmId, BgmSpec> = {
     bass: [-12, -10, -7, -5, -12, -10, -7, -5, -12, -10, -7, -5, -12, -10, -8, -5],
     voice: 'aggressive',
     bassDurBeats: 1,
+  },
+  swamp: {
+    rootHz: 174.61,
+    bpm: 56,
+    melody: [12, -1, -1, 15, -1, -1, 13, -1, 12, -1, -1, 17, -1, -1, 14, -1],
+    bass: [-12, -1, -1, -1, -1, -1, -1, -1, -8, -1, -1, -1, -1, -1, -1, -1],
+    voice: 'pad',
+    bassDurBeats: 8,
   },
 };
 

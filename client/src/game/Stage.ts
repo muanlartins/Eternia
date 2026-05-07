@@ -12,6 +12,7 @@ const PORTAL_HITBOX_H = 80;
 export class Stage {
   readonly spec: StageSpec;
   private readonly worldStage: Container;
+  private readonly isLastStage: boolean;
   private mobs: Mob[] = [];
   private platformGfx: Graphics[] = [];
   private platformBoxes: AABB[] = [];
@@ -21,9 +22,10 @@ export class Stage {
   private portal: Graphics | null = null;
   private portalTimeMs = 0;
 
-  constructor(spec: StageSpec, worldStage: Container) {
+  constructor(spec: StageSpec, worldStage: Container, opts: { isLastStage?: boolean } = {}) {
     this.spec = spec;
     this.worldStage = worldStage;
+    this.isLastStage = opts.isLastStage ?? false;
   }
 
   spawn() {
@@ -88,7 +90,7 @@ export class Stage {
       return true;
     });
 
-    if (this.portal && this.isCleared() && !this.hasBoss()) {
+    if (this.portal && this.isCleared() && !this.isLastStage) {
       this.portal.visible = true;
       this.portalTimeMs += dtMs;
       this.portal.clear();
@@ -154,7 +156,7 @@ export class Stage {
   }
 
   getPortalBox(): AABB | null {
-    if (!this.isCleared() || !this.portal || this.hasBoss()) return null;
+    if (!this.isCleared() || !this.portal || this.isLastStage) return null;
     const cx = this.spec.width - 100;
     return {
       x: cx - PORTAL_RX,

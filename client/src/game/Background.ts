@@ -37,6 +37,20 @@ const PALETTES: Record<string, Palette> = {
     mid: 0x371624,
     accent: 0x782e3e,
   },
+  swamp: {
+    skyTop: 0x0a120e,
+    skyBottom: 0x1a261e,
+    far: 0x14201c,
+    mid: 0x1f2e26,
+    accent: 0x3a6048,
+  },
+  swampBoss: {
+    skyTop: 0x0a141c,
+    skyBottom: 0x182838,
+    far: 0x132030,
+    mid: 0x1f2c3e,
+    accent: 0x4a6890,
+  },
 };
 
 export class Background {
@@ -73,7 +87,9 @@ export class Background {
 
   private paletteIdFor(stageId: string): string {
     const lower = stageId.toLowerCase();
-    if (lower.includes('1-4') || lower.includes('boss')) return 'boss';
+    if (lower === 'swamp-1-2') return 'swampBoss';
+    if (lower.startsWith('swamp')) return 'swamp';
+    if (lower === 'forest-1-4') return 'boss';
     if (lower.includes('1-3') || lower.includes('profunda')) return 'deep';
     if (lower.includes('forest')) return 'forest';
     return 'default';

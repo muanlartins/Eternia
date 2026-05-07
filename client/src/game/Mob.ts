@@ -34,6 +34,51 @@ const WISP_COLOR: Record<MobState, number> = {
   dead: 0x33223e,
 };
 
+const BOG_FROG_COLOR: Record<MobState, number> = {
+  idle: 0x6b8a3a,
+  chase: 0x8aa84a,
+  telegraph: 0xffaa22,
+  active: 0xff4444,
+  recover: 0x556633,
+  hurt: 0xff8866,
+  dead: 0x3a4525,
+};
+
+const MIRE_WRAITH_COLOR: Record<MobState, number> = {
+  idle: 0x447799,
+  chase: 0x55a8c8,
+  telegraph: 0xff66aa,
+  active: 0xff4488,
+  recover: 0x335577,
+  hurt: 0xff8899,
+  dead: 0x223344,
+};
+
+const DROWNED_KING_COLOR: Record<MobState, number> = {
+  idle: 0x2a4a78,
+  chase: 0x3a5b8c,
+  telegraph: 0xff66aa,
+  active: 0xff4488,
+  recover: 0x223855,
+  hurt: 0xff77aa,
+  dead: 0x111922,
+};
+
+function paletteFor(id: string): Record<MobState, number> {
+  switch (id) {
+    case 'wisp':
+      return WISP_COLOR;
+    case 'bog-frog':
+      return BOG_FROG_COLOR;
+    case 'mire-wraith':
+      return MIRE_WRAITH_COLOR;
+    case 'drowned-king':
+      return DROWNED_KING_COLOR;
+    default:
+      return MOB_COLOR;
+  }
+}
+
 const MOB_GRAVITY = 2200;
 const MOB_FALL_GRAVITY_MULTIPLIER = 1.4;
 const MOB_MAX_FALL_SPEED = 1400;
@@ -452,6 +497,11 @@ export class Mob {
       if (s === MobState.Active) {
         this.currentAttackId++;
         this.spawnProjectileIfNeeded();
+        const atk = this.currentAttack();
+        if (atk.enterActiveJumpVy !== undefined) {
+          this.vy = atk.enterActiveJumpVy;
+          this.onGround = false;
+        }
       }
     }
   }
@@ -500,14 +550,15 @@ export class Mob {
           .fill({ color: 0xddddff, alpha })
           .stroke({ color: 0xffd700, width: 2, alpha: alpha * 0.8 });
       } else if (!this.isBoss()) {
+        const deadColor = paletteFor(this.spec.id).dead;
         this.body
           .rect(0, 0, this.spec.width, this.spec.height)
-          .fill({ color: MOB_COLOR.dead, alpha: 0.35 });
+          .fill({ color: deadColor, alpha: 0.35 });
       }
       return;
     }
 
-    const palette = this.spec.id === 'wisp' ? WISP_COLOR : MOB_COLOR;
+    const palette = paletteFor(this.spec.id);
     const baseColor = palette[this.state];
     const color = this.hitFlashMs > 0 ? 0xff8866 : baseColor;
     const strokeColor = this.parriedBuff

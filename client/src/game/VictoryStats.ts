@@ -132,7 +132,10 @@ export class VictoryStats {
     if (!this.leaderboardLoaded) {
       lbSection = `\n\nGLOBAL TOP — FASTEST\n  (loading…)`;
     } else if (this.lastLeaderboard.length === 0) {
-      lbSection = `\n\nGLOBAL TOP — FASTEST\n  (offline / guest run — login to compete)`;
+      const empty = this.lastUsername
+        ? '  (no runs yet — be the first!)'
+        : '  (login to save your run + compete)';
+      lbSection = `\n\nGLOBAL TOP — FASTEST\n${empty}`;
     } else {
       const rows = this.lastLeaderboard.slice(0, 5).map((e, i) => {
         const t = formatTime(e.durationMs);

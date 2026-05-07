@@ -14,6 +14,7 @@
 | **3.G** | Mob gravity (vy + platform/ground collision; mobs fall when knocked off platforms) | implementado |
 | **3.H** | Multi-phase boss (Insectivorous Phase 2 < 50% HP: ×0.55 cooldown, ×0.7 telegraph, ×1.2 dmg, ×1.4 walk, red tint, audio sting, BGM swap to bossRage) | implementado |
 | **3.I** | Wisp — primeiro mob aéreo (`hasGravity: false` + `hoverY`); dive attack com vy=320 + bobbing; purple palette + glow circles | implementado |
+| **3.J** | Swamp mobs: Bog Frog (leap-attack via `enterActiveJumpVy`), Mire Wraith (fast melee glass-cannon), Drowned King (water boss multi-phase) | implementado |
 
 ## 3.A — Slim com AI
 
@@ -585,3 +586,110 @@ Renderização especial:
   no ar — combina com aesthetic.
 - **Phase transition**: wisp não tem `phase2`. Pode ser adicionado depois
   se quisermos elite wisps.
+
+## 3.J — Swamp mobs (Pântano dos Esquecidos)
+
+3 mob types novos pro segundo bioma:
+
+### Bog Frog (sapo do brejo)
+
+Mob terrestre que LEAPS no ataque. Animação: telegraph (crouch), active
+(arcada saltando), recover (landing).
+
+| Field | Value |
+|---|---|
+| `width × height` | 44×32 (baixo, largo) |
+| `maxHp` | 110 |
+| `walkSpeed` | 60 (lento) |
+| `aggroRange` | 260 |
+| `attackRange` | 110 |
+| `attackCooldownMs` | 1700 |
+| `comboBreakThreshold` | 4 |
+
+**Leap attack**: telegraph 540ms (crouch), active 280ms (no ar com gravidade),
+recover 480ms (pousa). Damage 16, knockback 320, hitbox cx=32 w=60 h=36.
+
+Movement: `moveDuringActiveVx: 280` (forward velocity sustained durante o
+salto) + `enterActiveJumpVy: -380` (impulso vertical único quando entra em
+Active). Gravidade do mob (já existe pra outros mobs com `hasGravity`
+default) puxa de volta. Resultado: arco parabólico de salto.
+
+### Mire Wraith (espectro do brejo)
+
+Glass-cannon terrestre. Rápido, agressivo, frágil.
+
+| Field | Value |
+|---|---|
+| `width × height` | 36×50 |
+| `maxHp` | 75 (frágil) |
+| `walkSpeed` | 140 (rápido) |
+| `aggroRange` | 320 |
+| `attackRange` | 64 (curto) |
+| `attackCooldownMs` | 1300 |
+| `comboBreakThreshold` | 3 (rage easily) |
+
+**Slash attack**: telegraph 380ms (curto, perigoso), active 140ms,
+recover 380ms. Damage 22 (alto), knockback 300.
+
+Palette cyan/teal (`MIRE_WRAITH_COLOR`) — combinação com aesthetic
+fantasma. Glass-cannon design: 75 HP morre em 2-3 hits combo Z, mas o
+22 damage por hit force player a parry/dodge tight.
+
+### Drowned King (boss do pântano)
+
+Variação do Insectivorous boss. Mesmas 3 attacks (bite/AoE stomp/charge)
+mas stats levemente diferentes + Phase 2 mais agressivo + palette azul-marinho.
+
+| Field | Value |
+|---|---|
+| `maxHp` | 420 (vs 360 do insectivorous) |
+| `walkSpeed` | 50 |
+| `attackRange` | 240 |
+| `phase2.attackCooldownMul` | 0.5 (vs 0.55 insectivorous) |
+| `phase2.walkSpeedMul` | 1.5 (vs 1.4) |
+
+`bossName: 'Drowned King'` aparece no banner + BossHpBar quando entra no
+stage 6.
+
+Palette: deep blue (0x2a4a78 idle → 0x3a5b8c chase). Telegraph pinkish
+(0xff66aa) pra contrastar com body azul.
+
+### `enterActiveJumpVy` (novo AttackVariant field)
+
+Diferente de `moveDuringActiveVy` (per-frame, sustained — usado pelo Wisp
+dive), `enterActiveJumpVy` é aplicado UMA vez quando entra em `MobState.Active`.
+Combina com gravidade do mob pra criar saltos parabólicos.
+
+Implementação em `Mob.setState`:
+```ts
+if (s === MobState.Active) {
+  this.currentAttackId++;
+  this.spawnProjectileIfNeeded();
+  const atk = this.currentAttack();
+  if (atk.enterActiveJumpVy !== undefined) {
+    this.vy = atk.enterActiveJumpVy;
+    this.onGround = false;
+  }
+}
+```
+
+`onGround = false` força a gravidade a tomar conta na próxima frame.
+
+### Palettes per mob via helper
+
+`paletteFor(id: string): Record<MobState, number>` substitui o
+hardcoded check de wisp:
+```ts
+function paletteFor(id) {
+  switch (id) {
+    case 'wisp': return WISP_COLOR;
+    case 'bog-frog': return BOG_FROG_COLOR;
+    case 'mire-wraith': return MIRE_WRAITH_COLOR;
+    case 'drowned-king': return DROWNED_KING_COLOR;
+    default: return MOB_COLOR;
+  }
+}
+```
+
+Usado em `redraw()` (alive draw) E no dead non-boss draw (para o gray dim
+não destoar do body).

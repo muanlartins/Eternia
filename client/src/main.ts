@@ -31,9 +31,14 @@ import {
 import { PlayerState, type AABB } from './game/types.js';
 
 function bgmIdForStage(stageId: string): BgmId {
-  if (stageId === 'forest-1-4') return 'boss';
+  if (stageId === 'forest-1-4' || stageId === 'swamp-1-2') return 'boss';
   if (stageId === 'forest-1-3') return 'deep';
+  if (stageId.startsWith('swamp')) return 'swamp';
   return 'forest';
+}
+
+function isLastStageIdx(idx: number): boolean {
+  return idx === STAGES.length - 1;
 }
 
 function stageBannerText(idx: number): string {
@@ -152,7 +157,7 @@ async function main() {
   const player = new Player(ELESIS);
 
   let currentStageIdx = 0;
-  let stage = new Stage(STAGES[currentStageIdx]!, worldStage);
+  let stage = new Stage(STAGES[currentStageIdx]!, worldStage, { isLastStage: isLastStageIdx(currentStageIdx) });
   stage.spawn();
   background.setStage(STAGES[currentStageIdx]!.id);
 
@@ -319,7 +324,7 @@ async function main() {
     currentStageIdx = 0;
     player.resetBuffs();
     stage.destroy();
-    stage = new Stage(STAGES[currentStageIdx]!, worldStage);
+    stage = new Stage(STAGES[currentStageIdx]!, worldStage, { isLastStage: isLastStageIdx(currentStageIdx) });
     stage.spawn();
     background.setStage(STAGES[currentStageIdx]!.id);
     player.teleportToStart();
@@ -619,7 +624,7 @@ async function main() {
         saveRecords(records);
         runStats = makeStats();
         stage.destroy();
-        stage = new Stage(STAGES[currentStageIdx]!, worldStage);
+        stage = new Stage(STAGES[currentStageIdx]!, worldStage, { isLastStage: isLastStageIdx(currentStageIdx) });
         stage.spawn();
         background.setStage(STAGES[currentStageIdx]!.id);
         stagePhase = 'gameOver';
@@ -711,7 +716,7 @@ async function main() {
         buffOffer.hide();
         currentStageIdx = (currentStageIdx + 1) % STAGES.length;
         stage.destroy();
-        stage = new Stage(STAGES[currentStageIdx]!, worldStage);
+        stage = new Stage(STAGES[currentStageIdx]!, worldStage, { isLastStage: isLastStageIdx(currentStageIdx) });
         stage.spawn();
         background.setStage(STAGES[currentStageIdx]!.id);
         player.teleportToStart();
