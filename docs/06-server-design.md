@@ -10,7 +10,8 @@ auth (sem senha). Trivial de setup, suficiente pra escala atual (~5 users).
 |---|---|---|
 | **6.A** | JSON store + REST endpoints (login, run save, my records) + client login UI + run sync | implementado |
 | **6.B** | Leaderboard global (top 1 run per user, by time / damage / deaths) + display em VictoryStats | implementado |
-| **6.C** | Logout + multi-user no mesmo browser | pendente |
+| **6.B.2** | Bug fix: VictoryStats leaderboard ficava em "loading" quando vazio. Adicionado `leaderboardLoaded` flag + sequenciamento saveRun→fetchLeaderboard | implementado |
+| **6.C** | MenuScreen unificado (Leaderboard + Sound + Logout) substitui SettingsMenu. Logout limpa localStorage + reabre LoginScreen pra trocar user | implementado |
 | **6.D** | Migrar pra SQLite ou Postgres se for escalar | pendente |
 
 ## 6.A — JSON store + REST + client login
@@ -163,14 +164,88 @@ requer auth). Retorna `LeaderboardEntry[]` ou `[]` em caso de erro.
 (modifier Berserker dá ~2× damage), "deaths" tem muitos zeros. "Time"
 é puro skill expression — quem matou o boss mais rápido vence.
 
-Player pode adicionar toggle entre metrics em 6.B.2 se quiser.
+VictoryStats mostra apenas o "TIME" leaderboard. Pra trocar métrica, o
+player abre o MenuScreen (tecla `O`) → Leaderboard, e usa ←→ pra
+alternar entre TIME / DAMAGE / DEATHS.
 
-## 6.C — Logout + multi-user (futuro)
+## 6.B.2 — VictoryStats leaderboard bug fix
 
-## 6.C — Logout + multi-user (futuro)
+**Bug**: após victory, o painel mostrava "GLOBAL TOP — FASTEST: (loading…)"
+indefinidamente. Causas:
 
-SettingsMenu ganha row "Logout". Limpa localStorage + reload. Permite o
-mesmo browser ter sessões diferentes (e.g., compartilhar setup com amigo).
+1. `setLeaderboard([])` chamado com array vazio (porque server respondeu antes
+   do saveRun completar OU porque user é guest sem runs) re-renderizava o
+   "loading" state — não havia distinção entre "fetching" vs "fetched empty".
+2. Race condition: `auth.saveRun(run)` e `fetchLeaderboard('time', 5)`
+   disparam em paralelo; fetchLeaderboard pode resolver antes de saveRun,
+   retornando entries que não incluem a run que acabou de terminar.
+
+**Fix**:
+- `VictoryStats.leaderboardLoaded` flag (false até `setLeaderboard` ser
+  chamado pela primeira vez). Render distingue:
+  - not loaded → "(loading…)"
+  - loaded but empty → "(offline / guest run — login to compete)"
+  - loaded with entries → renderiza top 5
+- main.ts armazena `lastSaveRun: Promise<void> | null` ao chamar
+  `auth.saveRun(...)`. Em victoryAnnounce → victoryStats:
+  ```ts
+  void (async () => {
+    if (lastSaveRun) await lastSaveRun.catch(() => undefined);
+    const entries = await fetchLeaderboard('time', 5);
+    victoryStats.setLeaderboard(entries, auth.getUsername());
+  })();
+  ```
+  Garante que o saveRun completou (com timeout de erro) antes de buscar
+  leaderboard. Run recém-completada aparece corretamente no ranking.
+
+## 6.C — MenuScreen unificado + logout
+
+`SettingsMenu` (apenas audio) substituído por `MenuScreen` (multi-section).
+Tecla `O` ou `Esc` abre/fecha. Pausa o jogo enquanto aberto.
+
+### Arquitetura
+
+Single Pixi container com state machine interno:
+- `view: 'root' | 'audio' | 'leaderboard'`
+- root: lista de opções (Leaderboard / Sound / Logout)
+- audio: 4 rows (Master / BGM / SFX / Mute) com bars ASCII
+- leaderboard: tabs de métrica (TIME / DAMAGE / DEATHS) + top 10 entries
+
+### Navegação
+
+- Em qualquer view: ESC / O volta pra root (ou fecha se já estiver em root)
+- Em root: ↑↓ navega, ENTER / → entra na opção selecionada
+- Em audio: ↑↓ navega rows, ←→ ajusta volume (±5%) ou toggle mute
+- Em leaderboard: ←→ troca métrica (refetch automático), ESC volta
+
+### Logout flow
+
+Selecionar "Logout" no root → callback main.ts:
+1. `auth.logout()` — limpa state + localStorage
+2. `menuScreen.close()`
+3. `loginScreen.show({onSubmit, onGuest})` — força login screen na próxima
+   frame (game pausa, conforme early return existente)
+
+User entra como outro username (ou guest), continua a partir daí. Permite
+multi-user no mesmo browser sem refresh.
+
+### Logout não disponível pra guest
+
+Se `auth.getUsername() === null`, "Logout" não aparece no root menu (só
+"Leaderboard" e "Sound"). Evita confusão.
+
+### Stale request guard no leaderboard
+
+`requestLeaderboard()` incrementa `lbReqToken` antes de cada fetch. O `.then`
+só atualiza state se `token === this.lbReqToken`. Previne race quando user
+troca rapidamente entre métricas (request anterior chega depois e
+sobrescreveria com dados errados).
+
+### Input.confirm
+
+Adicionada nova `InputKey: 'confirm'` (mapeada pra `Enter`) pra ativação
+de items no menu root. ←→ continua sendo "adjust" no audio e "switch tab"
+no leaderboard.
 
 ## 6.D — DB migration (futuro)
 

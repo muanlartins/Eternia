@@ -16,7 +16,7 @@ import { Background } from './game/Background.js';
 import { RunModifierOffer } from './game/RunModifierOffer.js';
 import { pickRandomModifiers } from './data/modifiers.js';
 import { MiniMap } from './game/MiniMap.js';
-import { SettingsMenu } from './game/SettingsMenu.js';
+import { MenuScreen } from './game/MenuScreen.js';
 import { BossHpBar } from './game/BossHpBar.js';
 import { Auth, fetchLeaderboard } from './game/Auth.js';
 import { LoginScreen } from './game/LoginScreen.js';
@@ -195,8 +195,8 @@ async function main() {
   uiStage.addChild(miniMap.container);
   miniMap.setStages(STAGES.map((s) => ({ id: s.id, name: s.name })));
 
-  const settingsMenu = new SettingsMenu(GAME_W, GAME_H);
-  uiStage.addChild(settingsMenu.container);
+  const menuScreen = new MenuScreen(GAME_W, GAME_H);
+  uiStage.addChild(menuScreen.container);
 
   const bossHpBar = new BossHpBar(GAME_W);
   uiStage.addChild(bossHpBar.container);
@@ -225,7 +225,7 @@ async function main() {
     text:
       'controls: ← → = move (hold = run), ↑ = jump, ↓ = drop through platform / enter portal. double-tap ← / → = dash. ' +
       'Z = attack (tap = combo, hold = charge). A/S/D = direct cast skill. ' +
-      'Alt = dodge. Space = parry. Tab = stages map. M = mute. O = audio settings.',
+      'Alt = dodge. Space = parry. Tab = stages map. M = mute. O / Esc = menu.',
     style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
   });
   controls.x = 12;
@@ -337,6 +337,7 @@ async function main() {
   let hitPauseMs = 0;
   let bossSparkCooldownMs = 0;
   let bossDramaTimerMs = 0;
+  let lastSaveRun: Promise<void> | null = null;
 
   const audio = new GameAudio();
 
@@ -357,16 +358,36 @@ async function main() {
       return;
     }
 
+    if (menuScreen.isOpen()) {
+      menuScreen.update(audio, input, {
+        username: auth.getUsername(),
+        onLogout: () => {
+          auth.logout();
+          menuScreen.close();
+          loginScreen.show({
+            onSubmit: async (username) => {
+              const result = await auth.login(username);
+              if (result.ok) {
+                loginScreen.hide();
+              } else {
+                loginScreen.setError(result.error);
+              }
+            },
+            onGuest: () => loginScreen.hide(),
+          });
+        },
+      });
+      input.endFrame();
+      return;
+    }
+
     if (input.justPressed('options')) {
-      settingsMenu.toggle();
+      menuScreen.open();
+      input.endFrame();
+      return;
     }
     if (input.justPressed('mute')) {
       audio.setMuted(!audio.isMuted());
-    }
-    if (settingsMenu.isOpen()) {
-      settingsMenu.update(audio, input);
-      input.endFrame();
-      return;
     }
 
     const isCinematic =
@@ -585,7 +606,7 @@ async function main() {
       lives -= 1;
       if (lives <= 0) {
         const durationMs = performance.now() - runStats.startedAtMs;
-        void auth.saveRun({
+        lastSaveRun = auth.saveRun({
           durationMs,
           damageDealt: Math.round(runStats.damageDealt),
           deaths: runStats.deaths,
@@ -640,7 +661,7 @@ async function main() {
         records = result.records;
         pendingFlags = result.flags;
         saveRecords(records);
-        void auth.saveRun({
+        lastSaveRun = auth.saveRun({
           durationMs,
           damageDealt: Math.round(runStats.damageDealt),
           deaths: runStats.deaths,
@@ -719,10 +740,13 @@ async function main() {
       stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
         stageBanner.visible = false;
-        victoryStats.show(statsView(), [], auth.getUsername());
-        void fetchLeaderboard('time', 5).then((entries) => {
+        victoryStats.show(statsView(), auth.getUsername());
+        const pending = lastSaveRun;
+        void (async () => {
+          if (pending) await pending.catch(() => undefined);
+          const entries = await fetchLeaderboard('time', 5);
           victoryStats.setLeaderboard(entries, auth.getUsername());
-        });
+        })();
         stagePhase = 'victoryStats';
       }
     } else if (stagePhase === 'modifierPick') {

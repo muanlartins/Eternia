@@ -16,7 +16,7 @@
 | **3 — Mobs/AI** | 6 mob types (slim, racoon, archer, brute, wisp aerial, insectivorous boss) + gravity + multi-phase boss | ✅ done (3.A → 3.I) | `03-mobs-design.md` |
 | **4 — Stage flow + buffs** | 4 stages, buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.J) | `04-stages-design.md` |
 | **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
-| **6 — Auth + persistence** | Login (username-only), JSON store, run sync, leaderboard | ⏳ 6.A + 6.B done; 6.C-6.D pendente | `06-server-design.md` |
+| **6 — Auth + persistence** | Login, JSON store, run sync, leaderboard, MenuScreen + logout | ⏳ 6.A + 6.B + 6.C done; 6.D pendente | `06-server-design.md` |
 | **7 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (futuro, ~50-100h) |
 | **8 — Tailscale alpha** | Multiplayer co-op via Tailscale | ⏳ não iniciado | (V1.1) |
 
@@ -84,7 +84,13 @@ Sequência: **1 → 2 → 3 → 4 → 5 → 6 → 7**.
      suficiente pra friends-only.
    - 6.B done (2026-05-06): leaderboard global (top per user, time/damage/deaths
      metrics) + display em VictoryStats com row do player highlighted.
-   - 6.C pending: logout + multi-user.
+   - 6.B.2 done (2026-05-06): bug fix do leaderboard ficando "carregando"
+     em runs guest/empty — adicionado `leaderboardLoaded` flag + sequenciamento
+     saveRun→fetchLeaderboard.
+   - 6.C done (2026-05-06): MenuScreen unificado (substitui SettingsMenu).
+     Tecla `O`/`Esc` abre menu com 3 sections: Leaderboard (TIME/DAMAGE/DEATHS
+     toggle), Sound (volumes + mute), Logout. Logout limpa localStorage e
+     reabre LoginScreen pra trocar de user.
    - 6.D pending: migrar JSON pra SQLite se escalar.
 6. ⏳ **Stage 5 / novo bioma** — sair de Floresta, ir para
    Pântano/Caverna. Mais 2-3 mobs novos + boss novo. ~8-10h.

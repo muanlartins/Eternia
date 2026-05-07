@@ -72,15 +72,13 @@ export class VictoryStats {
   private lastStats: RunStatsView | null = null;
   private lastLeaderboard: readonly LeaderboardEntry[] = [];
   private lastUsername: string | null = null;
+  private leaderboardLoaded = false;
 
-  show(
-    stats: RunStatsView,
-    leaderboard: readonly LeaderboardEntry[] = [],
-    currentUsername: string | null = null,
-  ) {
+  show(stats: RunStatsView, currentUsername: string | null = null) {
     this.lastStats = stats;
-    this.lastLeaderboard = leaderboard;
     this.lastUsername = currentUsername;
+    this.lastLeaderboard = [];
+    this.leaderboardLoaded = false;
     this.render();
     this.container.visible = true;
   }
@@ -88,6 +86,7 @@ export class VictoryStats {
   setLeaderboard(leaderboard: readonly LeaderboardEntry[], currentUsername: string | null) {
     this.lastLeaderboard = leaderboard;
     this.lastUsername = currentUsername;
+    this.leaderboardLoaded = true;
     if (this.lastStats) this.render();
   }
 
@@ -130,7 +129,11 @@ export class VictoryStats {
       stats.buffsPicked.length === 0 ? '  (none)' : stats.buffsPicked.map((b) => `  ${b}`).join('\n');
 
     let lbSection = '';
-    if (this.lastLeaderboard.length > 0) {
+    if (!this.leaderboardLoaded) {
+      lbSection = `\n\nGLOBAL TOP — FASTEST\n  (loading…)`;
+    } else if (this.lastLeaderboard.length === 0) {
+      lbSection = `\n\nGLOBAL TOP — FASTEST\n  (offline / guest run — login to compete)`;
+    } else {
       const rows = this.lastLeaderboard.slice(0, 5).map((e, i) => {
         const t = formatTime(e.durationMs);
         const deathsStr = e.deaths === 1 ? '1 death' : `${e.deaths} deaths`;
@@ -140,8 +143,6 @@ export class VictoryStats {
         return `${marker}${i + 1}. ${e.username.padEnd(14, ' ')} ${t.padEnd(7, ' ')} (${deathsStr})`;
       });
       lbSection = `\n\nGLOBAL TOP — FASTEST\n${rows.join('\n')}`;
-    } else {
-      lbSection = `\n\nGLOBAL TOP — FASTEST\n  (loading…)`;
     }
 
     this.body.text =

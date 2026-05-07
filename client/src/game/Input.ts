@@ -14,7 +14,8 @@ export type InputKey =
   | 'pick3'
   | 'mute'
   | 'minimap'
-  | 'options';
+  | 'options'
+  | 'confirm';
 
 const KEY_MAP: Record<string, InputKey> = {
   ArrowLeft: 'left',
@@ -35,6 +36,7 @@ const KEY_MAP: Record<string, InputKey> = {
   Tab: 'minimap',
   KeyO: 'options',
   Escape: 'options',
+  Enter: 'confirm',
 };
 
 type DoubleTapState = {

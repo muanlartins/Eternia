@@ -15,7 +15,7 @@ forte com primitivas que já temos.
 | **5.E** | HUD redesign — Pixi bars (HP/MP/Dodge/Skills) + run timer + stage banner | implementado |
 | **5.F** | Parallax backgrounds (3 layers, palette per stage) | implementado |
 | **5.D** | BGM sintético via Web Audio API (3 perfis: forest / deep / boss) | implementado |
-| **5.D.2** | Audio settings UI (Master / BGM / SFX volumes + mute), persistente em localStorage, toggled por O / Esc | implementado |
+| **5.D.2** | Audio settings UI (Master / BGM / SFX volumes + mute), persistente em localStorage, toggled por O / Esc | implementado (depois absorvido no MenuScreen — ver 6.C) |
 
 ## 5.A — Hit pause + screen shake + KO flash
 
