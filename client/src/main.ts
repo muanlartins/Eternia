@@ -165,6 +165,13 @@ async function main() {
   let currentStageIdx = 0;
   let currentDifficulty: DifficultySpec = findDifficulty(loadDifficulty());
   let currentRoom: Room | null = null;
+  let isMatchHost = false;
+  let isCoOpJoiner = false;
+  let pendingMission: MissionSpec | null = null;
+  let pendingDifficulty: DifficultySpec | null = null;
+  const joinerSentHits = new Set<string>();
+  let mobBroadcastAccumMs = 0;
+  const MOB_BROADCAST_INTERVAL_MS = 50;
 
   function currentStageSpec() {
     return stageById(currentMission.stageIds[currentStageIdx]!)!;
@@ -255,14 +262,6 @@ async function main() {
   uiStage.addChild(roomLobby.container);
 
   const audio = new GameAudio();
-
-  let isMatchHost = false;
-  let isCoOpJoiner = false;
-  let pendingMission: MissionSpec | null = null;
-  let pendingDifficulty: DifficultySpec | null = null;
-  const joinerSentHits = new Set<string>();
-  let mobBroadcastAccumMs = 0;
-  const MOB_BROADCAST_INTERVAL_MS = 50;
 
   const remotePlayers = new Map<number, RemotePlayer>();
   function clearRemotePlayers() {
