@@ -1006,6 +1006,140 @@ degrees, with chest pointing to the right of the image."
 
 Salva como `art/anchors/naia-turnaround.png` quando travar.
 
+#### v2.1 result + follow-up para v3 (corrigir bow handedness)
+
+v2.1 melhorou: views 1, 2 e 4 ficaram visivelmente distintas. Single
+issue: **view 3 (profile) com o arco no lado errado** — Gemini
+"helpfully" colocou o arco no lado VISÍVEL (left-side da imagem) em vez
+de manter na mão esquerda dela (que do profile direito está atrás do
+corpo, parcialmente oculta).
+
+##### Opção A — Follow-up na mesma sessão (recomendado se o v2.1 ficou OK em geral)
+
+Cole no Gemini, mesmo chat:
+
+```
+Two issues with the previous turnaround:
+
+1. THE LEGS ARE CROPPED. The image shows only head to thigh/knee — but
+   a turnaround sheet MUST show the FULL BODY from head to FEET in all
+   4 views, including the boots. Each view should be a complete
+   character figure, full-length, with the cream background extending
+   below her feet and above her head with margin.
+
+2. View 3 (profile) is wrong — the bow appears on the visible side of
+   her body. The bow must remain in her LEFT hand at her LEFT side
+   throughout. In the right-side profile (90° rotation, chest pointing
+   to image-right), her LEFT side is on the FAR side of her body —
+   AWAY from the viewer. The bow should be MOSTLY HIDDEN behind her
+   body silhouette; only the top and bottom tips may peek out behind
+   her. DO NOT mirror the bow to the visible side.
+
+Please regenerate the turnaround:
+- All 4 views in FULL BODY (head to feet, both boots visible at the
+  bottom of each view)
+- Views 1, 2, 4 keep their current rotations and details
+- Fix view 3 to be a strict right-side profile with the bow correctly
+  on the far side, mostly hidden behind her body
+- Same character throughout: emerald hair long with side braid, glasses
+  (front and 3/4 only), green tunic + brown leather bodice + black
+  leggings + brown mid-calf boots, brown bracers, quiver on back
+
+Aspect ratio: wide landscape (3:1 or 4:1) — the image must be tall
+enough that all 4 full-body characters fit completely.
+```
+
+##### Opção B — Nova sessão com pose-locked v2.2 prompt (se Opção A drift demais)
+
+Cole no Gemini em nova conversa, upload `naia-anchor.png`:
+
+```
+Generate a 4-VIEW CHARACTER TURNAROUND SHEET of Naia (the elven archer
+from the uploaded reference). Each view shows the same character at a
+different rotation, FULL BODY (from the top of her head down to her
+boots — feet must be visible in all 4 views).
+
+CRITICAL FRAMING REQUIREMENT:
+- Each of the 4 views must show the COMPLETE full-body figure of the
+  character from head to feet
+- DO NOT crop the legs or feet
+- There should be cream background visible BELOW her boots and ABOVE
+  her head with a small margin in every view
+
+Each view shows the same character at a different rotation. The pose
+is LOCKED across all 4 views — every limb in the same position, only
+the body rotation changes.
+
+LOCKED POSE (identical in all 4 views):
+- Standing relaxed, both feet shoulder-width apart, weight even
+- LEFT arm down at her LEFT side, holding the wooden recurve bow in
+  her LEFT hand, vertical, the bow's bottom tip near her left foot
+- RIGHT arm relaxed at her right side, hand open
+- Head facing forward (in the direction of the body rotation)
+- Composed expression with soft smile
+
+ROTATIONS (left to right in single landscape image):
+
+VIEW 1 — FULL FRONT (0°):
+- Body squared to camera, both shoulders visible equal
+- Both elf ears visible symmetrically
+- Bow held in left hand visible at her LEFT side (image-right of her,
+  image-LEFT from viewer's perspective — the right side of the panel
+  if viewer is centered)
+- Quiver behind shoulders, arrow tips poking up
+
+VIEW 2 — THREE-QUARTER (45° rotation, character turned to HER OWN
+right):
+- Visible different from view 1 — torso clearly twisted
+- Far side: her RIGHT shoulder pulled back, far cheek receding
+- Near side: her LEFT side now closer to viewer, left ear and left
+  cheek prominent
+- Bow in left hand now visible PROMINENTLY in front (closer to viewer)
+  on the near (left) side of her body
+- Quiver behind right shoulder receding to the back
+
+VIEW 3 — STRICT RIGHT-SIDE PROFILE (90° rotation, chest pointing to
+image-right):
+- This is a SILHOUETTE PROFILE — face shown only from the side
+- ONLY ONE eye visible (her right eye), ONLY ONE ear visible (her
+  right ear). Other side of face completely hidden.
+- Body fully rotated 90°. The chest plane is perpendicular to the
+  image plane.
+- THE BOW IS IN HER LEFT HAND — which from this right-side profile is
+  on the FAR side of her body, facing AWAY from the viewer. The bow
+  is therefore MOSTLY HIDDEN behind her body silhouette. Only the
+  TOP TIP and BOTTOM TIP of the bow may be visible peeking out from
+  behind her body. DO NOT show the full bow on the visible side.
+- Quiver visible directly above/behind her, arrows poking up
+- Long emerald hair flows down her back (visible)
+
+VIEW 4 — FULL BACK (180°):
+- Character's back to viewer
+- Long emerald hair cascading down her back
+- QUIVER dominant in center of back, arrows pointing up
+- BOW visible at her LEFT side (now on image-RIGHT from viewer's
+  perspective in this back view) — held in left hand, partially
+  visible silhouette
+- Pointed elf ears poking out behind hair (small detail)
+
+LOCKED CHARACTER (same as anchor): emerald hair long with side braid,
+green tunic + brown leather laced bodice + black leggings + brown
+boots, brown bracers, brown belt, silver leaf pendant, librarian
+glasses (visible front + 3/4), elf ears.
+
+OUTPUT: single landscape image (~3:1), 4 views in a row, equal size,
+plain cream background, NO text labels, bold lineart cel-shaded
+early-2000s Korean MMORPG anime style. Highest quality.
+
+CRITICAL CHECK before submitting:
+- All 4 views show FULL BODY from head to feet (boots visible at the
+  bottom)
+- View 3 must NOT show the bow on the visible side of the body
+- View 3 must show only ONE eye and ONE ear
+- All 4 views are clearly different rotations
+- Same character throughout
+```
+
 ## Prompt format / anatomy
 
 Pra você reusar e adaptar:
@@ -1042,6 +1176,28 @@ OUTPUT: [framing, background, aspect ratio]
   emergir.
 - **Don't trust hands**: AI gens com armas/punhos sempre são bugados.
   Aceita que vai ter que limpar/redesenhar manualmente em Aseprite.
+
+### Contexto / sessão — quando reiniciar vs manter
+
+Gemini retém contexto da conversa. Isso pode atrapalhar:
+
+| Cenário | Mesma sessão | Nova sessão |
+|---|---|---|
+| Anchor de NOVO personagem | | ✓ (clean state, evita bleed-over) |
+| Turnaround | | ✓ (nova + upload da anchor) |
+| Iterar correção pequena ("fix view 3 only") | ✓ | |
+| Quando o modelo "trava" (ignora instruções) | | ✓ |
+| Variação de detail (cor de armadura, hair) | ✓ | |
+
+Sintomas de contexto travado: o modelo regenera o output anterior com
+mudanças mínimas, ignora instruções negativas ("NOT red"), ou mistura
+uploads com gens anteriores. Quando notar, **abre nova conversa**.
+
+### Pose consistency hack
+
+Pra turnarounds, especificar **POSE LOCKED** em vez de "neutral pose":
+listar exatamente onde cada braço/mão/perna está em todas as views.
+Modelo tende a "improvisar" se a pose não for travada.
 
 ## Workflow após Astrid travada
 
