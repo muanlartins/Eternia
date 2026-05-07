@@ -130,6 +130,12 @@ export class Auth {
       console.warn('[auth] saveRun skipped: not authenticated (playing as guest)');
       return;
     }
+    const safe = {
+      durationMs: Math.round(payload.durationMs),
+      damageDealt: Math.round(payload.damageDealt),
+      deaths: Math.round(payload.deaths),
+      victory: payload.victory,
+    };
     try {
       const res = await fetch('/api/runs', {
         method: 'POST',
@@ -137,7 +143,7 @@ export class Auth {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.state.token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(safe),
       });
       if (res.status === 401) {
         console.warn('[auth] saveRun got 401 — token invalid; logging out');
