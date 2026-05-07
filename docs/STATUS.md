@@ -18,7 +18,7 @@
 | **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
 | **6 — Auth + persistence** | Login, JSON store, run sync, leaderboard, MenuScreen + logout | ⏳ 6.A + 6.B + 6.C done; 6.D skipped (JSON suficiente) | `06-server-design.md` |
 | **7 — Lobby UX restructure** | Login → Character → Mission → Run flow + difficulty + room foundation | ✅ 7.A + 7.B + 7.C done | `07-lobby-design.md` |
-| **8 — Multiplayer (Tailscale alpha)** | Network test → lobby presence → co-op gameplay | ⏳ não iniciado | (próximo) |
+| **8 — Multiplayer (Tailscale alpha)** | Network test → lobby presence → co-op gameplay | ⏳ 8.A config done; teste do user pendente | `08-multiplayer-design.md` |
 | **9 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (último, ~50-100h) |
 
 ## O que ainda falta dentro das phases "ativas"
@@ -111,10 +111,12 @@ sprites são o último polish.
      (POST/GET/join/leave/list). Cada run cria silenciosamente uma room
      no server. Room code aparece no HUD top-right (`@user · ABCDEF`).
      Sem UI de create/join ainda — vem em 8.B junto com lobby/MP.
-8. ⏳ **Phase 8 — Multiplayer (Tailscale alpha)** — pendente.
-   - 8.A: Network test (server bind 0.0.0.0 + Tailscale docs).
-   - 8.B: Lobby presence (rooms com 2+ players visíveis).
-   - 8.C: Co-op gameplay (synced state, player+mob).
+8. ⏳ **Phase 8 — Multiplayer (Tailscale alpha)** — em progresso.
+   - 8.A done (config 2026-05-06): Vite host: true, Tailscale setup
+     guide em `08-multiplayer-design.md`. Aguardando user testar de
+     duas máquinas no tailnet.
+   - 8.B pending: Lobby UI (room list + create/join dialog).
+   - 8.C pending: Co-op gameplay (synced state via WS).
 9. ⏳ **Phase 9 — Sprites/arte** — substitui primitivas. Decisão pendente:
    extrair do GC original vs gerar via SD. ~50-100h. (último).
 

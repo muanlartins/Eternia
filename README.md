@@ -60,6 +60,14 @@ Open <http://localhost:5173>.
 
 For a one-shot server run without hot reload: `go run ./cmd/eternia-server`.
 
+### Tailscale alpha (multiplayer prep)
+
+Vite is configured with `server.host: true` so the dev server binds on
+0.0.0.0. Combined with Tailscale, a second machine on the same tailnet can
+open the game via `http://<your-tailscale-ip>:5173`. See
+`docs/08-multiplayer-design.md` for full setup (account separation
+work/personal, install steps, share-with-friends).
+
 ## Roadmap
 
 - `docs/STATUS.md` — live snapshot of phases done / in-progress / pending
