@@ -1140,6 +1140,193 @@ CRITICAL CHECK before submitting:
 - Same character throughout
 ```
 
+##### v2.2 result + lesson learned
+
+v2.2 falhou mais que v2.1. Resultado: 6 views em vez de 4, outfit
+completamente diferente (vestido sleeveless sem leggings/bracers),
+glasses sumiram em algumas views, bow em poses dinâmicas (Gemini
+ignorou "LOCKED POSE"). Gemini próprio reconheceu falhas no response
+text.
+
+**Lesson learned**: Gemini Pro "Criar Imagem" é otimizado pra **uma
+imagem por prompt**. Multi-panel turnarounds são contra o design da
+ferramenta. Prompts longos perdem instruções no meio — só início e
+fim sobrevivem com peso completo.
+
+##### Estratégia v3 — 4 prompts separados (uma view por prompt)
+
+Em vez de pedir 1 turnaround com 4 painéis, pedir **4 imagens separadas**
+em sequência. Cada prompt simples, direto, foca em uma única view
+full-body. Cada uma pode ser regenerada se falhar sem afetar as outras.
+
+**Workflow**:
+1. Nova sessão no Gemini, upload `naia-anchor.png`
+2. Cole o **PROMPT 1 (FRONT)**, espera, salva como `naia-view-front.png`
+3. **Mesma sessão**, cole **PROMPT 2 (3/4)**, salva como `naia-view-3q.png`
+4. **Mesma sessão**, cole **PROMPT 3 (SIDE)**, salva como `naia-view-side.png`
+5. **Mesma sessão**, cole **PROMPT 4 (BACK)**, salva como `naia-view-back.png`
+
+Mantemos as 4 separadas. Não precisa montar num grid — pra futuro pose
+generation / sprite work, 4 refs full-resolution são MELHOR que 1
+combined sheet (cada uma é maior, mais detalhada).
+
+###### PROMPT 1 — FRONT view
+
+```
+Using the uploaded character (Naia) as visual reference, generate a
+single full-body character illustration showing her in a FRONT view.
+
+Character: Naia, elven archer. Full body, head-to-feet visible —
+include the boots at the bottom of the frame and small cream-colored
+margin below them.
+
+POSE: standing front-facing the viewer directly. Body squared to
+camera, both shoulders level. Both feet shoulder-width apart, weight
+even. RIGHT arm relaxed at her right side, hand open. LEFT arm down
+at her LEFT side, holding the wooden recurve bow vertically (bow's
+bottom tip near her left foot, top tip near her left shoulder).
+Composed expression with soft slight smile.
+
+KEEP IDENTICAL to the uploaded reference:
+- Long deep emerald-green hair flowing past mid-back, single thin
+  side braid
+- Pointed elven ears
+- Thin frameless round librarian-style glasses
+- Long-sleeve deep emerald GREEN tunic ending mid-thigh
+- BROWN leather laced bodice over the tunic
+- BLACK fitted leggings
+- BROWN mid-calf leather boots with cuff fold
+- BROWN leather bracers on both forearms
+- Thin BROWN leather belt with small buckle
+- Small silver leaf pendant at throat
+- BROWN leather quiver on her back, strap diagonally across her
+  chest, 5-7 fletched arrows poking up over right shoulder
+- Same wooden recurve bow as the reference
+
+STYLE: 2D anime cel-shaded illustration, bold black lineart, vibrant
+saturated palette, slight chibi-leaning anime anatomy, early-2000s
+Korean MMORPG aesthetic. Plain cream/beige background.
+
+Output: ONE single character, full body head-to-feet, portrait aspect
+ratio, centered, NO text/labels/scenery.
+```
+
+###### PROMPT 2 — 3/4 view
+
+Cole após PROMPT 1 ter sido gerado. Mesma sessão.
+
+```
+Now generate the same character (Naia) but in a THREE-QUARTER view.
+
+POSE: same standing pose as before — bow held vertically in left hand
+at her left side, right hand relaxed at right side — but the body is
+now rotated 45° to HER OWN right (so the viewer sees more of her
+LEFT side). Her right shoulder pulls back; her left shoulder is closer
+to the viewer. Face turned 45° showing the left cheek prominent and
+right cheek receding. Left ear fully visible; right ear partly hidden
+by hair.
+
+FULL BODY visible — head to feet. Include boots and cream margin below.
+
+Keep all character details IDENTICAL to the front view: emerald hair
+with side braid, elf ears, glasses, green tunic, brown leather bodice,
+black leggings, brown boots, brown bracers, brown belt, silver leaf
+pendant, brown quiver on back with arrows, wooden recurve bow in left
+hand.
+
+Same 2D anime cel-shaded style, plain cream background, no text.
+Single character only, full body.
+```
+
+###### PROMPT 3 — SIDE profile
+
+```
+Now generate the same character (Naia) but in a STRICT RIGHT-SIDE
+PROFILE — a complete side silhouette view.
+
+POSE: body rotated 90° so her chest plane points to the right side of
+the image. ONLY ONE eye visible (her right eye). ONLY ONE ear visible
+(her right ear). The other side of her face is completely hidden.
+Nose silhouette points to image-right. She still stands relaxed with
+the bow held in her LEFT hand.
+
+CRITICAL — bow position from this profile angle:
+- Her LEFT side is on the FAR side of her body (away from viewer)
+- The bow held in her left hand is therefore on the FAR side too
+- The bow should be MOSTLY HIDDEN behind her body silhouette
+- Only the TOP and BOTTOM tips of the bow may peek out from behind
+  her body
+- DO NOT show the full bow on the visible side of the image — it is
+  NOT in front of her
+
+Her long emerald hair flows down her back from this angle, visible
+cascading. Quiver visible behind her shoulders, arrows poking up.
+
+FULL BODY visible — head to feet. Include boots and cream margin
+below.
+
+Keep ALL character details IDENTICAL to the previous views: emerald
+hair, elf ear (just the right one visible from this angle), glasses
+(visible from the side as part of the profile), green tunic, brown
+leather bodice, black leggings, brown boots, bracers (right one
+visible).
+
+Same 2D anime cel-shaded style, plain cream background, no text.
+Single character only, full body strict profile.
+```
+
+###### PROMPT 4 — BACK view
+
+```
+Now generate the same character (Naia) from BEHIND — a full BACK view.
+
+POSE: her back fully facing the viewer, body rotated 180°. We see the
+back of her head, the long emerald hair flowing down her back, her
+shoulders and back of the outfit.
+
+KEY FOCUS — the QUIVER is the dominant element of this view:
+- BROWN leather quiver clearly centered on her back
+- 5-7 fletched arrows pointing up out of the quiver
+- The leather strap of the quiver visible going across her shoulders
+
+OTHER ELEMENTS VISIBLE FROM BEHIND:
+- Long flowing deep emerald-green hair cascading down her back, side
+  braid still visible weaving on one side
+- Pointed elf ears poking out behind the hair (small detail)
+- Back of the green tunic — if the bodice has back-laces, show them
+- The bow still held in her LEFT hand at her left side — visible from
+  behind as a silhouette/outline jutting out at her left
+- Black leggings visible from behind
+- Brown boots visible
+
+FULL BODY visible — head to feet. Include boots and cream margin
+below.
+
+Same 2D anime cel-shaded style, plain cream background, no text.
+Single character only, full back view.
+```
+
+##### Avaliando os 4 generations
+
+Cada view sai como uma imagem separada. Avaliar individualmente:
+- Front: outfit completo, bow vertical na left, glasses, ears, quiver
+- 3/4: clearly rotated, near/far cheek differential, bow visível na near
+  side, mesma outfit
+- Side: STRICT profile (1 eye/ear), bow MOSTLY HIDDEN, outfit consistent
+- Back: quiver dominante, hair cascading, bow silhouette à left
+
+Se algum view falhar, regenera APENAS aquele view (vantagem da estratégia
+4-prompts).
+
+Ao terminar, salvar:
+- `art/anchors/naia-view-front.png`
+- `art/anchors/naia-view-3q.png`
+- `art/anchors/naia-view-side.png`
+- `art/anchors/naia-view-back.png`
+
+Não precisa montar num grid — temos as 4 refs separadas em
+full-resolution, MELHOR pra futuro pose generation e sprite work.
+
 ## Prompt format / anatomy
 
 Pra você reusar e adaptar:
