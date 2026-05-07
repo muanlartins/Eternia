@@ -10,10 +10,11 @@ Personal browser-based action game. Inspired by Grand Chase Season 1 BR (Level U
 
 ## Stack
 
-- **Client:** TypeScript 5.6+, Pixi.js v8, Vite, Howler.js
-- **Server:** Go 1.23+, PostgreSQL 16+, gorilla/websocket
+- **Client:** TypeScript 5.6+, Pixi.js v8, Vite (HMR), Web Audio API
+- **Server:** Go 1.23+, gorilla/websocket, JSON file storage (alpha — SQLite/Postgres swap-in later)
 - **Shared:** TypeScript types (zero runtime, just `import`s)
 - **Workspace:** pnpm workspaces
+- **Hot reload:** Vite HMR for client, [air](https://github.com/air-verse/air) for server (auto-installed by `server/dev`)
 - **Target:** desktop browsers (Chrome/Firefox/Safari latest)
 
 ## Layout
@@ -46,16 +47,18 @@ createdb eternia_dev
 ## Daily dev
 
 ```bash
-# Terminal 1: server
+# Terminal 1: server (hot reload via air, auto-installed on first run)
 cd server
-go run ./cmd/eternia-server     # listens on :8080
+./run                            # listens on :8080, rebuilds on .go save
 
 # Terminal 2: client
 cd client
-pnpm dev                         # serves on :5173, proxies /ws to :8080
+pnpm dev                         # serves on :5173, proxies /ws + /api to :8080
 ```
 
 Open <http://localhost:5173>.
+
+For a one-shot server run without hot reload: `go run ./cmd/eternia-server`.
 
 ## Roadmap
 

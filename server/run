@@ -1,2 +1,19 @@
 #!/usr/bin/env sh
-exec go run ./cmd/eternia-server "$@"
+# Hot-reload dev server. Auto-installs `air` on first run if needed.
+# Edit .go files and the server rebuilds + restarts on save.
+#
+# For a one-shot run without hot reload, use `go run ./cmd/eternia-server` directly.
+
+set -e
+
+cd "$(dirname "$0")"
+
+GOPATH="${GOPATH:-$HOME/go}"
+AIR="$GOPATH/bin/air"
+
+if [ ! -x "$AIR" ]; then
+  echo ">> air not found, installing github.com/air-verse/air@latest..."
+  go install github.com/air-verse/air@latest
+fi
+
+exec "$AIR" -c .air.toml "$@"

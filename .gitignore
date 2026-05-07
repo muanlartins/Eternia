@@ -9,6 +9,7 @@ build/
 server/eternia-server
 server/*.exe
 server/data/
+server/tmp/
 *.test
 *.out
 
