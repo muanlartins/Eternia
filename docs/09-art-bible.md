@@ -11,8 +11,8 @@
 | Sub-fase | Escopo | Status |
 |---|---|---|
 | **9.0** | Tool choice (Gemini), pipeline, style guide, World/lore frame | em progresso |
-| **9.A** | Astrid concept art locked (front view, turnaround, key poses) | em progresso |
-| **9.B** | Supporting cast (3 slots restantes do CharacterSelect) | pendente |
+| **9.A** | Astrid concept art locked (anchor + turnaround done; pose sheets pendente — agendado pré-Phase 10) | anchor + turnaround done |
+| **9.B** | Supporting cast (3 slots restantes do CharacterSelect) | em progresso (slot 2 next) |
 | **9.C** | Mob/creature designs (9 mobs) | pendente |
 | **9.D** | Biome concepts (Floresta, Pântano + futuros) | pendente |
 | **9.E** | UI/icon art (24 cards, 3 skill icons, portraits) | pendente |
@@ -165,6 +165,13 @@ background, single character framed centrally. Aspect ratio portrait
   trocar os marcadores visuais específicos. Pedir 4 variações com axes:
   hair style, outfit silhouette, color accents, distinguishing marker.
 
+- **v5 turnaround LOCKED**: 4 ângulos (front / 3-4 / side / back) em
+  `art/anchors/astrid-turnaround.png`. Caráter consistente entre as 4
+  views; outfit, bronze accents, katana on left hip, low ponytail
+  visível no back. Inconsistências menores (lighting, pose levemente
+  diferente entre views) — aceitáveis. **Master reference de ângulos
+  daqui pra frente.**
+
 - **v4 anchor LOCKED**: solo full-body de Astrid em
   `art/anchors/astrid-anchor.png`. Resultado: low ponytail crimson curto,
   high-collar sleeveless top + black under-sleeves, scarlet leggings,
@@ -200,14 +207,34 @@ background, single character framed centrally. Aspect ratio portrait
   - Detalhe da espada (tsuba/handle wrapping)
   - Cor/textura dos copper accents (mais opaco vs polido)
 
-#### Anchor LOCKED ✓
+#### Anchor + Turnaround LOCKED ✓
 
-- Master reference: **`art/anchors/astrid-anchor.png`**
-- Esta é a imagem canônica daqui pra frente. Toda nova geração de Astrid
-  (turnarounds, poses, expressões, classes futuras) DEVE upload essa
-  imagem como visual reference no Gemini.
+- Master front anchor: **`art/anchors/astrid-anchor.png`**
+- 4-angle turnaround: **`art/anchors/astrid-turnaround.png`**
+- Use BOTH images como visual reference em qualquer geração futura
+  envolvendo Astrid (poses, expressões, classes futuras) ou em prompts
+  de outros personagens onde queremos style consistency.
 - v2 grid: `art/anchors/astrid-v2.png` (histórico)
 - v3 refinements: `art/anchors/astrid-v3.png` (histórico)
+
+#### Pose sheets (pendente — agendado pré-Phase 10)
+
+Após o cast estar completo (slot 2/3/4 com anchors lockeds), voltamos
+pra Astrid e geramos pose sheets pra cada animação:
+- Idle (front, side)
+- Walk cycle (4-6 frames de ref)
+- Run cycle
+- Jump rise / jump fall / land
+- Combo Z swings 1, 2, 3
+- Skill cast x3
+- Dash / air dash
+- Dodge roll
+- Parry stance
+- Hurt / death
+
+Esses sheets viram input direto pro pixel artist/Aseprite na Phase 10.
+Decisão de adiar: melhor ter cast inteiro locked primeiro (style
+consistency) do que ir fundo em uma personagem só.
 
 #### Concept art prompt v2 — pede 4 variações
 
