@@ -1,12 +1,23 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { Input } from './Input.js';
 import { MISSIONS, type MissionSpec } from '../data/missions.js';
+import {
+  DIFFICULTIES,
+  findDifficulty,
+  loadDifficulty,
+  saveDifficulty,
+  type Difficulty,
+  type DifficultySpec,
+} from '../data/difficulty.js';
 
 const PANEL_W = 640;
-const PANEL_H = 460;
+const PANEL_H = 540;
 const CARD_H = 96;
 const CARD_GAP = 16;
 const CARD_PAD_X = 32;
+const DIFFICULTY_BAR_TOP = 64;
+const DIFFICULTY_BAR_H = 56;
+const CARDS_TOP = DIFFICULTY_BAR_TOP + DIFFICULTY_BAR_H + 12;
 
 export class MissionSelect {
   readonly container = new Container();
@@ -16,9 +27,13 @@ export class MissionSelect {
   private cardLabels: Array<{ name: Text; sub: Text; desc: Text }> = [];
   private hint: Text;
   private status: Text;
+  private difficultyGfx: Graphics;
+  private difficultyTabs: Text[] = [];
+  private difficultyDesc: Text;
 
   private selectedIdx = 0;
-  private onConfirm: ((mission: MissionSpec) => void) | null = null;
+  private difficultyIdx = 1; // normal default
+  private onConfirm: ((mission: MissionSpec, difficulty: DifficultySpec) => void) | null = null;
   private readonly panelX: number;
   private readonly panelY: number;
 
@@ -46,6 +61,43 @@ export class MissionSelect {
     this.title.y = this.panelY + 20;
     this.container.addChild(this.title);
 
+    this.difficultyGfx = new Graphics();
+    this.difficultyGfx.x = this.panelX;
+    this.difficultyGfx.y = this.panelY;
+    this.container.addChild(this.difficultyGfx);
+
+    const tabsTotalW = 360;
+    const tabsStartX = (PANEL_W - tabsTotalW) / 2;
+    const tabW = tabsTotalW / DIFFICULTIES.length;
+    for (let i = 0; i < DIFFICULTIES.length; i++) {
+      const d = DIFFICULTIES[i]!;
+      const tabX = this.panelX + tabsStartX + i * tabW + tabW / 2;
+      const tabY = this.panelY + DIFFICULTY_BAR_TOP + 16;
+      const lbl = new Text({
+        text: d.label.toUpperCase(),
+        style: {
+          fontFamily: 'monospace',
+          fontSize: 14,
+          fill: 0xeeeeee,
+          fontWeight: 'bold',
+        },
+      });
+      lbl.anchor.set(0.5, 0.5);
+      lbl.x = tabX;
+      lbl.y = tabY;
+      this.container.addChild(lbl);
+      this.difficultyTabs.push(lbl);
+    }
+
+    this.difficultyDesc = new Text({
+      text: '',
+      style: { fontFamily: 'monospace', fontSize: 11, fill: 0xaaaadd },
+    });
+    this.difficultyDesc.anchor.set(0.5, 0);
+    this.difficultyDesc.x = gameW / 2;
+    this.difficultyDesc.y = this.panelY + DIFFICULTY_BAR_TOP + 38;
+    this.container.addChild(this.difficultyDesc);
+
     this.cardsGfx = new Graphics();
     this.cardsGfx.x = this.panelX;
     this.cardsGfx.y = this.panelY;
@@ -53,7 +105,7 @@ export class MissionSelect {
 
     for (let i = 0; i < MISSIONS.length; i++) {
       const m = MISSIONS[i]!;
-      const cardY = this.panelY + 70 + i * (CARD_H + CARD_GAP);
+      const cardY = this.panelY + CARDS_TOP + i * (CARD_H + CARD_GAP);
       const name = new Text({
         text: m.name,
         style: {
@@ -102,7 +154,7 @@ export class MissionSelect {
     this.container.addChild(this.status);
 
     this.hint = new Text({
-      text: '↑↓ select  ENTER start',
+      text: '↑↓ mission  ←→ difficulty  ENTER start',
       style: { fontFamily: 'monospace', fontSize: 11, fill: 0xaaaadd },
     });
     this.hint.anchor.set(0.5, 0);
@@ -117,9 +169,15 @@ export class MissionSelect {
     return this.container.visible;
   }
 
-  show(opts: { onConfirm: (mission: MissionSpec) => void; statusText?: string }) {
+  show(opts: {
+    onConfirm: (mission: MissionSpec, difficulty: DifficultySpec) => void;
+    statusText?: string;
+  }) {
     this.selectedIdx = MISSIONS.findIndex((m) => m.available);
     if (this.selectedIdx < 0) this.selectedIdx = 0;
+    const initial: Difficulty = loadDifficulty();
+    const idx = DIFFICULTIES.findIndex((d) => d.id === initial);
+    this.difficultyIdx = idx >= 0 ? idx : 1;
     this.onConfirm = opts.onConfirm;
     this.status.text = opts.statusText ?? '';
     this.container.visible = true;
@@ -139,11 +197,20 @@ export class MissionSelect {
     } else if (input.justPressed('down')) {
       this.selectedIdx = (this.selectedIdx + 1) % MISSIONS.length;
       this.redraw();
+    } else if (input.justPressed('left')) {
+      this.difficultyIdx = (this.difficultyIdx - 1 + DIFFICULTIES.length) % DIFFICULTIES.length;
+      saveDifficulty(DIFFICULTIES[this.difficultyIdx]!.id);
+      this.redraw();
+    } else if (input.justPressed('right')) {
+      this.difficultyIdx = (this.difficultyIdx + 1) % DIFFICULTIES.length;
+      saveDifficulty(DIFFICULTIES[this.difficultyIdx]!.id);
+      this.redraw();
     } else if (input.justPressed('confirm')) {
       const m = MISSIONS[this.selectedIdx]!;
+      const d = DIFFICULTIES[this.difficultyIdx]!;
       if (m.available && this.onConfirm) {
         const cb = this.onConfirm;
-        cb(m);
+        cb(m, d);
       }
     }
   }
@@ -155,10 +222,34 @@ export class MissionSelect {
       .fill({ color: 0x101820, alpha: 0.96 })
       .stroke({ color: 0xfff066, width: 3, alpha: 0.95 });
 
+    // Difficulty bar
+    this.difficultyGfx.clear();
+    const tabsTotalW = 360;
+    const tabsStartX = (PANEL_W - tabsTotalW) / 2;
+    const tabW = tabsTotalW / DIFFICULTIES.length;
+    for (let i = 0; i < DIFFICULTIES.length; i++) {
+      const isSel = i === this.difficultyIdx;
+      const tabX = tabsStartX + i * tabW;
+      const tabY = DIFFICULTY_BAR_TOP + 4;
+      const fill = isSel ? 0x223355 : 0x161c28;
+      const stroke = isSel ? 0xfff066 : 0x3a4258;
+      const strokeW = isSel ? 2.5 : 1;
+      this.difficultyGfx
+        .roundRect(tabX, tabY, tabW - 6, 26, 5)
+        .fill({ color: fill, alpha: 0.92 })
+        .stroke({ color: stroke, width: strokeW, alpha: 0.92 });
+      const lbl = this.difficultyTabs[i];
+      if (lbl) {
+        lbl.style.fill = isSel ? 0xfff066 : 0x88aaff;
+      }
+    }
+    this.difficultyDesc.text = findDifficulty(DIFFICULTIES[this.difficultyIdx]!.id).description;
+
+    // Mission cards
     this.cardsGfx.clear();
     for (let i = 0; i < MISSIONS.length; i++) {
       const m = MISSIONS[i]!;
-      const cardY = 70 + i * (CARD_H + CARD_GAP);
+      const cardY = CARDS_TOP + i * (CARD_H + CARD_GAP);
       const isSelected = i === this.selectedIdx;
       const fillColor = m.available
         ? isSelected

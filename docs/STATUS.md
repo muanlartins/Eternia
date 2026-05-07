@@ -17,7 +17,7 @@
 | **4 — Stage flow + buffs** | 6 stages (forest 1-4 + swamp 1-2), buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.M) | `04-stages-design.md` |
 | **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
 | **6 — Auth + persistence** | Login, JSON store, run sync, leaderboard, MenuScreen + logout | ⏳ 6.A + 6.B + 6.C done; 6.D skipped (JSON suficiente) | `06-server-design.md` |
-| **7 — Lobby UX restructure** | Login → Character → Mission → Run flow (GC-style) | ⏳ 7.A done; 7.B/7.C pendente | `07-lobby-design.md` |
+| **7 — Lobby UX restructure** | Login → Character → Mission → Run flow (GC-style) + difficulty | ⏳ 7.A + 7.B done; 7.C pendente | `07-lobby-design.md` |
 | **8 — Multiplayer (Tailscale alpha)** | Network test → lobby presence → co-op gameplay | ⏳ não iniciado | (próximo) |
 | **9 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (último, ~50-100h) |
 
@@ -104,7 +104,9 @@ sprites são o último polish.
    - 7.A done (2026-05-06): Login → CharacterSelect → MissionSelect → Run
      flow. Forest e Swamp viraram missions independentes (cada um seu run
      roguelike). 4 character slots (1 ativo + 3 "coming soon" greyed).
-   - 7.B pending: Difficulty levels (Easy/Normal/Hard com multipliers).
+   - 7.B done (2026-05-06): Difficulty levels (Easy/Normal/Hard) integrados
+     em MissionSelect como tab bar. Mob HP×{0.7, 1.0, 1.4}, dmg×{0.7, 1.0,
+     1.3}, lives {4, 3, 2}. Persistente em localStorage.
    - 7.C pending: Room creation/join (prep pra MP).
 8. ⏳ **Phase 8 — Multiplayer (Tailscale alpha)** — pendente.
    - 8.A: Network test (server bind 0.0.0.0 + Tailscale docs).

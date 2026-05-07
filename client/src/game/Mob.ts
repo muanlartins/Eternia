@@ -123,19 +123,23 @@ export class Mob {
   private previewMarker: Graphics;
 
   private readonly autoRespawn: boolean;
+  private readonly hpMul: number;
+  private readonly dmgMul: number;
   private pendingProjectiles: Projectile[] = [];
 
   constructor(
     private readonly spec: MobSpec,
     x: number,
     y: number,
-    options?: { autoRespawn?: boolean },
+    options?: { autoRespawn?: boolean; hpMul?: number; dmgMul?: number },
   ) {
     this.originalX = x;
     this.originalY = y;
     this.x = x;
     this.y = y;
-    this.hp = spec.maxHp;
+    this.hpMul = options?.hpMul ?? 1;
+    this.dmgMul = options?.dmgMul ?? 1;
+    this.hp = spec.maxHp * this.hpMul;
     this.autoRespawn = options?.autoRespawn ?? true;
     this.body = new Graphics();
     this.hpBar = new Graphics();
@@ -167,7 +171,7 @@ export class Mob {
   }
 
   getMaxHp(): number {
-    return this.spec.maxHp;
+    return this.spec.maxHp * this.hpMul;
   }
 
   getPhase(): 1 | 2 {
@@ -248,7 +252,7 @@ export class Mob {
     if (
       this.spec.phase2 &&
       this.phase === 1 &&
-      this.hp / this.spec.maxHp <= this.spec.phase2.hpThresholdPct
+      this.hp / (this.spec.maxHp * this.hpMul) <= this.spec.phase2.hpThresholdPct
     ) {
       this.phase = 2;
       this.justEnteredPhase2 = true;
@@ -308,7 +312,7 @@ export class Mob {
     const localX = this.spec.width / 2 + this.facing * hb.cx - hb.w / 2;
     return {
       bbox: { x: this.x + localX, y: this.y + hb.y, w: hb.w, h: hb.h },
-      damage: atk.damage * this.damageMul(),
+      damage: atk.damage * this.damageMul() * this.dmgMul,
       knockback: atk.knockback,
       attackId: this.currentAttackId,
       facing: this.facing,
@@ -473,7 +477,7 @@ export class Mob {
 
   private respawn() {
     this.alive = true;
-    this.hp = this.spec.maxHp;
+    this.hp = this.spec.maxHp * this.hpMul;
     this.x = this.originalX;
     this.y = this.originalY;
     this.vx = 0;
@@ -518,7 +522,7 @@ export class Mob {
         startX,
         startY,
         dir * proj.speed,
-        atk.damage,
+        atk.damage * this.damageMul() * this.dmgMul,
         atk.knockback,
         proj.hitboxW,
         proj.hitboxH,
@@ -622,7 +626,7 @@ export class Mob {
 
     const barW = this.spec.width;
     const barH = 4;
-    const hpPct = this.hp / this.spec.maxHp;
+    const hpPct = this.hp / (this.spec.maxHp * this.hpMul);
     this.hpBar
       .rect(0, -10, barW, barH)
       .fill({ color: 0x111827, alpha: 0.85 });

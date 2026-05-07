@@ -13,6 +13,8 @@ export class Stage {
   readonly spec: StageSpec;
   private readonly worldStage: Container;
   private readonly isLastStage: boolean;
+  private readonly hpMul: number;
+  private readonly dmgMul: number;
   private mobs: Mob[] = [];
   private platformGfx: Graphics[] = [];
   private platformBoxes: AABB[] = [];
@@ -22,10 +24,16 @@ export class Stage {
   private portal: Graphics | null = null;
   private portalTimeMs = 0;
 
-  constructor(spec: StageSpec, worldStage: Container, opts: { isLastStage?: boolean } = {}) {
+  constructor(
+    spec: StageSpec,
+    worldStage: Container,
+    opts: { isLastStage?: boolean; hpMul?: number; dmgMul?: number } = {},
+  ) {
     this.spec = spec;
     this.worldStage = worldStage;
     this.isLastStage = opts.isLastStage ?? false;
+    this.hpMul = opts.hpMul ?? 1;
+    this.dmgMul = opts.dmgMul ?? 1;
   }
 
   spawn() {
@@ -62,7 +70,11 @@ export class Stage {
           ? spec.hoverY
           : GROUND_Y - spec.height;
       const y = s.y ?? defaultY;
-      const mob = new Mob(spec, s.x, y, { autoRespawn: false });
+      const mob = new Mob(spec, s.x, y, {
+        autoRespawn: false,
+        hpMul: this.hpMul,
+        dmgMul: this.dmgMul,
+      });
       this.mobs.push(mob);
       this.worldStage.addChild(mob.view);
     }

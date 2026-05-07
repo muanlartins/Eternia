@@ -24,6 +24,11 @@ import { MissionSelect } from './game/MissionSelect.js';
 import { MOB_SPECS, stageById, type StageSpec } from './data/stages.js';
 import { MISSIONS, type MissionSpec } from './data/missions.js';
 import {
+  findDifficulty,
+  loadDifficulty,
+  type DifficultySpec,
+} from './data/difficulty.js';
+import {
   applyGameOverToRecords,
   applyVictoryToRecords,
   loadRecords,
@@ -154,6 +159,7 @@ async function main() {
 
   let currentMission: MissionSpec = MISSIONS[0]!;
   let currentStageIdx = 0;
+  let currentDifficulty: DifficultySpec = findDifficulty(loadDifficulty());
 
   function currentStageSpec() {
     return stageById(currentMission.stageIds[currentStageIdx]!)!;
@@ -161,8 +167,15 @@ async function main() {
   function isLastStageInMission(idx: number = currentStageIdx) {
     return idx === currentMission.stageIds.length - 1;
   }
+  function newStage() {
+    return new Stage(currentStageSpec(), worldStage, {
+      isLastStage: isLastStageInMission(),
+      hpMul: currentDifficulty.hpMul,
+      dmgMul: currentDifficulty.dmgMul,
+    });
+  }
 
-  let stage = new Stage(currentStageSpec(), worldStage, { isLastStage: isLastStageInMission() });
+  let stage = newStage();
   stage.spawn();
   background.setStage(currentStageSpec().id);
 
@@ -276,7 +289,7 @@ async function main() {
   stageBanner.visible = false;
   let prevPlayerState: PlayerState = player.state;
 
-  const MAX_LIVES = 3;
+  let MAX_LIVES = currentDifficulty.lives;
   let lives = MAX_LIVES;
 
   interface RunStats {
@@ -333,19 +346,19 @@ async function main() {
     stageTransitionTimerMs = 0;
     missionSelect.show({
       ...(statusText !== undefined ? { statusText } : {}),
-      onConfirm: (mission) => {
+      onConfirm: (mission, difficulty) => {
         currentMission = mission;
         currentStageIdx = 0;
+        currentDifficulty = difficulty;
 
+        MAX_LIVES = currentDifficulty.lives;
         lives = MAX_LIVES;
         player.resetBuffs();
         runStats = makeStats();
         pendingFlags = { newBestTime: false, newBestDamage: false, newFewestDeaths: false };
 
         stage.destroy();
-        stage = new Stage(currentStageSpec(), worldStage, {
-          isLastStage: isLastStageInMission(),
-        });
+        stage = newStage();
         stage.spawn();
         background.setStage(currentStageSpec().id);
         refreshMiniMap();
@@ -691,7 +704,7 @@ async function main() {
         saveRecords(records);
         runStats = makeStats();
         stage.destroy();
-        stage = new Stage(currentStageSpec(), worldStage, { isLastStage: isLastStageInMission() });
+        stage = newStage();
         stage.spawn();
         background.setStage(currentStageSpec().id);
         stagePhase = 'gameOver';
@@ -783,7 +796,7 @@ async function main() {
         buffOffer.hide();
         currentStageIdx = currentStageIdx + 1;
         stage.destroy();
-        stage = new Stage(currentStageSpec(), worldStage, { isLastStage: isLastStageInMission() });
+        stage = newStage();
         stage.spawn();
         background.setStage(currentStageSpec().id);
         player.teleportToStart();
