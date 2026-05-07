@@ -14,7 +14,7 @@ buffs, Pântano = run de 2 stages com buffs).
 |---|---|---|
 | **7.A** | Mission select + character select + flow restructure | implementado |
 | **7.B** | Difficulty levels (Easy / Normal / Hard) integrados em MissionSelect | implementado |
-| **7.C** | Room creation/join (single-player rooms inicialmente, prep pra MP) | pendente |
+| **7.C** | Room model + REST endpoints (create/join/leave/list/get) + client integration silenciosa (HUD mostra room code) | implementado |
 
 ## 7.A — Mission select + character select
 
@@ -187,13 +187,103 @@ adicionando difficulty ao record key, mas pra alpha tudo bem.
 - **Difficulty unlock**: Hard available desde o começo. Sem progression.
 - **Diff-aware leaderboard**: server salva runs sem difficulty. Backlog.
 
-## 7.C — Room creation/join (futuro)
+## 7.C — Room model + REST endpoints
 
-Cada run vira uma "room" no server. Solo room = privada (default). Player
-pode invitar via código compartilhável (ex: `eternia.io/r/ABC123`).
+Foundation pra multiplayer. Cada run agora cria uma "room" no server.
+Sem UI de criar/entrar (vem em 8.B com lobby completo) — por enquanto,
+toda run autom-cria uma room solo silenciosamente, e o code aparece no
+HUD pra o user já conseguir testar share via Tailscale via curl quando
+chegar 8.A.
 
-Server endpoint: POST /api/rooms { mission, difficulty } → { roomId, code }.
-Outros players entram via POST /api/rooms/:code/join.
+### Server (Go)
 
-Player count atualmente cap em 1 (sem co-op gameplay ainda — vem em 8.C).
-Mas a infra de room já é exposta pra preparar Phase 8 (multiplayer).
+`store.go`: novo `Room` struct e métodos:
+```go
+type Room struct {
+  ID         int    `json:"id"`
+  Code       string `json:"code"`        // 6-char alphanumeric
+  HostUserID int    `json:"hostUserId"`
+  Mission    string `json:"mission"`
+  Difficulty string `json:"difficulty"`
+  Members    []int  `json:"members"`     // user IDs
+  Status     string `json:"status"`      // "active" | "ended"
+  CreatedAt  int64  `json:"createdAt"`
+  UpdatedAt  int64  `json:"updatedAt"`
+}
+```
+
+Code generation: 6 chars de alfabeto sem ambiguidade (sem I, O, 0, 1).
+Retry on collision (até 8 tentativas; espaço de 32^6 ≈ 1B = sufficient
+pra friends-only).
+
+Methods:
+- `CreateRoom(hostUserID, mission, difficulty) → Room` (host vira primeiro
+  member, status='active')
+- `JoinRoom(code, userID) → Room` (idempotente — se já é member, retorna
+  current. Se room não existe ou status != 'active', erro)
+- `LeaveRoom(code, userID)` (remove member; se ficar vazio, status='ended')
+- `RoomByCode(code) → Room` (lookup; case-insensitive)
+- `ActiveRooms() → []Room` (filtra status == 'active')
+
+### REST endpoints (`api.go`)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/rooms` | Bearer | Cria room (`{mission, difficulty}`) |
+| GET | `/api/rooms` | none | Lista active rooms |
+| GET | `/api/rooms/{code}` | none | Get specific room |
+| POST | `/api/rooms/{code}/join` | Bearer | Join (idempotent) |
+| POST | `/api/rooms/{code}/leave` | Bearer | Leave (204 No Content) |
+
+Routing usa `r.PathValue("code")` (Go 1.22+ pattern matching).
+
+### Client (`Auth.ts`)
+
+Novos métodos: `createRoom(mission, difficulty)`, `joinRoom(code)`,
+`leaveRoom(code)`. Todos no-op se não autenticado (guest). Erros (network,
+non-2xx) logged via console.warn, retornam null.
+
+### main.ts integration
+
+Estado: `currentRoom: Room | null`.
+
+Triggers:
+- `startMissionSelect` enter → leaveRoom previous (if any) + clear
+- `missionSelect.onConfirm` → fire-and-forget createRoom; quando resolve,
+  set currentRoom (pode levar ~50ms — HUD começa sem code, depois aparece)
+- `menuScreen.onLogout` → leaveRoom + clear
+
+Display: HUD top-right text vira `@username · ABCDEF` quando há room.
+Sem room (entre runs ou guest): só `@username` ou `server X.Y.Z`.
+
+### Smoke test verificado
+
+Server end-to-end (curl, 2 users):
+- alice POST /api/rooms → code Q7HEEF, status active, members [1]
+- bob POST /api/rooms/Q7HEEF/join → members [1, 2], idempotent
+- GET /api/rooms → lista com 1 room active
+- GET /api/rooms/Q7HEEF → mesmo room
+- bob POST .../leave → 204; members [1]
+- alice POST .../leave → 204; members [], status='ended'
+- GET /api/rooms → lista vazia (status != active)
+- POST /api/rooms/XXXXXX/join → 404 not found
+
+### Decisões / não feitos
+
+- **Persistência**: rooms vão pra mesmo `data/eternia.json`. Acumula
+  rooms ended (status='ended'). Cleanup periódico ainda não — nem MP ativo
+  pra precisar disso. Pode adicionar threshold (ex: ended > 24h → delete)
+  em future polish.
+- **Room privacy**: ActiveRooms() retorna TODAS as active rooms (no
+  filter por privacy). Solo runs aparecerão na lista quando 8.B vier. Vai
+  precisar flag `private: bool` ou similar pra distinguir solo vs invitable.
+- **WebSocket**: rooms são REST por enquanto. Phase 8.B vai adicionar WS
+  notifications (player joined/left, etc.).
+- **Lobby UI**: sem create/join UI em 7.C. Solo path silencioso.
+
+## 7.D (futuro / opcional)
+
+- **Room private flag** + filtragem em ActiveRooms.
+- **Cleanup de rooms ended** após N horas.
+- **Lobby screen** com room list, create-room dialog, join-by-code text
+  input. (vai junto com 8.B já que MP precisa)

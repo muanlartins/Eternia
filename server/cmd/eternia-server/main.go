@@ -92,6 +92,11 @@ func main() {
 	mux.HandleFunc("POST /api/runs", api.HandleSaveRun(s))
 	mux.HandleFunc("GET /api/runs/me", api.HandleMyRecords(s))
 	mux.HandleFunc("GET /api/leaderboard", api.HandleLeaderboard(s))
+	mux.HandleFunc("POST /api/rooms", api.HandleCreateRoom(s))
+	mux.HandleFunc("GET /api/rooms", api.HandleListRooms(s))
+	mux.HandleFunc("GET /api/rooms/{code}", api.HandleGetRoom(s))
+	mux.HandleFunc("POST /api/rooms/{code}/join", api.HandleJoinRoom(s))
+	mux.HandleFunc("POST /api/rooms/{code}/leave", api.HandleLeaveRoom(s))
 
 	log.Printf("Eternia server v%s listening on %s (data: %s)", version, *addr, *dataPath)
 	if err := http.ListenAndServe(*addr, mux); err != nil {

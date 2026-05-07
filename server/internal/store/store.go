@@ -30,6 +30,18 @@ type Run struct {
 	CompletedAt int64 `json:"completedAt"`
 }
 
+type Room struct {
+	ID         int    `json:"id"`
+	Code       string `json:"code"`
+	HostUserID int    `json:"hostUserId"`
+	Mission    string `json:"mission"`
+	Difficulty string `json:"difficulty"`
+	Members    []int  `json:"members"`
+	Status     string `json:"status"`
+	CreatedAt  int64  `json:"createdAt"`
+	UpdatedAt  int64  `json:"updatedAt"`
+}
+
 type Records struct {
 	BestTimeMs            *int64 `json:"bestTimeMs"`
 	BestDamageDealt       int    `json:"bestDamageDealt"`
@@ -67,8 +79,10 @@ func IsValidMetric(m string) bool {
 type data struct {
 	Users      []User `json:"users"`
 	Runs       []Run  `json:"runs"`
+	Rooms      []Room `json:"rooms"`
 	NextUserID int    `json:"nextUserId"`
 	NextRunID  int    `json:"nextRunId"`
+	NextRoomID int    `json:"nextRoomId"`
 }
 
 type Store struct {
@@ -81,8 +95,12 @@ func New(path string) (*Store, error) {
 	s := &Store{path: path}
 	s.d.NextUserID = 1
 	s.d.NextRunID = 1
+	s.d.NextRoomID = 1
 	if err := s.load(); err != nil {
 		return nil, err
+	}
+	if s.d.NextRoomID == 0 {
+		s.d.NextRoomID = 1
 	}
 	return s, nil
 }
@@ -256,6 +274,132 @@ func isBetter(a, b Run, metric LeaderboardMetric) bool {
 		return a.DurationMs < b.DurationMs
 	}
 	return false
+}
+
+const roomCodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+func generateRoomCode() string {
+	b := make([]byte, 6)
+	if _, err := rand.Read(b); err != nil {
+		for i := range b {
+			b[i] = roomCodeAlphabet[i%len(roomCodeAlphabet)]
+		}
+		return string(b)
+	}
+	for i := range b {
+		b[i] = roomCodeAlphabet[int(b[i])%len(roomCodeAlphabet)]
+	}
+	return string(b)
+}
+
+func (s *Store) roomByCodeUnsafe(code string) *Room {
+	for i := range s.d.Rooms {
+		if s.d.Rooms[i].Code == code {
+			return &s.d.Rooms[i]
+		}
+	}
+	return nil
+}
+
+func (s *Store) CreateRoom(hostUserID int, mission, difficulty string) (Room, error) {
+	if mission == "" {
+		return Room{}, errors.New("mission required")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var code string
+	for attempts := 0; attempts < 8; attempts++ {
+		code = generateRoomCode()
+		if s.roomByCodeUnsafe(code) == nil {
+			break
+		}
+	}
+	now := time.Now().UnixMilli()
+	r := Room{
+		ID:         s.d.NextRoomID,
+		Code:       code,
+		HostUserID: hostUserID,
+		Mission:    mission,
+		Difficulty: difficulty,
+		Members:    []int{hostUserID},
+		Status:     "active",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+	s.d.NextRoomID++
+	s.d.Rooms = append(s.d.Rooms, r)
+	if err := s.save(); err != nil {
+		return Room{}, err
+	}
+	return r, nil
+}
+
+func (s *Store) RoomByCode(code string) (Room, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r := s.roomByCodeUnsafe(strings.ToUpper(strings.TrimSpace(code)))
+	if r == nil {
+		return Room{}, false
+	}
+	return *r, true
+}
+
+func (s *Store) JoinRoom(code string, userID int) (Room, error) {
+	code = strings.ToUpper(strings.TrimSpace(code))
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r := s.roomByCodeUnsafe(code)
+	if r == nil {
+		return Room{}, errors.New("room not found")
+	}
+	if r.Status != "active" {
+		return Room{}, errors.New("room not active")
+	}
+	for _, m := range r.Members {
+		if m == userID {
+			return *r, nil
+		}
+	}
+	r.Members = append(r.Members, userID)
+	r.UpdatedAt = time.Now().UnixMilli()
+	if err := s.save(); err != nil {
+		return Room{}, err
+	}
+	return *r, nil
+}
+
+func (s *Store) LeaveRoom(code string, userID int) error {
+	code = strings.ToUpper(strings.TrimSpace(code))
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r := s.roomByCodeUnsafe(code)
+	if r == nil {
+		return nil
+	}
+	out := r.Members[:0]
+	for _, m := range r.Members {
+		if m != userID {
+			out = append(out, m)
+		}
+	}
+	r.Members = out
+	r.UpdatedAt = time.Now().UnixMilli()
+	if len(r.Members) == 0 {
+		r.Status = "ended"
+	}
+	return s.save()
+}
+
+func (s *Store) ActiveRooms() []Room {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]Room, 0, len(s.d.Rooms))
+	for _, r := range s.d.Rooms {
+		if r.Status == "active" {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 func (s *Store) RecordsForUser(userID int) Records {

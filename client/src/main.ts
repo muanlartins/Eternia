@@ -17,7 +17,7 @@ import { pickRandomModifiers } from './data/modifiers.js';
 import { MiniMap } from './game/MiniMap.js';
 import { MenuScreen } from './game/MenuScreen.js';
 import { BossHpBar } from './game/BossHpBar.js';
-import { Auth, fetchLeaderboard } from './game/Auth.js';
+import { Auth, fetchLeaderboard, type Room } from './game/Auth.js';
 import { LoginScreen } from './game/LoginScreen.js';
 import { CharacterSelect } from './game/CharacterSelect.js';
 import { MissionSelect } from './game/MissionSelect.js';
@@ -160,6 +160,7 @@ async function main() {
   let currentMission: MissionSpec = MISSIONS[0]!;
   let currentStageIdx = 0;
   let currentDifficulty: DifficultySpec = findDifficulty(loadDifficulty());
+  let currentRoom: Room | null = null;
 
   function currentStageSpec() {
     return stageById(currentMission.stageIds[currentStageIdx]!)!;
@@ -344,6 +345,10 @@ async function main() {
     audio.stopBgm();
     stagePhase = 'modifierPick';
     stageTransitionTimerMs = 0;
+    if (currentRoom) {
+      void auth.leaveRoom(currentRoom.code);
+      currentRoom = null;
+    }
     missionSelect.show({
       ...(statusText !== undefined ? { statusText } : {}),
       onConfirm: (mission, difficulty) => {
@@ -369,6 +374,10 @@ async function main() {
         stagePhase = 'modifierPick';
         stageTransitionTimerMs = 0;
         stageBanner.visible = false;
+
+        void auth.createRoom(mission.id, difficulty.id).then((room) => {
+          if (room) currentRoom = room;
+        });
       },
     });
   }
@@ -443,6 +452,10 @@ async function main() {
       menuScreen.update(audio, input, {
         username: auth.getUsername(),
         onLogout: () => {
+          if (currentRoom) {
+            void auth.leaveRoom(currentRoom.code);
+            currentRoom = null;
+          }
           auth.logout();
           menuScreen.close();
           loginScreen.show({
@@ -930,7 +943,12 @@ async function main() {
         ? runStats.endedAtMs - runStats.startedAtMs
         : performance.now() - runStats.startedAtMs;
     const username = auth.getUsername();
-    const infoLine = username ? `@${username}` : serverInfo;
+    let infoLine: string;
+    if (username) {
+      infoLine = currentRoom ? `@${username} · ${currentRoom.code}` : `@${username}`;
+    } else {
+      infoLine = serverInfo;
+    }
     hud.update({
       player,
       lives,

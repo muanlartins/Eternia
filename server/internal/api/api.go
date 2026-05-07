@@ -120,6 +120,95 @@ type leaderboardResponse struct {
 	Entries []store.LeaderboardEntry `json:"entries"`
 }
 
+type createRoomRequest struct {
+	Mission    string `json:"mission"`
+	Difficulty string `json:"difficulty"`
+}
+
+type roomResponse struct {
+	Room store.Room `json:"room"`
+}
+
+type roomsResponse struct {
+	Rooms []store.Room `json:"rooms"`
+}
+
+func HandleCreateRoom(s *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := bearerToken(r)
+		user, ok := s.UserByToken(token)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+		var req createRoomRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid json")
+			return
+		}
+		room, err := s.CreateRoom(user.ID, req.Mission, req.Difficulty)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, roomResponse{Room: room})
+	}
+}
+
+func HandleJoinRoom(s *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := bearerToken(r)
+		user, ok := s.UserByToken(token)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+		code := r.PathValue("code")
+		room, err := s.JoinRoom(code, user.ID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, roomResponse{Room: room})
+	}
+}
+
+func HandleLeaveRoom(s *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := bearerToken(r)
+		user, ok := s.UserByToken(token)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+		code := r.PathValue("code")
+		if err := s.LeaveRoom(code, user.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func HandleGetRoom(s *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		code := r.PathValue("code")
+		room, ok := s.RoomByCode(code)
+		if !ok {
+			writeError(w, http.StatusNotFound, "room not found")
+			return
+		}
+		writeJSON(w, http.StatusOK, roomResponse{Room: room})
+	}
+}
+
+func HandleListRooms(s *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		rooms := s.ActiveRooms()
+		writeJSON(w, http.StatusOK, roomsResponse{Rooms: rooms})
+	}
+}
+
 func HandleLeaderboard(s *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metric := r.URL.Query().Get("metric")

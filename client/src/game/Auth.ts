@@ -19,6 +19,18 @@ export interface LeaderboardEntry {
   completedAt: number;
 }
 
+export interface Room {
+  id: number;
+  code: string;
+  hostUserId: number;
+  mission: string;
+  difficulty: string;
+  members: number[];
+  status: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export async function fetchLeaderboard(
   metric: LeaderboardMetric,
   limit = 10,
@@ -159,6 +171,65 @@ export class Auth {
       console.log('[auth] run saved', data.records);
     } catch (e) {
       console.warn('[auth] saveRun network error', e);
+    }
+  }
+
+  private authHeader(): Record<string, string> | null {
+    if (!this.state) return null;
+    return { Authorization: `Bearer ${this.state.token}` };
+  }
+
+  async createRoom(mission: string, difficulty: string): Promise<Room | null> {
+    const auth = this.authHeader();
+    if (!auth) return null;
+    try {
+      const res = await fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...auth },
+        body: JSON.stringify({ mission, difficulty }),
+      });
+      if (!res.ok) {
+        console.warn(`[auth] createRoom failed: HTTP ${res.status}`);
+        return null;
+      }
+      const data = (await res.json()) as { room: Room };
+      return data.room;
+    } catch (e) {
+      console.warn('[auth] createRoom network error', e);
+      return null;
+    }
+  }
+
+  async joinRoom(code: string): Promise<Room | null> {
+    const auth = this.authHeader();
+    if (!auth) return null;
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(code.toUpperCase())}/join`, {
+        method: 'POST',
+        headers: auth,
+      });
+      if (!res.ok) {
+        console.warn(`[auth] joinRoom failed: HTTP ${res.status}`);
+        return null;
+      }
+      const data = (await res.json()) as { room: Room };
+      return data.room;
+    } catch (e) {
+      console.warn('[auth] joinRoom network error', e);
+      return null;
+    }
+  }
+
+  async leaveRoom(code: string): Promise<void> {
+    const auth = this.authHeader();
+    if (!auth) return;
+    try {
+      await fetch(`/api/rooms/${encodeURIComponent(code.toUpperCase())}/leave`, {
+        method: 'POST',
+        headers: auth,
+      });
+    } catch {
+      /* ignore */
     }
   }
 
