@@ -125,13 +125,21 @@ export class Mob {
   private readonly autoRespawn: boolean;
   private readonly hpMul: number;
   private readonly dmgMul: number;
+  private remoteControlled = false;
+  private renderX = 0;
+  private renderY = 0;
   private pendingProjectiles: Projectile[] = [];
 
   constructor(
     private readonly spec: MobSpec,
     x: number,
     y: number,
-    options?: { autoRespawn?: boolean; hpMul?: number; dmgMul?: number },
+    options?: {
+      autoRespawn?: boolean;
+      hpMul?: number;
+      dmgMul?: number;
+      remoteControlled?: boolean;
+    },
   ) {
     this.originalX = x;
     this.originalY = y;
@@ -139,6 +147,9 @@ export class Mob {
     this.y = y;
     this.hpMul = options?.hpMul ?? 1;
     this.dmgMul = options?.dmgMul ?? 1;
+    this.remoteControlled = options?.remoteControlled ?? false;
+    this.renderX = x;
+    this.renderY = y;
     this.hp = spec.maxHp * this.hpMul;
     this.autoRespawn = options?.autoRespawn ?? true;
     this.body = new Graphics();
@@ -156,6 +167,78 @@ export class Mob {
 
   isBoss(): boolean {
     return this.spec.isBoss === true;
+  }
+
+  isRemoteControlled(): boolean {
+    return this.remoteControlled;
+  }
+
+  serializeForNetwork(idx: number) {
+    return {
+      idx,
+      x: this.x,
+      y: this.y,
+      vx: this.vx,
+      vy: this.vy,
+      hp: this.hp,
+      state: this.state,
+      facing: this.facing,
+      phase: this.phase,
+      stateTimeMs: this.stateTimeMs,
+      currentAttackIdx: this.currentAttackIdx,
+      alive: this.alive,
+    };
+  }
+
+  applyRemoteState(s: {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    hp: number;
+    state: string;
+    facing: -1 | 1;
+    phase: 1 | 2;
+    stateTimeMs: number;
+    currentAttackIdx: number;
+    alive: boolean;
+  }) {
+    const wasAlive = this.alive;
+    this.x = s.x;
+    this.y = s.y;
+    this.vx = s.vx;
+    this.vy = s.vy;
+    this.hp = s.hp;
+    this.facing = s.facing;
+    this.phase = s.phase;
+    this.currentAttackIdx = s.currentAttackIdx;
+    if (this.state !== (s.state as MobState)) {
+      this.state = s.state as MobState;
+      this.stateTimeMs = s.stateTimeMs;
+      if (this.state === MobState.Active) {
+        this.currentAttackId++;
+      }
+    } else {
+      this.stateTimeMs = s.stateTimeMs;
+    }
+    if (wasAlive && !s.alive) {
+      this.alive = false;
+      this.koFlashMs = this.isBoss() ? 500 : 220;
+      this.koFlashTotalMs = this.koFlashMs;
+      this.koFadeMs = this.isBoss() ? 2500 : 0;
+      this.koFadeTotalMs = this.koFadeMs;
+    }
+  }
+
+  private remoteHitCounter = -1;
+
+  // Direct-application damage path used by the host when a remote (joiner)
+  // client reports a hit on this mob. Joiner-side dedup ensures we receive
+  // each player attack once per mob; we generate a synthetic negative
+  // attackId so it can't collide with host-local positive ids.
+  applyRemoteHit(damage: number, knockbackVx: number): { applied: number } | null {
+    const synth = this.remoteHitCounter--;
+    return this.receiveHit(synth, damage, knockbackVx);
   }
 
   getId(): string {
@@ -342,13 +425,31 @@ export class Mob {
 
   update(dtMs: number, playerCenterX: number, platforms: readonly AABB[] = []) {
     const dt = dtMs / 1000;
-    this.stateTimeMs += dtMs;
-    this.attackCooldownMs = Math.max(0, this.attackCooldownMs - dtMs);
     this.hitFlashMs = Math.max(0, this.hitFlashMs - dtMs);
     this.koFlashMs = Math.max(0, this.koFlashMs - dtMs);
     if (this.koFlashMs <= 0) {
       this.koFadeMs = Math.max(0, this.koFadeMs - dtMs);
     }
+
+    if (this.remoteControlled) {
+      // Visual interpolation toward last applied target. AI / physics are
+      // run by the host; we only render the most recent state we received.
+      const lerpRate = 22;
+      const t = Math.min(1, lerpRate * dt);
+      this.renderX += (this.x - this.renderX) * t;
+      this.renderY += (this.y - this.renderY) * t;
+      this.view.x = this.renderX;
+      this.view.y = this.renderY;
+      this.redraw();
+      void playerCenterX;
+      void platforms;
+      return;
+    }
+
+    this.renderX = this.x;
+    this.renderY = this.y;
+    this.stateTimeMs += dtMs;
+    this.attackCooldownMs = Math.max(0, this.attackCooldownMs - dtMs);
 
     if (this.vx !== 0) {
       const decel = this.spec.knockbackFriction * dt;

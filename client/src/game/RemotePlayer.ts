@@ -2,8 +2,9 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { ELESIS } from '../data/elesis.js';
 import type { RemoteStatePayload } from './Network.js';
 
-const LERP_RATE = 18; // higher = snappier follow of the latest received state
+const LERP_RATE = 24; // higher = snappier follow of the latest received state
 const GHOST_ALPHA = 0.55;
+const EXTRAPOLATION_CAP_MS = 250; // stop dead-reckoning if no new state for >250ms
 
 export class RemotePlayer {
   readonly view = new Container();
@@ -16,10 +17,13 @@ export class RemotePlayer {
   private renderY = 0;
   private targetX = 0;
   private targetY = 0;
+  private targetVx = 0;
+  private targetVy = 0;
   private targetFacing: -1 | 1 = 1;
   private targetHp = 0;
   private targetMaxHp = 1;
   private hasFirstState = false;
+  private msSinceState = 0;
 
   constructor(public readonly userId: number, public readonly username: string) {
     this.body = new Graphics();
@@ -51,9 +55,12 @@ export class RemotePlayer {
   applyState(state: RemoteStatePayload) {
     this.targetX = state.x;
     this.targetY = state.y;
+    this.targetVx = state.vx;
+    this.targetVy = state.vy;
     this.targetFacing = state.facing;
     this.targetHp = state.hp;
     this.targetMaxHp = state.maxHp || 1;
+    this.msSinceState = 0;
     if (!this.hasFirstState) {
       this.renderX = state.x;
       this.renderY = state.y;
@@ -64,6 +71,13 @@ export class RemotePlayer {
   update(dtMs: number) {
     if (!this.hasFirstState) return;
     const dt = dtMs / 1000;
+    this.msSinceState += dtMs;
+    // Dead-reckon target forward using last known velocity, capped so a
+    // disconnected ghost doesn't fly off the screen forever.
+    if (this.msSinceState < EXTRAPOLATION_CAP_MS) {
+      this.targetX += this.targetVx * dt;
+      this.targetY += this.targetVy * dt;
+    }
     const t = Math.min(1, LERP_RATE * dt);
     this.renderX += (this.targetX - this.renderX) * t;
     this.renderY += (this.targetY - this.renderY) * t;

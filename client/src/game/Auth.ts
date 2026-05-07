@@ -102,6 +102,10 @@ export class Auth {
     return this.state?.username ?? null;
   }
 
+  getUserId(): number | null {
+    return this.state?.userId ?? null;
+  }
+
   getServerRecords(): ServerRecords | null {
     return this.serverRecords;
   }

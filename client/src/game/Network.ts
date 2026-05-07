@@ -21,6 +21,46 @@ export interface RemoteRosterEntry {
   username: string;
 }
 
+export interface RoomMember {
+  userId: number;
+  username: string;
+  ready: boolean;
+  isHost: boolean;
+}
+
+export interface RoomStatus {
+  code: string;
+  matchStarted: boolean;
+  members: readonly RoomMember[];
+}
+
+export interface MobStateUpdate {
+  idx: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  hp: number;
+  state: string;
+  facing: -1 | 1;
+  phase: 1 | 2;
+  stateTimeMs: number;
+  currentAttackIdx: number;
+  alive: boolean;
+}
+
+export interface PlayerHitPayload {
+  mobIdx: number;
+  attackId: number;
+  damage: number;
+  knockback: number;
+  facing: -1 | 1;
+  isCombo: boolean;
+  parryBuff: boolean;
+  aerial: boolean;
+  backstab: boolean;
+}
+
 export interface NetworkHandlers {
   onHello?: (v: string) => void;
   onRoster?: (others: readonly RemoteRosterEntry[]) => void;
@@ -30,6 +70,12 @@ export interface NetworkHandlers {
     entry: RemoteRosterEntry,
     state: RemoteStatePayload,
   ) => void;
+  onRoomStatus?: (status: RoomStatus) => void;
+  onMatchStart?: (code: string) => void;
+  onMobStates?: (mobs: readonly MobStateUpdate[]) => void;
+  onMobEvent?: (payload: unknown) => void;
+  onPlayerHit?: (hit: PlayerHitPayload) => void;
+  onStagePhase?: (phase: string, payload: unknown) => void;
   onStatusChange?: (status: 'connecting' | 'connected' | 'closed' | 'error') => void;
 }
 
@@ -71,6 +117,36 @@ export class Network {
   sendPlayerState(state: RemoteStatePayload) {
     if (this.currentRoomCode === null) return;
     this.send({ t: 'player_state', state });
+  }
+
+  sendReady(ready: boolean) {
+    if (this.currentRoomCode === null) return;
+    this.send({ t: 'set_ready', ready });
+  }
+
+  sendStartMatch() {
+    if (this.currentRoomCode === null) return;
+    this.send({ t: 'start_match' });
+  }
+
+  sendMobStates(mobs: readonly MobStateUpdate[]) {
+    if (this.currentRoomCode === null) return;
+    this.send({ t: 'mob_states', mobs });
+  }
+
+  sendMobEvent(payload: unknown) {
+    if (this.currentRoomCode === null) return;
+    this.send({ t: 'mob_event', payload });
+  }
+
+  sendPlayerHit(hit: PlayerHitPayload) {
+    if (this.currentRoomCode === null) return;
+    this.send({ t: 'player_hit', hit });
+  }
+
+  sendStagePhase(phase: string, payload?: unknown) {
+    if (this.currentRoomCode === null) return;
+    this.send({ t: 'stage_phase', phase, payload: payload ?? null });
   }
 
   private send(payload: unknown) {
@@ -149,6 +225,34 @@ export class Network {
         }
         break;
       }
+      case 'room_status': {
+        const code = typeof msg.code === 'string' ? msg.code : '';
+        const matchStarted = msg.matchStarted === true;
+        const members = Array.isArray(msg.members) ? (msg.members as RoomMember[]) : [];
+        this.handlers.onRoomStatus?.({ code, matchStarted, members });
+        break;
+      }
+      case 'match_start': {
+        const code = typeof msg.code === 'string' ? msg.code : '';
+        this.handlers.onMatchStart?.(code);
+        break;
+      }
+      case 'mob_states': {
+        const mobs = Array.isArray(msg.mobs) ? (msg.mobs as MobStateUpdate[]) : [];
+        this.handlers.onMobStates?.(mobs);
+        break;
+      }
+      case 'mob_event':
+        this.handlers.onMobEvent?.(msg.payload);
+        break;
+      case 'player_hit':
+        if (msg.hit) this.handlers.onPlayerHit?.(msg.hit as PlayerHitPayload);
+        break;
+      case 'stage_phase':
+        if (typeof msg.phase === 'string') {
+          this.handlers.onStagePhase?.(msg.phase, msg.payload);
+        }
+        break;
     }
   }
 }

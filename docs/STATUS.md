@@ -18,7 +18,7 @@
 | **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
 | **6 — Auth + persistence** | Login, JSON store, run sync, leaderboard, MenuScreen + logout | ⏳ 6.A + 6.B + 6.C done; 6.D skipped (JSON suficiente) | `06-server-design.md` |
 | **7 — Lobby UX restructure** | Login → Character → Mission → Run flow + difficulty + room foundation | ✅ 7.A + 7.B + 7.C done | `07-lobby-design.md` |
-| **8 — Multiplayer (Tailscale alpha)** | Network test + Lobby UI + position presence (ghosts) | ✅ 8.A + 8.B + 8.C done. Falta 8.D opcional (mob/dmg sync) | `08-multiplayer-design.md` |
+| **8 — Multiplayer (Tailscale alpha)** | Network test + Lobby + presence + co-op (mob sync + damage sync + ready-up lobby) | ✅ 8.A → 8.D done | `08-multiplayer-design.md` |
 | **9 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (último, ~50-100h) |
 
 ## O que ainda falta dentro das phases "ativas"
@@ -116,10 +116,19 @@ sprites são o último polish.
    - 8.B (lobby): LobbyScreen com Solo / Create Public / Join by Code +
      Room.mode flag (solo invisível no list público).
    - 8.C (presence): WS hub server-side, Network class client-side,
-     RemotePlayer ghost rendering. Players mesma room veem position um
-     do outro em real-time (~10Hz, lerp client). Mob/damage NÃO sync —
-     cada client roda sua própria sim.
-   - 8.D opcional (futuro): server-authoritative mob state pra co-op real.
+     RemotePlayer ghost rendering.
+   - 8.D (co-op completo) — 2026-05-07:
+     - Pre-game RoomLobby com ready-up + start (host) / ready (joiner).
+     - Host-authoritative mob state: Mob.remoteControlled flag, host
+       broadcast 20Hz, joiner mirrors via applyRemoteState. AI/physics
+       runs only on host.
+     - Damage sync: joiner sends player_hit; host applyRemoteHit; novo
+       HP via próximo mob_states.
+     - Smoother movement: 20Hz state rate + dead-reckoning extrapolation
+       em RemotePlayer.
+     - Limitações: projéteis (archer arrows) não sincronizados ainda;
+       stage progression entre stages pode divergir. Single-stage co-op
+       sólido pra alpha.
 9. ⏳ **Phase 9 — Sprites/arte** — substitui primitivas. Decisão pendente:
    extrair do GC original vs gerar via SD. ~50-100h. (último).
 

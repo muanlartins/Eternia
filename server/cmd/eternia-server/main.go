@@ -30,6 +30,37 @@ type clientMessage struct {
 	Code     string          `json:"code,omitempty"`
 	Username string          `json:"username,omitempty"`
 	State    json.RawMessage `json:"state,omitempty"`
+	Ready    bool            `json:"ready,omitempty"`
+	Mobs     json.RawMessage `json:"mobs,omitempty"`
+	Hit      json.RawMessage `json:"hit,omitempty"`
+	Phase    string          `json:"phase,omitempty"`
+	Payload  json.RawMessage `json:"payload,omitempty"`
+}
+
+func roomStatusPayload(code string, members []*hub.Member, hostUserID int, matchStarted bool) map[string]any {
+	out := make([]map[string]any, 0, len(members))
+	for _, m := range members {
+		out = append(out, map[string]any{
+			"userId":   m.UserID,
+			"username": m.Username,
+			"ready":    m.Ready,
+			"isHost":   m.UserID == hostUserID,
+		})
+	}
+	return map[string]any{
+		"t":            "room_status",
+		"code":         code,
+		"matchStarted": matchStarted,
+		"members":      out,
+	}
+}
+
+func broadcastRoomStatus(h *hub.Hub, code string) {
+	members, hostUserID, matchStarted := h.Snapshot(code)
+	payload := mustJSON(roomStatusPayload(code, members, hostUserID, matchStarted))
+	for _, m := range members {
+		_ = m.Conn.WriteMessage(websocket.TextMessage, payload)
+	}
 }
 
 func handleWS(s *store.Store, h *hub.Hub) http.HandlerFunc {
@@ -47,6 +78,7 @@ func handleWS(s *store.Store, h *hub.Hub) http.HandlerFunc {
 					"t":      "remote_leave",
 					"userId": member.UserID,
 				}))
+				broadcastRoomStatus(h, code)
 			}
 			conn.Close()
 		}()
@@ -92,16 +124,22 @@ func handleWS(s *store.Store, h *hub.Hub) http.HandlerFunc {
 					continue
 				}
 				if currentRoom != "" {
-					existing, _ := h.Leave(conn)
-					if existing != "" {
+					existing, leaver := h.Leave(conn)
+					if existing != "" && leaver != nil {
 						h.Broadcast(existing, conn, mustJSON(map[string]any{
 							"t":      "remote_leave",
-							"userId": currentMember.UserID,
+							"userId": leaver.UserID,
 						}))
+						broadcastRoomStatus(h, existing)
 					}
 				}
+				room, roomOk := s.RoomByCode(msg.Code)
+				hostHint := 0
+				if roomOk {
+					hostHint = room.HostUserID
+				}
 				member := &hub.Member{Conn: conn, UserID: user.ID, Username: user.Username}
-				others := h.Join(msg.Code, member)
+				others := h.Join(msg.Code, member, hostHint)
 				currentRoom = msg.Code
 				currentMember = member
 
@@ -125,6 +163,31 @@ func handleWS(s *store.Store, h *hub.Hub) http.HandlerFunc {
 					"userId":   user.ID,
 					"username": user.Username,
 				}))
+
+				broadcastRoomStatus(h, currentRoom)
+			case "set_ready":
+				if currentRoom == "" {
+					continue
+				}
+				h.SetReady(conn, msg.Ready)
+				broadcastRoomStatus(h, currentRoom)
+			case "start_match":
+				if currentRoom == "" {
+					continue
+				}
+				code, ok := h.StartMatch(conn)
+				if !ok {
+					continue
+				}
+				h.Broadcast(code, nil, mustJSON(map[string]any{
+					"t":    "match_start",
+					"code": code,
+				}))
+				_ = hub.SendJSON(conn, map[string]any{
+					"t":    "match_start",
+					"code": code,
+				})
+				broadcastRoomStatus(h, code)
 			case "leave_room":
 				if currentRoom != "" && currentMember != nil {
 					h.Leave(conn)
@@ -132,6 +195,7 @@ func handleWS(s *store.Store, h *hub.Hub) http.HandlerFunc {
 						"t":      "remote_leave",
 						"userId": currentMember.UserID,
 					}))
+					broadcastRoomStatus(h, currentRoom)
 					currentRoom = ""
 					currentMember = nil
 				}
@@ -144,6 +208,39 @@ func handleWS(s *store.Store, h *hub.Hub) http.HandlerFunc {
 					"userId":   currentMember.UserID,
 					"username": currentMember.Username,
 					"state":    msg.State,
+				}))
+			case "mob_states":
+				if currentRoom == "" {
+					continue
+				}
+				h.Broadcast(currentRoom, conn, mustJSON(map[string]any{
+					"t":    "mob_states",
+					"mobs": msg.Mobs,
+				}))
+			case "mob_event":
+				if currentRoom == "" {
+					continue
+				}
+				h.Broadcast(currentRoom, conn, mustJSON(map[string]any{
+					"t":       "mob_event",
+					"payload": msg.Payload,
+				}))
+			case "player_hit":
+				if currentRoom == "" {
+					continue
+				}
+				h.Broadcast(currentRoom, conn, mustJSON(map[string]any{
+					"t":   "player_hit",
+					"hit": msg.Hit,
+				}))
+			case "stage_phase":
+				if currentRoom == "" {
+					continue
+				}
+				h.Broadcast(currentRoom, conn, mustJSON(map[string]any{
+					"t":       "stage_phase",
+					"phase":   msg.Phase,
+					"payload": msg.Payload,
 				}))
 			}
 		}

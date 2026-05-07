@@ -7,6 +7,7 @@ Setup de rede pra friends-only co-op via Tailscale. Phase 8 vai por 3 sub-fases:
 | **8.A** | Network test — Tailscale install + Vite bind 0.0.0.0 + verificar conectividade entre máquinas | implementado |
 | **8.B** | Lobby UI — Solo / Create Public Room / Join by Code; mode flag em Room | implementado |
 | **8.C** | Position presence — clients streamam player state via WS, render remote players como ghosts | implementado |
+| **8.D** | Pre-game RoomLobby (ready-up + start) + host-authoritative mob state + damage sync + smoother movement (extrapolation 20Hz) | implementado |
 
 ## 8.A — Tailscale network test
 
@@ -316,3 +317,146 @@ main.ts:
 - Da máquina B: joinar via code, ver mesmo stage/mission.
 - Mover na A, ver ghost se mexer na B (e vice-versa).
 - Sair (gameover, logout, ou refresh) → ghost desaparece da outra máquina.
+
+## 8.D — Pre-game lobby + host-authoritative mob state + damage sync
+
+Aborda os 3 pedidos do user pra co-op completo:
+1. **Pre-game lobby**: RoomLobby screen com ready-up + start (não inicia direto).
+2. **Mob sincronizado**: mobs são host-authoritative, broadcast 20Hz, joiner mirror.
+3. **Movimento mais fluido**: extrapolação de velocity + 20Hz state rate.
+
+### Pre-game lobby (RoomLobby.ts)
+
+Após o host escolher mission/difficulty pra public room, vai pra
+`RoomLobby` em vez de iniciar direto:
+
+```
++----------- ROOM ------------+
+|                              |
+|      ABCDEF                  |
+|  share this code with friends|
+|                              |
+|  ★ alice         [ READY ]   |
+|    bob           [ ...   ]   |
+|                              |
+| waiting for players to ready |
+|                              |
+| ENTER toggle ready · ESC leave|
++------------------------------+
+```
+
+- Host vê "Start Match" disponível quando todos estão ready (ou pode
+  forçar — botão sempre permite, mas dica visual indica)
+- Não-host vê "Ready" toggle
+- ESC → sair da room → volta pro Lobby principal
+
+### Server protocol additions
+
+Novos WS message types:
+- `set_ready {ready: bool}` (client → server) — toggle this conn's ready
+- `start_match` (host → server) — broadcasts `match_start` se quem manda é host
+- `room_status` (server → all) — broadcast no join/ready/leave/start, payload:
+  ```json
+  {"t":"room_status","code":"ABCDEF","matchStarted":false,
+   "members":[{"userId":1,"username":"alice","ready":true,"isHost":true}]}
+  ```
+- `match_start` (server → all) — sinal pra todos começarem
+- `mob_states` (host → server → others) — array de mob updates
+- `mob_event` (host → server → others) — mob events (death sparks, etc.,
+  futuro)
+- `player_hit` (joiner → server → host) — joiner reportando hit em mob
+- `stage_phase` (host → server → others) — stage transitions (futuro)
+
+`Hub` ganha `Member.Ready bool`, `roomState.hostUserID/matchStarted`,
+métodos `SetReady`, `Snapshot`, `StartMatch`.
+
+### Host-authoritative mob state
+
+Cada client spawna mobs no Stage local na mesma ordem (mesmos spawns no
+JSON). No joiner, todos os mobs são **remoteControlled = true**:
+
+- `Mob.update()` early-return: só faz visual interpolation (renderX/Y
+  lerp toward this.x/y, redraws). NÃO tick AI, nem física.
+- `Mob.applyRemoteState(s)` aplica posição/HP/state/etc do snapshot
+  recebido. Detecta morte (alive: false) e dispara koFlash/koFade locais.
+
+Host broadcast em `main.ts`:
+```ts
+mobBroadcastAccumMs += realDtMs;
+if (mobBroadcastAccumMs >= 50 /* 20 Hz */) {
+  mobBroadcastAccumMs = 0;
+  net.sendMobStates(stage.getMobs().map((m, idx) => m.serializeForNetwork(idx)));
+}
+```
+
+`Mob.serializeForNetwork(idx)` retorna `{idx, x, y, vx, vy, hp, state,
+facing, phase, stateTimeMs, currentAttackIdx, alive}`.
+
+### Damage sync (joiner → host)
+
+Quando joiner faz `hit.bbox` overlap com mob:
+- NÃO chama `m.receiveHit` localmente (mob é remoteControlled, qualquer
+  alteração seria sobrescrita pelo próximo mob_states)
+- Em vez disso, `joinerSentHits` Set dedupe per `mobIdx-attackId` →
+  envia `player_hit` ao server
+- Host recebe via `onPlayerHit` handler → `m.applyRemoteHit(damage,
+  knockback)` → host's mob.receiveHit aplica e atualiza HP. Próximo
+  mob_states broadcast carrega novo HP pro joiner.
+- Joiner mostra visuais OPTIMISTIC (popup, spark, MP gain, lifesteal,
+  shake/pause) baseado no damage calculado localmente. HP do mob no
+  joiner side só atualiza após sync (~50ms lag aceitável em LAN/Tailscale).
+
+### Mob → player damage
+
+NÃO precisa sync. Mob attacks têm hitbox que o joiner detecta localmente
+via `mob.getActiveHit()` (state=Active → returns hit, mesmo em
+remoteControlled). Player.takeDamage local. Iframes do hurt state
+preventam multi-hits.
+
+### Smoother remote movement
+
+`RemotePlayer.update`:
+- LERP_RATE bumped 18 → 24
+- Dead-reckoning: aplica `targetVx/Vy * dt` ao target entre updates
+- Capped em 250ms (se ghost ficar disconnect, não voa pra fora da tela)
+
+`NET_SEND_INTERVAL_MS` reduzido 100 → 50ms (10Hz → 20Hz).
+
+### Limitações conhecidas (8.D.2 futuro)
+
+- **Projéteis (archer)**: spawn é via `Mob.setState(Active)` que joiner
+  NÃO chama. Joiner não vê arrows. Archer fica meio quebrado em co-op.
+  Fix: broadcast projectile spawns via `mob_event`.
+- **Stage progression sync**: ainda não. Quando host advança stage,
+  joiner não recebe sinal — joiner também detecta clear via mob HP=0
+  (sync) e transiciona localmente, mas pode ficar dessincronizado se
+  buff offer/timing diverge. Para alpha vai dar — testando 1 stage só.
+- **Buff sync**: cada player escolhe próprio buff, sem waiting nem
+  broadcast. Builds podem divergir entre players (ok pra GC-style).
+- **Mob spawn diff**: se host e joiner tiverem versões diferentes de
+  `STAGES`/`MOB_SPECS` data, indexes não casam. Sem versioning ainda.
+
+### Acceptance criteria 8.D
+
+1. **Pre-game lobby**:
+   - A cria public room → vê RoomLobby com seu nome
+   - B joina via code → aparece na lista do A
+   - B pressiona ENTER (ready) → A vê o status atualizar
+   - A pressiona ENTER (start match) → ambos saem da lobby pro stage
+2. **Mob sync**:
+   - A vê os mobs e B vê os mesmos mobs nas mesmas posições
+   - Quando A ataca slim, slim leva dano e morre → ambos veem morrer
+   - Quando B ataca slim, slim leva dano e morre → ambos veem
+3. **Smoother movement**:
+   - A movendo, B vê A se movendo de forma fluida (não trava)
+4. **Mob attacks**:
+   - Mob ataca A, A toma dano local
+   - Mob ataca B, B toma dano local
+
+### Edge cases não tratados
+
+- Host disconnect mid-match: joiner fica sem mob updates. Mobs ficam
+  parados. Não há failover ainda.
+- Late joiner (entrar depois de match started): server permite mas
+  joiner começa sem state inicial — mobs ficarão em 0,0 até primeiro
+  broadcast. Pode adicionar `room_snapshot` initial sync depois.

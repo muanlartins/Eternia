@@ -18,10 +18,13 @@ type Member struct {
 	Conn     *websocket.Conn
 	UserID   int
 	Username string
+	Ready    bool
 }
 
 type roomState struct {
-	members map[*websocket.Conn]*Member
+	members      map[*websocket.Conn]*Member
+	hostUserID   int
+	matchStarted bool
 }
 
 type Hub struct {
@@ -34,13 +37,17 @@ func New() *Hub {
 }
 
 // Join adds a connection to a room. Returns the snapshot of OTHER members
-// currently in the room (so the new joiner can render them immediately).
-func (h *Hub) Join(code string, m *Member) []*Member {
+// currently in the room. If hostUserID > 0 and the room was just created,
+// it's recorded as the host.
+func (h *Hub) Join(code string, m *Member, hostUserID int) []*Member {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	r, ok := h.rooms[code]
 	if !ok {
 		r = &roomState{members: make(map[*websocket.Conn]*Member)}
+		if hostUserID > 0 {
+			r.hostUserID = hostUserID
+		}
 		h.rooms[code] = r
 	}
 	others := make([]*Member, 0, len(r.members))
@@ -49,6 +56,56 @@ func (h *Hub) Join(code string, m *Member) []*Member {
 	}
 	r.members[m.Conn] = m
 	return others
+}
+
+// Snapshot returns all current members of a room plus its match-started flag.
+func (h *Hub) Snapshot(code string) (members []*Member, hostUserID int, matchStarted bool) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	r, ok := h.rooms[code]
+	if !ok {
+		return nil, 0, false
+	}
+	out := make([]*Member, 0, len(r.members))
+	for _, m := range r.members {
+		out = append(out, m)
+	}
+	return out, r.hostUserID, r.matchStarted
+}
+
+// SetReady toggles a connection's ready flag. Returns the room code (if any).
+func (h *Hub) SetReady(conn *websocket.Conn, ready bool) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for code, r := range h.rooms {
+		if m, ok := r.members[conn]; ok {
+			m.Ready = ready
+			return code
+		}
+	}
+	return ""
+}
+
+// StartMatch flips the room into match-started state if the requester is
+// the host. Returns true if the transition happened.
+func (h *Hub) StartMatch(conn *websocket.Conn) (string, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for code, r := range h.rooms {
+		m, ok := r.members[conn]
+		if !ok {
+			continue
+		}
+		if m.UserID != r.hostUserID {
+			return code, false
+		}
+		if r.matchStarted {
+			return code, false
+		}
+		r.matchStarted = true
+		return code, true
+	}
+	return "", false
 }
 
 // Leave removes a connection from a room. Returns the room code (or empty

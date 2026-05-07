@@ -21,7 +21,8 @@ import { LoginScreen } from './game/LoginScreen.js';
 import { CharacterSelect } from './game/CharacterSelect.js';
 import { MissionSelect } from './game/MissionSelect.js';
 import { LobbyScreen } from './game/LobbyScreen.js';
-import { Network } from './game/Network.js';
+import { RoomLobby } from './game/RoomLobby.js';
+import { Network, type RoomStatus } from './game/Network.js';
 import { RemotePlayer } from './game/RemotePlayer.js';
 import { findMission } from './data/missions.js';
 import { MOB_SPECS, stageById, type StageSpec } from './data/stages.js';
@@ -176,6 +177,7 @@ async function main() {
       isLastStage: isLastStageInMission(),
       hpMul: currentDifficulty.hpMul,
       dmgMul: currentDifficulty.dmgMul,
+      remoteControlled: isCoOpJoiner,
     });
   }
 
@@ -249,7 +251,18 @@ async function main() {
   const lobbyScreen = new LobbyScreen(GAME_W, GAME_H);
   uiStage.addChild(lobbyScreen.container);
 
+  const roomLobby = new RoomLobby(GAME_W, GAME_H);
+  uiStage.addChild(roomLobby.container);
+
   const audio = new GameAudio();
+
+  let isMatchHost = false;
+  let isCoOpJoiner = false;
+  let pendingMission: MissionSpec | null = null;
+  let pendingDifficulty: DifficultySpec | null = null;
+  const joinerSentHits = new Set<string>();
+  let mobBroadcastAccumMs = 0;
+  const MOB_BROADCAST_INTERVAL_MS = 50;
 
   const remotePlayers = new Map<number, RemotePlayer>();
   function clearRemotePlayers() {
@@ -282,6 +295,7 @@ async function main() {
 
   const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
   let serverInfo = 'connecting…';
+  let lastRoomStatus: RoomStatus | null = null;
   const net = new Network(wsUrl);
   net.setHandlers({
     onHello: (v) => {
@@ -308,6 +322,50 @@ async function main() {
         rp = remotePlayers.get(entry.userId);
       }
       rp?.applyState(state);
+    },
+    onRoomStatus: (status) => {
+      lastRoomStatus = status;
+      if (roomLobby.isOpen()) {
+        roomLobby.applyStatus(status.members);
+      }
+      if (status.matchStarted && !isMatchHost && pendingMission && pendingDifficulty) {
+        // Joiner: server says match started; switch into co-op gameplay.
+        if (roomLobby.isOpen()) roomLobby.hide();
+        startCoOpJoinerRun();
+      }
+    },
+    onMatchStart: () => {
+      if (roomLobby.isOpen()) roomLobby.hide();
+      if (isMatchHost) startCoOpHostRun();
+      else if (pendingMission && pendingDifficulty) startCoOpJoinerRun();
+    },
+    onMobStates: (mobs) => {
+      if (!isCoOpJoiner) return;
+      const localMobs = stage.getMobs();
+      for (const ms of mobs) {
+        const m = localMobs[ms.idx];
+        if (!m) continue;
+        m.applyRemoteState(ms);
+      }
+    },
+    onPlayerHit: (hit) => {
+      if (!isMatchHost) return;
+      const m = stage.getMobs()[hit.mobIdx];
+      if (!m || !m.alive) return;
+      const result = m.applyRemoteHit(hit.damage, hit.knockback);
+      if (result === null) return;
+      // Visual feedback on host for the joiner's hit:
+      const hb = m.hurtbox();
+      const cx = hb.x + hb.w / 2;
+      const cy = hb.y + hb.h / 2;
+      hitFx.popup(cx, cy, Math.round(result.applied), {
+        parryBuff: hit.parryBuff,
+        aerial: hit.aerial,
+        backstab: hit.backstab,
+      });
+      hitFx.spark(cx, cy);
+      audio.playHit('medium');
+      runStats.damageDealt += result.applied;
     },
   });
 
@@ -412,6 +470,47 @@ async function main() {
       currentRoom = null;
     }
     clearRemotePlayers();
+    isMatchHost = false;
+    isCoOpJoiner = false;
+    pendingMission = null;
+    pendingDifficulty = null;
+    joinerSentHits.clear();
+    lastRoomStatus = null;
+  }
+
+  function showRoomLobbyForRoom(room: Room) {
+    roomLobby.show({
+      code: room.code,
+      youUserId: auth.getUserId(),
+      onReadyToggle: () => {
+        const me = lastRoomStatus?.members.find((m) => m.userId === auth.getUserId());
+        net.sendReady(!(me?.ready ?? false));
+      },
+      onStartMatch: () => {
+        net.sendStartMatch();
+      },
+      onLeave: () => {
+        roomLobby.hide();
+        leaveCurrentRoom();
+        startLobby();
+      },
+    });
+  }
+
+  function startCoOpHostRun() {
+    if (!pendingMission || !pendingDifficulty) return;
+    isCoOpJoiner = false;
+    applyRunStart(pendingMission, pendingDifficulty);
+    pendingMission = null;
+    pendingDifficulty = null;
+  }
+
+  function startCoOpJoinerRun() {
+    if (!pendingMission || !pendingDifficulty) return;
+    isCoOpJoiner = true;
+    applyRunStart(pendingMission, pendingDifficulty);
+    pendingMission = null;
+    pendingDifficulty = null;
   }
 
   function startMissionSelect(statusText: string | undefined, mode: 'solo' | 'multiplayer') {
@@ -427,12 +526,32 @@ async function main() {
       ...(statusText !== undefined ? { statusText } : {}),
       onConfirm: (mission, difficulty) => {
         missionSelect.hide();
-        applyRunStart(mission, difficulty);
-        void auth.createRoom(mission.id, difficulty.id, mode).then((room) => {
-          if (!room) return;
-          currentRoom = room;
-          joinWsRoom(room);
-        });
+        if (mode === 'solo') {
+          applyRunStart(mission, difficulty);
+          void auth.createRoom(mission.id, difficulty.id, 'solo').then((room) => {
+            if (!room) return;
+            currentRoom = room;
+            joinWsRoom(room);
+          });
+        } else {
+          // Multiplayer host: create room + show RoomLobby; defer match start
+          // until host clicks "Start Match" in the lobby.
+          pendingMission = mission;
+          pendingDifficulty = difficulty;
+          isMatchHost = true;
+          void auth.createRoom(mission.id, difficulty.id, 'multiplayer').then((room) => {
+            if (!room) {
+              isMatchHost = false;
+              pendingMission = null;
+              pendingDifficulty = null;
+              startLobby('failed to create room');
+              return;
+            }
+            currentRoom = room;
+            joinWsRoom(room);
+            showRoomLobbyForRoom(room);
+          });
+        }
       },
     });
   }
@@ -461,8 +580,17 @@ async function main() {
         const difficulty = findDifficulty(room.difficulty as 'easy' | 'normal' | 'hard');
         currentRoom = room;
         lobbyScreen.hide();
-        applyRunStart(mission, difficulty);
-        joinWsRoom(room);
+        if (room.mode === 'multiplayer') {
+          // Joiner: stash mission/diff, enter WS room, wait in RoomLobby until host starts.
+          pendingMission = mission;
+          pendingDifficulty = difficulty;
+          isMatchHost = false;
+          joinWsRoom(room);
+          showRoomLobbyForRoom(room);
+        } else {
+          applyRunStart(mission, difficulty);
+          joinWsRoom(room);
+        }
         return { ok: true };
       },
     });
@@ -505,7 +633,7 @@ async function main() {
   let bossDramaTimerMs = 0;
   let lastSaveRun: Promise<void> | null = null;
   let netSendAccumMs = 0;
-  const NET_SEND_INTERVAL_MS = 100;
+  const NET_SEND_INTERVAL_MS = 50;
 
   function impactFromDamage(applied: number): { shake: number; shakeDur: number; pause: number; intensity: HitIntensity } {
     if (applied >= 50) return { shake: 14, shakeDur: 260, pause: 90, intensity: 'massive' };
@@ -533,6 +661,12 @@ async function main() {
     if (lobbyScreen.isOpen()) {
       lobbyScreen.tick(realDtMs);
       lobbyScreen.update(input);
+      input.endFrame();
+      return;
+    }
+
+    if (roomLobby.isOpen()) {
+      roomLobby.update(input);
       input.endFrame();
       return;
     }
@@ -604,7 +738,8 @@ async function main() {
 
     const hit = player.getActiveHit();
     if (hit !== null) {
-      for (const m of stageMobs) {
+      for (let mobIdx = 0; mobIdx < stageMobs.length; mobIdx++) {
+        const m = stageMobs[mobIdx]!;
         if (!m.alive) continue;
         const hb = m.hurtbox();
         if (rectsOverlap(hit.bbox, hb)) {
@@ -613,6 +748,42 @@ async function main() {
           let dmg = hit.damage;
           if (aerial) dmg *= 1.3;
           if (backstab) dmg *= 1.3;
+
+          if (isCoOpJoiner) {
+            const dedupeKey = `${mobIdx}-${hit.attackId}`;
+            if (joinerSentHits.has(dedupeKey)) continue;
+            joinerSentHits.add(dedupeKey);
+            net.sendPlayerHit({
+              mobIdx,
+              attackId: hit.attackId,
+              damage: dmg,
+              knockback: hit.knockback * hit.facing,
+              facing: hit.facing,
+              isCombo: hit.isCombo,
+              parryBuff: player.hasParryBuff(),
+              aerial,
+              backstab,
+            });
+            // Optimistic local visuals; mob HP will catch up via mob_states.
+            const c = intersectionCenter(hit.bbox, hb);
+            runStats.damageDealt += dmg;
+            hitFx.popup(c.x, c.y, Math.round(dmg), {
+              parryBuff: player.hasParryBuff(),
+              aerial,
+              backstab,
+            });
+            hitFx.spark(c.x, c.y);
+            player.giveMp(ELESIS.mpPerHit);
+            if (hit.isCombo && player.modifiers.comboLifestealPct > 0) {
+              player.heal(dmg * player.modifiers.comboLifestealPct);
+            }
+            const impact = impactFromDamage(dmg);
+            camera.shake(impact.shake, impact.shakeDur);
+            hitPauseMs = Math.max(hitPauseMs, impact.pause);
+            audio.playHit(impact.intensity);
+            continue;
+          }
+
           const result = m.receiveHit(hit.attackId, dmg, hit.knockback * hit.facing);
           if (result !== null) {
             const c = intersectionCenter(hit.bbox, hb);
@@ -1021,6 +1192,14 @@ async function main() {
           hp: player.hp,
           maxHp: player.getMaxHp(),
         });
+      }
+      if (isMatchHost) {
+        mobBroadcastAccumMs += realDtMs;
+        if (mobBroadcastAccumMs >= MOB_BROADCAST_INTERVAL_MS) {
+          mobBroadcastAccumMs = 0;
+          const mobs = stage.getMobs().map((m, idx) => m.serializeForNetwork(idx));
+          net.sendMobStates(mobs);
+        }
       }
     }
 

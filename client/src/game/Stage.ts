@@ -24,16 +24,24 @@ export class Stage {
   private portal: Graphics | null = null;
   private portalTimeMs = 0;
 
+  private readonly remoteControlled: boolean;
+
   constructor(
     spec: StageSpec,
     worldStage: Container,
-    opts: { isLastStage?: boolean; hpMul?: number; dmgMul?: number } = {},
+    opts: {
+      isLastStage?: boolean;
+      hpMul?: number;
+      dmgMul?: number;
+      remoteControlled?: boolean;
+    } = {},
   ) {
     this.spec = spec;
     this.worldStage = worldStage;
     this.isLastStage = opts.isLastStage ?? false;
     this.hpMul = opts.hpMul ?? 1;
     this.dmgMul = opts.dmgMul ?? 1;
+    this.remoteControlled = opts.remoteControlled ?? false;
   }
 
   spawn() {
@@ -74,6 +82,7 @@ export class Stage {
         autoRespawn: false,
         hpMul: this.hpMul,
         dmgMul: this.dmgMul,
+        remoteControlled: this.remoteControlled,
       });
       this.mobs.push(mob);
       this.worldStage.addChild(mob.view);
