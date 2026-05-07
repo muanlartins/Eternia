@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"eternia/internal/store"
@@ -111,5 +112,34 @@ func HandleMyRecords(s *store.Store) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, runResponse{Records: s.RecordsForUser(user.ID)})
+	}
+}
+
+type leaderboardResponse struct {
+	Metric  string                   `json:"metric"`
+	Entries []store.LeaderboardEntry `json:"entries"`
+}
+
+func HandleLeaderboard(s *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		metric := r.URL.Query().Get("metric")
+		if metric == "" {
+			metric = string(store.MetricTime)
+		}
+		if !store.IsValidMetric(metric) {
+			writeError(w, http.StatusBadRequest, "invalid metric")
+			return
+		}
+		limit := 10
+		if l := r.URL.Query().Get("limit"); l != "" {
+			if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 50 {
+				limit = n
+			}
+		}
+		entries := s.Leaderboard(store.LeaderboardMetric(metric), limit)
+		writeJSON(w, http.StatusOK, leaderboardResponse{
+			Metric:  metric,
+			Entries: entries,
+		})
 	}
 }

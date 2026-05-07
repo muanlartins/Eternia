@@ -9,7 +9,7 @@ auth (sem senha). Trivial de setup, suficiente pra escala atual (~5 users).
 | Sub-fase | Escopo | Status |
 |---|---|---|
 | **6.A** | JSON store + REST endpoints (login, run save, my records) + client login UI + run sync | implementado |
-| **6.B** | Leaderboard global (top runs by metric) + display em VictoryStats | pendente |
+| **6.B** | Leaderboard global (top 1 run per user, by time / damage / deaths) + display em VictoryStats | implementado |
 | **6.C** | Logout + multi-user no mesmo browser | pendente |
 | **6.D** | Migrar pra SQLite ou Postgres se for escalar | pendente |
 
@@ -116,12 +116,56 @@ fallback `server X.Y.Z`. Substituição transparent.
 - **Local records authoritative** — server records são "advisory" pra
   cross-device. Conflict resolution = "last write wins" via merge no client.
 
-## 6.B — Leaderboard (futuro)
+## 6.B — Leaderboard global
 
-GET /api/leaderboard?metric=time|damage|deaths&limit=10 retorna top N
-runs com username. Display: novo painel ao lado de VictoryStats, ou seção
-"Hall of Fame" em modifier pick screen. Backend trivial (sort all runs por
-metric, take top N).
+GET `/api/leaderboard?metric=<time|damage|deaths>&limit=<n>` retorna top
+N entries (1 row por user — best run de cada). Sem auth (público).
+
+### Métricas
+
+| Metric | Filter | Sort |
+|---|---|---|
+| `time` | victory only | DurationMs ASC, tiebreak Deaths ASC |
+| `damage` | all runs (incl. defeats) | DamageDealt DESC, tiebreak DurationMs ASC |
+| `deaths` | victory only | Deaths ASC, tiebreak DurationMs ASC |
+
+"Time" e "deaths" filtram só victories (porque a definição é "best run
+completing the game"). "Damage" não filtra (recompensa qualquer dano
+total — boss kill perdido ainda conta).
+
+### "Best run per user" aggregation
+
+Em vez de retornar TODOS os runs ordenados, agrupamos por `userId` e
+pegamos a melhor de cada user. Isso evita que um user que jogou 100 vezes
+domine a board com várias entries dele mesmo. Cada user aparece uma vez,
+com seu melhor resultado.
+
+Trade-off: leaderboard mostra "users", não "runs". Pra "all-time best
+run" tradicional, basta NÃO agrupar (futuro 6.B.2 se quisermos).
+
+### Client integration
+
+`Auth.fetchLeaderboard(metric, limit)` — standalone async helper (não
+requer auth). Retorna `LeaderboardEntry[]` ou `[]` em caso de erro.
+
+`VictoryStats` extendido:
+- Panel agora 540×600 (era 520×480) pra acomodar leaderboard section
+- Após victory, main.ts chama `victoryStats.show(stats, [], username)`
+  com leaderboard vazia (mostra "loading…"), depois fire-and-forget
+  `fetchLeaderboard('time', 5).then(entries => victoryStats.setLeaderboard(entries, username))`
+- Layout: stats normais + linha em branco + `GLOBAL TOP — FASTEST` header
+  + 5 entries
+- Highlighting: row do user atual prefixada com `> ` (vs `  ` pros outros)
+
+### Por que "time" como leaderboard default
+
+É o metric mais legível e empolgante. "Damage" varia muito com builds
+(modifier Berserker dá ~2× damage), "deaths" tem muitos zeros. "Time"
+é puro skill expression — quem matou o boss mais rápido vence.
+
+Player pode adicionar toggle entre metrics em 6.B.2 se quiser.
+
+## 6.C — Logout + multi-user (futuro)
 
 ## 6.C — Logout + multi-user (futuro)
 

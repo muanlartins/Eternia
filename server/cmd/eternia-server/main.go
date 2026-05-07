@@ -91,6 +91,7 @@ func main() {
 	mux.HandleFunc("POST /api/login", api.HandleLogin(s))
 	mux.HandleFunc("POST /api/runs", api.HandleSaveRun(s))
 	mux.HandleFunc("GET /api/runs/me", api.HandleMyRecords(s))
+	mux.HandleFunc("GET /api/leaderboard", api.HandleLeaderboard(s))
 
 	log.Printf("Eternia server v%s listening on %s (data: %s)", version, *addr, *dataPath)
 	if err := http.ListenAndServe(*addr, mux); err != nil {

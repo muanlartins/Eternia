@@ -1,5 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { formatTime, type NewRecordFlags, type PersonalRecords } from './Records.js';
+import type { LeaderboardEntry } from './Auth.js';
 
 export interface RunStatsView {
   durationMs: number;
@@ -12,8 +13,8 @@ export interface RunStatsView {
   flags: NewRecordFlags;
 }
 
-const PANEL_W = 520;
-const PANEL_H = 480;
+const PANEL_W = 540;
+const PANEL_H = 600;
 
 export class VictoryStats {
   readonly container = new Container();
@@ -68,8 +69,33 @@ export class VictoryStats {
     this.container.visible = false;
   }
 
-  show(stats: RunStatsView) {
-    const newAny = stats.flags.newBestTime || stats.flags.newBestDamage || stats.flags.newFewestDeaths;
+  private lastStats: RunStatsView | null = null;
+  private lastLeaderboard: readonly LeaderboardEntry[] = [];
+  private lastUsername: string | null = null;
+
+  show(
+    stats: RunStatsView,
+    leaderboard: readonly LeaderboardEntry[] = [],
+    currentUsername: string | null = null,
+  ) {
+    this.lastStats = stats;
+    this.lastLeaderboard = leaderboard;
+    this.lastUsername = currentUsername;
+    this.render();
+    this.container.visible = true;
+  }
+
+  setLeaderboard(leaderboard: readonly LeaderboardEntry[], currentUsername: string | null) {
+    this.lastLeaderboard = leaderboard;
+    this.lastUsername = currentUsername;
+    if (this.lastStats) this.render();
+  }
+
+  private render() {
+    const stats = this.lastStats;
+    if (!stats) return;
+    const newAny =
+      stats.flags.newBestTime || stats.flags.newBestDamage || stats.flags.newFewestDeaths;
     const borderColor = newAny ? 0xff9933 : 0xfff066;
 
     this.bg.clear();
@@ -84,9 +110,12 @@ export class VictoryStats {
     const timeStr = formatTime(stats.durationMs);
     const bestTimeStr =
       stats.records.bestTimeMs !== null ? formatTime(stats.records.bestTimeMs) : '—';
-    const bestDamageStr = stats.records.bestDamageDealt > 0 ? `${stats.records.bestDamageDealt}` : '—';
+    const bestDamageStr =
+      stats.records.bestDamageDealt > 0 ? `${stats.records.bestDamageDealt}` : '—';
     const fewestDeathsStr =
-      stats.records.fewestDeathsInVictory !== null ? `${stats.records.fewestDeathsInVictory}` : '—';
+      stats.records.fewestDeathsInVictory !== null
+        ? `${stats.records.fewestDeathsInVictory}`
+        : '—';
 
     const timeRecord = stats.flags.newBestTime ? '  ★ NEW BEST!' : `  best ${bestTimeStr}`;
     const damageRecord = stats.flags.newBestDamage ? '  ★ NEW BEST!' : `  best ${bestDamageStr}`;
@@ -100,6 +129,21 @@ export class VictoryStats {
     const buffsLine =
       stats.buffsPicked.length === 0 ? '  (none)' : stats.buffsPicked.map((b) => `  ${b}`).join('\n');
 
+    let lbSection = '';
+    if (this.lastLeaderboard.length > 0) {
+      const rows = this.lastLeaderboard.slice(0, 5).map((e, i) => {
+        const t = formatTime(e.durationMs);
+        const deathsStr = e.deaths === 1 ? '1 death' : `${e.deaths} deaths`;
+        const isMe =
+          this.lastUsername !== null && e.username.toLowerCase() === this.lastUsername.toLowerCase();
+        const marker = isMe ? '> ' : '  ';
+        return `${marker}${i + 1}. ${e.username.padEnd(14, ' ')} ${t.padEnd(7, ' ')} (${deathsStr})`;
+      });
+      lbSection = `\n\nGLOBAL TOP — FASTEST\n${rows.join('\n')}`;
+    } else {
+      lbSection = `\n\nGLOBAL TOP — FASTEST\n  (loading…)`;
+    }
+
     this.body.text =
       `Time:           ${timeStr.padEnd(8, ' ')}${timeRecord}\n` +
       `Damage Dealt:   ${stats.damageDealt.toString().padEnd(8, ' ')}${damageRecord}\n` +
@@ -110,9 +154,8 @@ export class VictoryStats {
       `\n` +
       `Buffs:\n${buffsLine}\n` +
       `\n` +
-      `Lifetime: ${stats.records.totalVictories} victories / ${stats.records.totalAttempts} attempts`;
-
-    this.container.visible = true;
+      `Lifetime: ${stats.records.totalVictories} victories / ${stats.records.totalAttempts} attempts` +
+      lbSection;
   }
 
   hide() {

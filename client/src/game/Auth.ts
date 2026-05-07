@@ -8,6 +8,31 @@ export interface ServerRecords {
   totalAttempts: number;
 }
 
+export type LeaderboardMetric = 'time' | 'damage' | 'deaths';
+
+export interface LeaderboardEntry {
+  username: string;
+  durationMs: number;
+  damageDealt: number;
+  deaths: number;
+  victory: boolean;
+  completedAt: number;
+}
+
+export async function fetchLeaderboard(
+  metric: LeaderboardMetric,
+  limit = 10,
+): Promise<readonly LeaderboardEntry[]> {
+  try {
+    const res = await fetch(`/api/leaderboard?metric=${metric}&limit=${limit}`);
+    if (!res.ok) return [];
+    const data = (await res.json()) as { entries?: LeaderboardEntry[] };
+    return data.entries ?? [];
+  } catch {
+    return [];
+  }
+}
+
 interface AuthState {
   token: string;
   userId: number;

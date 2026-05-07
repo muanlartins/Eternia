@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,32 @@ type Records struct {
 	FewestDeathsInVictory *int   `json:"fewestDeathsInVictory"`
 	TotalVictories        int    `json:"totalVictories"`
 	TotalAttempts         int    `json:"totalAttempts"`
+}
+
+type LeaderboardEntry struct {
+	Username    string `json:"username"`
+	DurationMs  int64  `json:"durationMs"`
+	DamageDealt int    `json:"damageDealt"`
+	Deaths      int    `json:"deaths"`
+	Victory     bool   `json:"victory"`
+	CompletedAt int64  `json:"completedAt"`
+}
+
+type LeaderboardMetric string
+
+const (
+	MetricTime   LeaderboardMetric = "time"
+	MetricDamage LeaderboardMetric = "damage"
+	MetricDeaths LeaderboardMetric = "deaths"
+)
+
+func IsValidMetric(m string) bool {
+	switch LeaderboardMetric(m) {
+	case MetricTime, MetricDamage, MetricDeaths:
+		return true
+	default:
+		return false
+	}
 }
 
 type data struct {
@@ -156,6 +183,79 @@ func (s *Store) AddRun(r Run) (Run, error) {
 		return Run{}, err
 	}
 	return r, nil
+}
+
+func (s *Store) Leaderboard(metric LeaderboardMetric, limit int) []LeaderboardEntry {
+	if limit <= 0 {
+		limit = 10
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	userByID := make(map[int]string, len(s.d.Users))
+	for _, u := range s.d.Users {
+		userByID[u.ID] = u.Username
+	}
+
+	bestPerUser := make(map[int]Run)
+	for _, r := range s.d.Runs {
+		if metric == MetricTime || metric == MetricDeaths {
+			if !r.Victory {
+				continue
+			}
+		}
+		prev, ok := bestPerUser[r.UserID]
+		if !ok || isBetter(r, prev, metric) {
+			bestPerUser[r.UserID] = r
+		}
+	}
+
+	runs := make([]Run, 0, len(bestPerUser))
+	for _, r := range bestPerUser {
+		runs = append(runs, r)
+	}
+
+	sort.Slice(runs, func(i, j int) bool {
+		return isBetter(runs[i], runs[j], metric)
+	})
+
+	if len(runs) > limit {
+		runs = runs[:limit]
+	}
+
+	out := make([]LeaderboardEntry, 0, len(runs))
+	for _, r := range runs {
+		out = append(out, LeaderboardEntry{
+			Username:    userByID[r.UserID],
+			DurationMs:  r.DurationMs,
+			DamageDealt: r.DamageDealt,
+			Deaths:      r.Deaths,
+			Victory:     r.Victory,
+			CompletedAt: r.CompletedAt,
+		})
+	}
+	return out
+}
+
+func isBetter(a, b Run, metric LeaderboardMetric) bool {
+	switch metric {
+	case MetricTime:
+		if a.DurationMs != b.DurationMs {
+			return a.DurationMs < b.DurationMs
+		}
+		return a.Deaths < b.Deaths
+	case MetricDamage:
+		if a.DamageDealt != b.DamageDealt {
+			return a.DamageDealt > b.DamageDealt
+		}
+		return a.DurationMs < b.DurationMs
+	case MetricDeaths:
+		if a.Deaths != b.Deaths {
+			return a.Deaths < b.Deaths
+		}
+		return a.DurationMs < b.DurationMs
+	}
+	return false
 }
 
 func (s *Store) RecordsForUser(userID int) Records {

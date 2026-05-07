@@ -16,7 +16,7 @@
 | **3 — Mobs/AI** | 6 mob types (slim, racoon, archer, brute, wisp aerial, insectivorous boss) + gravity + multi-phase boss | ✅ done (3.A → 3.I) | `03-mobs-design.md` |
 | **4 — Stage flow + buffs** | 4 stages, buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.J) | `04-stages-design.md` |
 | **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
-| **6 — Auth + persistence** | Login (username-only), JSON store, run sync | ⏳ 6.A done; 6.B-6.D pendente | `06-server-design.md` |
+| **6 — Auth + persistence** | Login (username-only), JSON store, run sync, leaderboard | ⏳ 6.A + 6.B done; 6.C-6.D pendente | `06-server-design.md` |
 | **7 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (futuro, ~50-100h) |
 | **8 — Tailscale alpha** | Multiplayer co-op via Tailscale | ⏳ não iniciado | (V1.1) |
 
@@ -82,7 +82,8 @@ Sequência: **1 → 2 → 3 → 4 → 5 → 6 → 7**.
    - 6.A done (2026-05-06): JSON store + REST (login/runs/me) + LoginScreen
      UI + run sync após victory/gameOver. Username-only auth (sem senha)
      suficiente pra friends-only.
-   - 6.B pending: leaderboard global (top runs by metric) + display.
+   - 6.B done (2026-05-06): leaderboard global (top per user, time/damage/deaths
+     metrics) + display em VictoryStats com row do player highlighted.
    - 6.C pending: logout + multi-user.
    - 6.D pending: migrar JSON pra SQLite se escalar.
 6. ⏳ **Stage 5 / novo bioma** — sair de Floresta, ir para

@@ -18,7 +18,7 @@ import { pickRandomModifiers } from './data/modifiers.js';
 import { MiniMap } from './game/MiniMap.js';
 import { SettingsMenu } from './game/SettingsMenu.js';
 import { BossHpBar } from './game/BossHpBar.js';
-import { Auth } from './game/Auth.js';
+import { Auth, fetchLeaderboard } from './game/Auth.js';
 import { LoginScreen } from './game/LoginScreen.js';
 import { MOB_SPECS } from './data/stages.js';
 import {
@@ -719,7 +719,10 @@ async function main() {
       stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
         stageBanner.visible = false;
-        victoryStats.show(statsView());
+        victoryStats.show(statsView(), [], auth.getUsername());
+        void fetchLeaderboard('time', 5).then((entries) => {
+          victoryStats.setLeaderboard(entries, auth.getUsername());
+        });
         stagePhase = 'victoryStats';
       }
     } else if (stagePhase === 'modifierPick') {
