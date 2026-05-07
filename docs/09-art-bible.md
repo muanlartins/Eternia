@@ -1647,6 +1647,76 @@ Gemini Advanced atual. Alternativas:
 Pra escopo de Eternia, video gen é OPCIONAL — não bloqueia Phase 9.
 Se virar dor de cabeça, deixa pra depois.
 
+### Veo issue update — prompt format triggering refusal
+
+User reportou erro novamente, agora com text-only A.1:
+"I've determined text files mandate refusal"
+
+**Diagnóstico mais provável**: o modelo está interpretando o prompt
+estruturado (com timestamps `0:00-0:01`, dashes, bullets) como se
+fosse um **arquivo de texto sendo upado**. Veo espera **prosa natural
+curta**, não scripts cinematográficos.
+
+Solution: rewrite prompts as flowing natural prose, no timestamps, no
+bullets, no structured formatting. ~2-4 sentences max.
+
+### Prompt A.2 — Natural prose (character spin)
+
+```
+An anime-style 2D animation of a teenage elf girl with long
+emerald-green hair tied with a side braid, wearing thin round
+librarian-style glasses, a green tunic with brown leather laced
+bodice, black leggings, and brown mid-calf boots. She holds a
+wooden recurve bow in her right hand and has a brown leather
+quiver of arrows on her back. She stands centered on a plain
+cream background and slowly pivots 360 degrees clockwise on the
+spot, so we see her from front, three-quarter, side, back, and
+front again. Pure 2D cel-shaded animation in early-2000s anime
+style, bold lineart, vibrant flat colors, no 3D rendering.
+```
+
+### Prompt B.2 — Natural prose (combat moment)
+
+```
+An anime-style 2D animation of a teenage elf archer with long
+emerald-green hair, round librarian glasses, a green tunic with
+brown leather bodice, black leggings, and brown boots. She stands
+relaxed on a plain cream background, then swiftly raises her
+wooden recurve bow, draws an arrow from her back quiver, takes
+aim toward the camera, and releases it. Pure 2D cel-shaded anime
+animation, no 3D, vibrant flat colors.
+```
+
+### Prompt C.2 — 3D cinematic (short prose)
+
+```
+A cinematic 3D-animated short of a teenage elf archer with long
+flowing emerald-green hair, thin round glasses, a green tunic with
+brown leather laced bodice, black leggings, brown boots, and a
+wooden bow in her hand. She stands in a sunlit ancient forest
+clearing at golden hour, dust motes floating in the air, hair
+gently moving in the breeze. She slowly nocks an arrow, draws the
+bowstring back, and aims off-camera with focused emerald eyes.
+Cinematic 3D anime CG with volumetric lighting, depth of field,
+particle effects, and dramatic camera angles, in the style of
+high-quality JRPG cutscenes like Genshin Impact or Honkai Star Rail.
+```
+
+### Se ainda assim Gemini bloquear
+
+Provavelmente é limite do Veo no Gemini consumer app. Alternativas
+melhores:
+
+1. **Flow (https://labs.google/flow)** — UI experimental do Google
+   especificamente pra video gen, acesso direto a Veo. Melhor opção
+   se Gemini app continuar bloqueando.
+
+2. **Google AI Studio (https://aistudio.google.com)** — API access
+   direto. Veo disponível via model picker. Mais flexível.
+
+3. Pular video gen — totalmente OK pra Phase 9. Voltamos pro
+   turnaround da Astrid e seguimos.
+
 ## Prompt format / anatomy
 
 Pra você reusar e adaptar:
