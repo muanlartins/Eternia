@@ -165,11 +165,18 @@ background, single character framed centrally. Aspect ratio portrait
   trocar os marcadores visuais específicos. Pedir 4 variações com axes:
   hair style, outfit silhouette, color accents, distinguishing marker.
 
+- **v4 anchor LOCKED**: solo full-body de Astrid em
+  `art/anchors/astrid-anchor.png`. Resultado: low ponytail crimson curto,
+  high-collar sleeveless top + black under-sleeves, scarlet leggings,
+  red boots com bronze band, bronze pauldrons + elbows + knees + bracers
+  matte, katana sheathed (black lacquered, white diamond-wrap hilt, round
+  bronze tsuba), brinco asimétrico visível, pose confiante segurando o
+  hilt. **Esta é a master reference daqui pra frente.**
+
 - **v3 (refinement de v2-var4)**: 4 close refinements gerados, salvos em
   `art/anchors/astrid-v3.png`. User selecionou **v3a (esquerda)** como
   design final. Bronze armor matte, espada com hilt branco, low ponytail
-  curto, brincos asimétricos (gem stud + dangling chain). Próximo passo:
-  gerar anchor solo final.
+  curto, brincos asimétricos (gem stud + dangling chain).
 
 - **v2**: 4 variações geradas, salvas em `art/anchors/astrid-v2.png`.
   User selecionou a **variação 4 (direita)** como direção.
@@ -193,11 +200,14 @@ background, single character framed centrally. Aspect ratio portrait
   - Detalhe da espada (tsuba/handle wrapping)
   - Cor/textura dos copper accents (mais opaco vs polido)
 
-#### Anchor (uma vez locked)
+#### Anchor LOCKED ✓
 
-- Path: `art/anchors/astrid-v2.png` (v2, 4-variation grid; var 4 chosen)
-- Iteration continues — not yet final solo anchor.
-- Pra anchor final solo: `art/anchors/astrid-base-front-v3.png`
+- Master reference: **`art/anchors/astrid-anchor.png`**
+- Esta é a imagem canônica daqui pra frente. Toda nova geração de Astrid
+  (turnarounds, poses, expressões, classes futuras) DEVE upload essa
+  imagem como visual reference no Gemini.
+- v2 grid: `art/anchors/astrid-v2.png` (histórico)
+- v3 refinements: `art/anchors/astrid-v3.png` (histórico)
 
 #### Concept art prompt v2 — pede 4 variações
 
@@ -448,20 +458,140 @@ the canonical anchor reference image — make it as clean and detailed as
 possible.
 ```
 
-#### Após gerar anchor
+#### Concept art prompt v5 — Turnaround sheet (4 ângulos)
 
-1. Salvar a imagem como `art/anchors/astrid-anchor.png` (clean name —
-   essa é a master reference daqui pra frente).
-2. Atualizar o bible com o path final.
-3. Próximo passo: turnaround sheet — usar essa anchor como upload e
-   gerar 4 ângulos (front / 3/4 / side / back) na mesma estética.
-4. Depois: pose sheets pra animações (idle, walk, attack swings, dodge,
-   etc.) — input direto pra Phase 10.
+Cole no Gemini. Idealmente na MESMA conversa do anchor (Gemini já tem o
+contexto visual). Se for nova conversa, **upload `art/anchors/astrid-anchor.png`
+ANTES do prompt** — sem upload da anchor, esse turnaround vai falhar.
 
-Se a anchor sair com algum bug (mãos estranhas, espada deformada,
-brincos invisíveis), iteramos via follow-up: "perfect, but please fix
-the right hand — it should rest on the sword pommel cleanly". Gemini
-geralmente ajusta bem em follow-up no chat.
+```
+Using THE EXACT character from the previous reference image (Astrid,
+the crimson-haired swordswoman with bronze armor accents and Asian
+katana — the locked anchor) as the visual reference, generate a
+CHARACTER TURNAROUND SHEET showing the SAME character from 4 different
+angles, arranged side-by-side in a single landscape image.
+
+THE 4 VIEWS (left to right, equal size, evenly spaced):
+1. FRONT — character facing the viewer
+2. THREE-QUARTER — character rotated about 45° to the character's right
+   (viewer sees the front-right of the body and partial profile)
+3. SIDE — full right-side profile (character facing image-right)
+4. BACK — character's back facing the viewer (we see the rear of the
+   ponytail, the back of the outfit, and the scabbard from the rear)
+
+POSE (must be IDENTICAL across all 4 views):
+- Standing relaxed, both arms naturally at sides, hands open at hip
+  level (NO hand resting on the sword)
+- Feet shoulder-width apart, weight balanced evenly
+- Neutral expression with the slight playful smirk preserved
+- KATANA REMAINS SHEATHED at left hip — NOT held in hand
+
+LOCKED VISUAL DETAILS — EVERY one of these MUST match the anchor
+image and remain IDENTICAL across all 4 views (the entire purpose of
+this sheet is consistency):
+
+HAIR: crimson-scarlet, short, low ponytail at the nape. Visible from
+front (peeking past shoulders), 3/4 (slightly), side (full ponytail
+profile), and BACK (whole ponytail clearly visible behind the head).
+Side bangs frame the face in front and 3/4. Color and length identical
+to anchor.
+
+EARRINGS (asymmetric):
+- LEFT ear: small red gem stud (visible in front, 3/4 right view, and
+  back-left view)
+- RIGHT ear: thin dangling silver chain ending in a small blade-shaped
+  pendant (~1.5cm) — visible in front, side-right view, and back
+
+EYES: bright red, almond-shaped, anime-style large and expressive.
+
+OUTFIT:
+- High-collar deep CRIMSON sleeveless top
+- BLACK long fitted under-sleeves on both arms
+- Thin BLACK belt at waist with small bronze buckle (buckle visible
+  front and 3/4 only)
+- SCARLET-RED leggings (slightly brighter than the top)
+- Dark RED mid-calf boots with cuff fold and bronze accent band
+
+BRONZE ARMOR ACCENTS (matte aged bronze, warm orange-brown, NOT shiny):
+- Angular pauldrons on BOTH shoulders — visible from all 4 angles
+- Elbow plates on both arms
+- Knee guards on both legs (front of knees, slightly pointed at the
+  bottom)
+- Wrist bracers on both forearms
+
+KATANA at LEFT hip:
+- Black lacquered scabbard (visible from front: small piece visible
+  at her left hip; 3/4: more of the scabbard visible; side: full
+  scabbard length visible behind/along her left side; back: scabbard
+  visible from behind, hanging at the left side)
+- White diamond-pattern hilt wrap (tsukamaki) at the top of the scabbard
+- Round bronze tsuba with subtle cherry-blossom motif
+- Red sageo cord wrapping the scabbard near the belt
+
+OUTPUT REQUIREMENTS:
+- ONE single landscape-aspect image (approximately 3:1 or 4:1 ratio,
+  wide horizontal)
+- 4 character views arranged in a row, equal size, evenly spaced
+- All 4 standing on the same continuous plain cream/beige background
+- NO text labels, NO grid lines, NO panel dividers, NO scenery
+- Bold clean black lineart, cel-shaded coloring, vibrant saturated
+  palette, slight chibi-leaning anime anatomy, early-2000s Korean
+  MMORPG aesthetic
+- Highest quality possible — this is a master character reference
+  sheet that will guide all future animation and sprite work
+```
+
+#### Avaliando o turnaround
+
+Verifica em cada view:
+- [ ] **Mesmo personagem** identificável nos 4 ângulos (cabelo, cor,
+  proporção, idade)
+- [ ] **Outfit consistente**: red top + black sleeves + red leggings +
+  red boots em TODOS os 4
+- [ ] **Bronze accents** nos mesmos lugares em todos
+- [ ] **Katana sheathed at left hip** — visível em todas as 4 views
+- [ ] **Low ponytail** visível atrás (na BACK view especialmente)
+- [ ] **Asymmetric earrings** quando ear visível
+- [ ] **Pose neutra** consistente (arms at sides, sem hand no sword)
+
+Bugs comuns a verificar:
+- Hair ficou de cor diferente em algum ângulo? (Gemini às vezes vacila)
+- Espada apareceu em ear errada? (deve ser SEMPRE LEFT hip)
+- Outfit acrescentou armor extra que não pediu?
+- Mãos múltiplas mutadas?
+
+Se algo estiver errado, follow-up: *"Regenerate keeping all 4 views but
+fix [specific issue] — the back view is missing the ponytail / the
+side view sword is on the wrong hip / etc."*
+
+#### Após turnaround locked
+
+Salva como `art/anchors/astrid-turnaround.png`. Próximos steps:
+
+1. **Pose sheets** — usar anchor + turnaround como duplo-upload, gerar
+   poses específicas pra cada animação. Lista de poses necessárias:
+   - Idle (já temos — front)
+   - Walk cycle (4-6 frames de referência: passo direito alto, médio,
+     baixo, esquerdo alto, médio, baixo)
+   - Run cycle (similar mas postura mais agressiva)
+   - Jump rise (corpo elevado, braços ascending)
+   - Jump fall (corpo descendo, braços spread)
+   - Land (postura compacta)
+   - Combo Z swing 1, 2, 3 (3 swings da espada)
+   - Skill cast (postura de canalização)
+   - Dash horizontal
+   - Air dash
+   - Dodge roll (chibi compact)
+   - Parry stance (espada elevada, postura defensiva)
+   - Hurt / knock back
+   - Death
+
+2. **Slots 2/3/4** (cast support) — começar a definir os outros 3
+   personagens da Eternia. Usar `astrid-anchor.png` como `--sref`
+   equivalente (upload no Gemini + "match this aesthetic but different
+   character").
+
+3. **Mob designs**, **biomes**, **UI** — depois.
 
 ## Prompt format / anatomy
 
