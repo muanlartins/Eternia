@@ -1482,6 +1482,171 @@ echo "*.mov" >> art/videos/.gitignore
 # ficam local
 ```
 
+### Veo issue: image+text combo bloqueado
+
+User reportou erro: "I can only generate videos from text or images.
+Try another prompt." Causa provável: Veo no Gemini consumer app não
+aceita image+long-text combo bem. Workaround: **text-only com character
+description bem vívida** (sem upload).
+
+Outros suspeitos:
+- Filtros de copyright em "Grand Chase", "Ragnarok Online", "Korean
+  MMORPG" — removidos das versões text-only abaixo
+- Prompts muito longos — encurtados ao essencial
+
+### Prompt A.1 — Text-only character pivot
+
+```
+An anime-style 2D cel-shaded animation. NOT 3D, NOT photorealistic.
+
+A young female elf archer named Naia, around 17 years old, slim
+athletic build (~165cm). She has long deep emerald-green hair
+flowing past her mid-back, with a single thin braid woven on one
+side framing her face. She wears thin frameless round eyeglasses
+(librarian style) over bright emerald-green eyes. Long pointed elf
+ears poke out through her hair.
+
+Her outfit: a long-sleeved fitted deep emerald-green tunic ending
+mid-thigh, a brown leather laced bodice over the tunic, black fitted
+leggings, brown mid-calf leather boots with cuff fold, brown leather
+bracers on both forearms, a thin brown leather belt, a small silver
+leaf pendant at her throat. She carries a wooden recurve bow in her
+right hand and a brown leather quiver of arrows on her back.
+
+She stands centered on a plain cream-colored background. No scenery.
+
+Animation over 8 seconds:
+0:00-0:01 — Stands front-facing the camera, calm composed expression,
+soft slight smile. Hair gently sways.
+0:01-0:04 — She slowly pivots clockwise on her right heel, rotating
+through three-quarter view to full right-side profile. Hair flows
+with the motion.
+0:04-0:07 — Continues rotating through the back view (quiver of
+arrows visible on her back), then back through three-quarter toward
+front.
+0:07-0:08 — Returns to facing the camera, settling into the same
+composed pose. Soft smile.
+
+Camera: static, eye-level, full body framing (head to feet always
+visible).
+
+Style: clean 2D anime cel-shaded animation, bold black lineart,
+vibrant saturated colors, flat shading. NO 3D rendering, NO
+photographic textures, NO realistic lighting.
+```
+
+### Prompt B.1 — Text-only combat moment
+
+```
+An anime-style 2D cel-shaded animation. NOT 3D, NOT photorealistic.
+
+A young female elf archer, 17 years old, slim athletic build. Long
+deep emerald-green hair with a side braid. Bright emerald eyes
+behind thin round librarian-style glasses. Pointed elf ears.
+
+She wears: long-sleeved fitted emerald-green tunic, brown leather
+laced bodice over it, black leggings, brown mid-calf boots, brown
+leather bracers, brown belt. Wooden recurve bow in her right hand,
+leather quiver of arrows on her back. Plain cream background.
+
+Animation over 8 seconds:
+0:00-0:02 — Stands relaxed, bow lowered in right hand. Calm
+expression, slight breathing, hair softly sways.
+0:02-0:04 — Raises the bow horizontally with both hands. Reaches
+back with her left hand, swiftly draws an arrow from the quiver,
+nocks it on the bowstring. Expression sharpens, focused.
+0:04-0:06 — Pulls the bowstring back to her right cheek, taking aim
+forward (slightly upper-right). Stillness. Eyes narrow.
+0:06-0:07 — Releases the arrow. Bowstring snaps forward. Soft smile
+returns.
+0:07-0:08 — Lowers bow back to her side. Calm settles back.
+
+Camera: static, eye-level, full body framing.
+Style: 2D anime cel-shaded, bold lineart, vibrant flat colors. NO
+3D, NO realistic textures.
+```
+
+### Prompt C — 3D cinematic (allow Veo's native 3D strength)
+
+Esse é OPOSTO da estética do jogo, propositalmente — pra tirar o melhor
+de Veo (que é nativamente 3D-leaning). Pensa "cinematic CG anime",
+estilo Genshin Impact / Honkai Star Rail / Final Fantasy XV cutscene
+/ Demon Slayer movie. Anime proportions mantidas, mas com lighting
+volumétrico, depth of field, e camera dinâmica.
+
+```
+A high-quality 3D-rendered cinematic short, in the style of a modern
+anime-inspired AAA RPG cutscene (similar look to Genshin Impact,
+Honkai Star Rail, or Demon Slayer movie). Stylized anime character
+proportions but with rich volumetric lighting, soft depth of field,
+and atmospheric particle effects.
+
+Subject: a young female elf archer, around 17, named Naia. Long
+flowing deep emerald-green hair (jewel-tone, not lime, not olive)
+with a thin side braid. Bright emerald eyes, sharp and focused.
+Pointed elf ears. Thin frameless round glasses (subtle, almost
+delicate). Slim athletic build, around 165cm.
+
+Outfit: fitted long-sleeved deep emerald tunic, brown leather laced
+bodice cinched over the torso, black leggings, brown mid-calf boots
+with subtle leather texture, brown leather bracers. Wooden recurve
+bow with leather grip wrap held in her right hand. Leather quiver
+on her back with arrows visible above her right shoulder. Small
+silver leaf pendant at her throat catching the light.
+
+Setting: a quiet ancient forest at golden hour, soft sunbeams cutting
+through tall pines, dust motes floating in the air, ferns and moss
+on the ground. Naia stands in a small clearing.
+
+Animation over 8 seconds:
+0:00-0:02 — Slow camera dolly-in from a wide shot. Naia stands in
+the clearing, facing slightly off-camera, contemplating. Hair
+gently shifts in the light breeze. Sunlight catches her glasses and
+the silver pendant. Soft particle motes floating around her.
+
+0:02-0:04 — Camera arcs slowly around her to a 3/4 angle. She turns
+her head toward the camera, recognizing something. Her expression
+shifts from contemplative to alert. Bow rises to her side.
+
+0:04-0:06 — Quick cut to a low-angle shot. She nocks an arrow with
+practiced motion, draws the bowstring back to her cheek. Camera
+pushes in toward her focused face — emerald eyes sharp behind the
+glasses. Wind picks up, her hair and braid flowing dramatically.
+
+0:06-0:08 — She releases the arrow. Slow-motion shot of the arrow
+flying off-camera with a faint trailing wind effect. Naia in the
+foreground, lowering the bow with a calm, quiet exhale, soft smile
+returning. Cinematic atmospheric haze, golden lens flare.
+
+Style: 3D anime cinematic CG, vibrant but naturalistic palette,
+cel-shaded character with realistic lighting (soft key light from
+above-right, fill light from ambient forest reflections, rim light
+on her hair). Stylized anime character proportions, not
+photorealistic but cinematic. Atmospheric particle effects, depth
+of field. High production value, like a video game CG cinematic.
+```
+
+### Workflow ajustado
+
+1. Tenta **A.1 primeiro** (text-only, 2D, validação de pipeline) —
+   este é o teste de saber se Veo consegue manter consistência de
+   personagem em 2D anime.
+2. Se A.1 funcionar OK → tenta **B.1** (combat moment, ainda 2D).
+3. **C** (3D cinematic) → independente, vai ser bonito de qualquer
+   jeito. Bom pra showcase / mood board mesmo que não seja o estilo
+   final do jogo.
+
+Se TODOS forem bloqueados pelo Veo: pode ser limitação do plano
+Gemini Advanced atual. Alternativas:
+- Google AI Studio (https://aistudio.google.com) — acesso direto a
+  Veo via API, mais flexível
+- Veo via Vertex AI (enterprise, custa mais)
+- Runway ML (alternativa de outro vendor, $15-95/mês, similar quality)
+- Pika Labs (mais barato, $10/mês)
+
+Pra escopo de Eternia, video gen é OPCIONAL — não bloqueia Phase 9.
+Se virar dor de cabeça, deixa pra depois.
+
 ## Prompt format / anatomy
 
 Pra você reusar e adaptar:
