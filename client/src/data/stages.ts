@@ -55,6 +55,10 @@ export interface StageSpec {
   readonly platforms?: readonly PlatformSpec[];
 }
 
+export function stageById(id: string): StageSpec | null {
+  return STAGES.find((s) => s.id === id) ?? null;
+}
+
 export const STAGES: readonly StageSpec[] = [
   {
     id: 'forest-1-1',

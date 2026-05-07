@@ -16,9 +16,10 @@
 | **3 — Mobs/AI** | 9 mob types (slim, racoon, archer, brute, wisp, bog-frog, mire-wraith, insectivorous, drowned-king) + gravity + multi-phase boss | ✅ done (3.A → 3.J) | `03-mobs-design.md` |
 | **4 — Stage flow + buffs** | 6 stages (forest 1-4 + swamp 1-2), buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.M) | `04-stages-design.md` |
 | **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
-| **6 — Auth + persistence** | Login, JSON store, run sync, leaderboard, MenuScreen + logout | ⏳ 6.A + 6.B + 6.C done; 6.D pendente | `06-server-design.md` |
-| **7 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (futuro, ~50-100h) |
-| **8 — Tailscale alpha** | Multiplayer co-op via Tailscale | ⏳ não iniciado | (V1.1) |
+| **6 — Auth + persistence** | Login, JSON store, run sync, leaderboard, MenuScreen + logout | ⏳ 6.A + 6.B + 6.C done; 6.D skipped (JSON suficiente) | `06-server-design.md` |
+| **7 — Lobby UX restructure** | Login → Character → Mission → Run flow (GC-style) | ⏳ 7.A done; 7.B/7.C pendente | `07-lobby-design.md` |
+| **8 — Multiplayer (Tailscale alpha)** | Network test → lobby presence → co-op gameplay | ⏳ não iniciado | (próximo) |
+| **9 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (último, ~50-100h) |
 
 ## O que ainda falta dentro das phases "ativas"
 
@@ -58,9 +59,11 @@ durante iteração e foram sendo absorvidas:
 - **Boss death drama** (Phase 4.J) — phase intermediária entre boss kill e
   victory para a animação de fade do boss completar.
 
-## Próximas etapas — sequência aprovada pelo user
+## Próximas etapas — sequência atualizada (re-priorizada pelo user)
 
-Sequência: **1 → 2 → 3 → 4 → 5 → 6 → 7**.
+Phase 7 (lobby) e Phase 8 (multiplayer) movidos pra antes da Phase 9 (sprites).
+Razões: lobby UX é prep pra MP; MP via Tailscale precisa room concept;
+sprites são o último polish.
 
 1. ✅ **5.D — BGM sintético** (~3-4h, feito 2026-05-06) — Phase 5 fechada.
    Web Audio API procedural com 3 perfis (forest / deep / boss) por stage.
@@ -97,8 +100,18 @@ Sequência: **1 → 2 → 3 → 4 → 5 → 6 → 7**.
    Wraith glass-cannon, Drowned King boss multi-phase). Nova BGM 'swamp' +
    palettes 'swamp'/'swampBoss'. Insectivorous virou mid-boss; Drowned King
    é o final-boss. Run agora ~6-8min, 6 stages.
-7. ⏳ **Phase 7 — Sprites/arte** — substitui primitivas. Decisão pendente:
-   extrair do GC original vs gerar via SD. ~50-100h.
+7. ⏳ **Phase 7 — Lobby UX restructure** — em progresso.
+   - 7.A done (2026-05-06): Login → CharacterSelect → MissionSelect → Run
+     flow. Forest e Swamp viraram missions independentes (cada um seu run
+     roguelike). 4 character slots (1 ativo + 3 "coming soon" greyed).
+   - 7.B pending: Difficulty levels (Easy/Normal/Hard com multipliers).
+   - 7.C pending: Room creation/join (prep pra MP).
+8. ⏳ **Phase 8 — Multiplayer (Tailscale alpha)** — pendente.
+   - 8.A: Network test (server bind 0.0.0.0 + Tailscale docs).
+   - 8.B: Lobby presence (rooms com 2+ players visíveis).
+   - 8.C: Co-op gameplay (synced state, player+mob).
+9. ⏳ **Phase 9 — Sprites/arte** — substitui primitivas. Decisão pendente:
+   extrair do GC original vs gerar via SD. ~50-100h. (último).
 
 ## Decisões pendentes (não-bloqueantes)
 

@@ -6,7 +6,6 @@ import { Input } from './game/Input.js';
 import { Player } from './game/Player.js';
 import { Camera } from './game/Camera.js';
 import { Stage } from './game/Stage.js';
-import { STAGES } from './data/stages.js';
 import { HitFx } from './game/HitFx.js';
 import { BuffOffer } from './game/BuffOffer.js';
 import { GameAudio, type BgmId, type HitIntensity } from './game/Audio.js';
@@ -20,7 +19,10 @@ import { MenuScreen } from './game/MenuScreen.js';
 import { BossHpBar } from './game/BossHpBar.js';
 import { Auth, fetchLeaderboard } from './game/Auth.js';
 import { LoginScreen } from './game/LoginScreen.js';
-import { MOB_SPECS } from './data/stages.js';
+import { CharacterSelect } from './game/CharacterSelect.js';
+import { MissionSelect } from './game/MissionSelect.js';
+import { MOB_SPECS, stageById, type StageSpec } from './data/stages.js';
+import { MISSIONS, type MissionSpec } from './data/missions.js';
 import {
   applyGameOverToRecords,
   applyVictoryToRecords,
@@ -37,20 +39,14 @@ function bgmIdForStage(stageId: string): BgmId {
   return 'forest';
 }
 
-function isLastStageIdx(idx: number): boolean {
-  return idx === STAGES.length - 1;
-}
-
-function stageBannerText(idx: number): string {
-  const stage = STAGES[idx];
-  if (!stage) return '';
-  for (const sp of stage.spawns) {
-    const spec = MOB_SPECS[sp.type];
-    if (spec.isBoss && spec.bossName) {
-      return `★ BOSS ★  ${spec.bossName.toUpperCase()}`;
+function stageBannerText(spec: StageSpec, displayIdx: number): string {
+  for (const sp of spec.spawns) {
+    const m = MOB_SPECS[sp.type];
+    if (m.isBoss && m.bossName) {
+      return `★ BOSS ★  ${m.bossName.toUpperCase()}`;
     }
   }
-  return `STAGE ${idx + 1}: ${stage.name}`;
+  return `STAGE ${displayIdx + 1}: ${spec.name}`;
 }
 
 function rectsOverlap(a: AABB, b: AABB): boolean {
@@ -156,10 +152,19 @@ async function main() {
   const input = new Input({ doubleTapWindowMs: ELESIS.doubleTapWindowMs });
   const player = new Player(ELESIS);
 
+  let currentMission: MissionSpec = MISSIONS[0]!;
   let currentStageIdx = 0;
-  let stage = new Stage(STAGES[currentStageIdx]!, worldStage, { isLastStage: isLastStageIdx(currentStageIdx) });
+
+  function currentStageSpec() {
+    return stageById(currentMission.stageIds[currentStageIdx]!)!;
+  }
+  function isLastStageInMission(idx: number = currentStageIdx) {
+    return idx === currentMission.stageIds.length - 1;
+  }
+
+  let stage = new Stage(currentStageSpec(), worldStage, { isLastStage: isLastStageInMission() });
   stage.spawn();
-  background.setStage(STAGES[currentStageIdx]!.id);
+  background.setStage(currentStageSpec().id);
 
   worldStage.addChild(player.view);
 
@@ -198,7 +203,15 @@ async function main() {
 
   const miniMap = new MiniMap(GAME_W, GAME_H);
   uiStage.addChild(miniMap.container);
-  miniMap.setStages(STAGES.map((s) => ({ id: s.id, name: s.name })));
+  function refreshMiniMap() {
+    miniMap.setStages(
+      currentMission.stageIds.map((id) => {
+        const s = stageById(id)!;
+        return { id: s.id, name: s.name };
+      }),
+    );
+  }
+  refreshMiniMap();
 
   const menuScreen = new MenuScreen(GAME_W, GAME_H);
   uiStage.addChild(menuScreen.container);
@@ -210,21 +223,11 @@ async function main() {
   const loginScreen = new LoginScreen(GAME_W, GAME_H);
   uiStage.addChild(loginScreen.container);
 
-  if (!auth.isAuthenticated()) {
-    loginScreen.show({
-      onSubmit: async (username) => {
-        const result = await auth.login(username);
-        if (result.ok) {
-          loginScreen.hide();
-        } else {
-          loginScreen.setError(result.error);
-        }
-      },
-      onGuest: () => loginScreen.hide(),
-    });
-  } else {
-    void auth.refreshRecords();
-  }
+  const characterSelect = new CharacterSelect(GAME_W, GAME_H);
+  uiStage.addChild(characterSelect.container);
+
+  const missionSelect = new MissionSelect(GAME_W, GAME_H);
+  uiStage.addChild(missionSelect.container);
 
   const controls = new Text({
     text:
@@ -269,7 +272,6 @@ async function main() {
   let stagePhase: StagePhase = 'modifierPick';
   let stageTransitionTimerMs = 0;
   stageBanner.visible = false;
-  modifierOffer.show(pickRandomModifiers(3));
   let prevPlayerState: PlayerState = player.state;
 
   const MAX_LIVES = 3;
@@ -319,24 +321,73 @@ async function main() {
     };
   }
 
-  function startNewRun() {
-    lives = MAX_LIVES;
-    currentStageIdx = 0;
-    player.resetBuffs();
-    stage.destroy();
-    stage = new Stage(STAGES[currentStageIdx]!, worldStage, { isLastStage: isLastStageIdx(currentStageIdx) });
-    stage.spawn();
-    background.setStage(STAGES[currentStageIdx]!.id);
-    player.teleportToStart();
-    runStats = makeStats();
-    pendingFlags = { newBestTime: false, newBestDamage: false, newFewestDeaths: false };
+  function startMissionSelect(statusText?: string) {
     victoryStats.hide();
     buffOffer.hide();
-    modifierOffer.show(pickRandomModifiers(3));
-    stagePhase = 'modifierPick';
-    stageTransitionTimerMs = 0;
+    modifierOffer.hide();
     stageBanner.visible = false;
     audio.stopBgm();
+    stagePhase = 'modifierPick';
+    stageTransitionTimerMs = 0;
+    missionSelect.show({
+      ...(statusText !== undefined ? { statusText } : {}),
+      onConfirm: (mission) => {
+        currentMission = mission;
+        currentStageIdx = 0;
+
+        lives = MAX_LIVES;
+        player.resetBuffs();
+        runStats = makeStats();
+        pendingFlags = { newBestTime: false, newBestDamage: false, newFewestDeaths: false };
+
+        stage.destroy();
+        stage = new Stage(currentStageSpec(), worldStage, {
+          isLastStage: isLastStageInMission(),
+        });
+        stage.spawn();
+        background.setStage(currentStageSpec().id);
+        refreshMiniMap();
+        player.teleportToStart();
+
+        missionSelect.hide();
+        modifierOffer.show(pickRandomModifiers(3));
+        stagePhase = 'modifierPick';
+        stageTransitionTimerMs = 0;
+        stageBanner.visible = false;
+      },
+    });
+  }
+
+  function startCharacterSelect() {
+    victoryStats.hide();
+    buffOffer.hide();
+    modifierOffer.hide();
+    audio.stopBgm();
+    characterSelect.show(() => {
+      characterSelect.hide();
+      startMissionSelect();
+    });
+  }
+
+  if (!auth.isAuthenticated()) {
+    loginScreen.show({
+      onSubmit: async (username) => {
+        const result = await auth.login(username);
+        if (result.ok) {
+          loginScreen.hide();
+          startCharacterSelect();
+        } else {
+          loginScreen.setError(result.error);
+        }
+      },
+      onGuest: () => {
+        loginScreen.hide();
+        startCharacterSelect();
+      },
+    });
+  } else {
+    void auth.refreshRecords();
+    startCharacterSelect();
   }
 
   let hitPauseMs = 0;
@@ -363,6 +414,18 @@ async function main() {
       return;
     }
 
+    if (characterSelect.isOpen()) {
+      characterSelect.update(input);
+      input.endFrame();
+      return;
+    }
+
+    if (missionSelect.isOpen()) {
+      missionSelect.update(input);
+      input.endFrame();
+      return;
+    }
+
     if (menuScreen.isOpen()) {
       menuScreen.update(audio, input, {
         username: auth.getUsername(),
@@ -374,11 +437,15 @@ async function main() {
               const result = await auth.login(username);
               if (result.ok) {
                 loginScreen.hide();
+                startCharacterSelect();
               } else {
                 loginScreen.setError(result.error);
               }
             },
-            onGuest: () => loginScreen.hide(),
+            onGuest: () => {
+              loginScreen.hide();
+              startCharacterSelect();
+            },
           });
         },
       });
@@ -624,9 +691,9 @@ async function main() {
         saveRecords(records);
         runStats = makeStats();
         stage.destroy();
-        stage = new Stage(STAGES[currentStageIdx]!, worldStage, { isLastStage: isLastStageIdx(currentStageIdx) });
+        stage = new Stage(currentStageSpec(), worldStage, { isLastStage: isLastStageInMission() });
         stage.spawn();
-        background.setStage(STAGES[currentStageIdx]!.id);
+        background.setStage(currentStageSpec().id);
         stagePhase = 'gameOver';
         stageTransitionTimerMs = 2000;
         stageBanner.text = 'GAME OVER';
@@ -635,14 +702,14 @@ async function main() {
         for (const m of stage.getMobs()) m.resetTransientBuffs();
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
-        stageBanner.text = stageBannerText(currentStageIdx);
+        stageBanner.text = stageBannerText(currentStageSpec(), currentStageIdx);
       }
       stageBanner.visible = true;
     }
     prevPlayerState = player.state;
 
     if (stagePhase === 'playing' && stage.isCleared()) {
-      if (currentStageIdx === STAGES.length - 1) {
+      if (isLastStageInMission()) {
         runStats.endedAtMs = performance.now();
         stagePhase = 'bossDeathDrama';
         stageTransitionTimerMs = 2500;
@@ -714,17 +781,17 @@ async function main() {
           runStats.buffsPicked.push(buff.name);
         }
         buffOffer.hide();
-        currentStageIdx = (currentStageIdx + 1) % STAGES.length;
+        currentStageIdx = currentStageIdx + 1;
         stage.destroy();
-        stage = new Stage(STAGES[currentStageIdx]!, worldStage, { isLastStage: isLastStageIdx(currentStageIdx) });
+        stage = new Stage(currentStageSpec(), worldStage, { isLastStage: isLastStageInMission() });
         stage.spawn();
-        background.setStage(STAGES[currentStageIdx]!.id);
+        background.setStage(currentStageSpec().id);
         player.teleportToStart();
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
-        stageBanner.text = stageBannerText(currentStageIdx);
+        stageBanner.text = stageBannerText(currentStageSpec(), currentStageIdx);
         stageBanner.visible = true;
-        audio.playBgm(bgmIdForStage(STAGES[currentStageIdx]!.id));
+        audio.playBgm(bgmIdForStage(currentStageSpec().id));
       }
     } else if (stagePhase === 'nextAnnounce') {
       stageTransitionTimerMs -= realDtMs;
@@ -735,11 +802,7 @@ async function main() {
     } else if (stagePhase === 'gameOver') {
       stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
-        player.teleportToStart();
-        modifierOffer.show(pickRandomModifiers(3));
-        stagePhase = 'modifierPick';
-        stageTransitionTimerMs = 0;
-        stageBanner.visible = false;
+        startMissionSelect('GAME OVER  ·  pick a mission to retry');
       }
     } else if (stagePhase === 'victoryAnnounce') {
       stageTransitionTimerMs -= realDtMs;
@@ -766,10 +829,10 @@ async function main() {
         modifierOffer.hide();
         stagePhase = 'nextAnnounce';
         stageTransitionTimerMs = 1500;
-        stageBanner.text = stageBannerText(currentStageIdx);
+        stageBanner.text = stageBannerText(currentStageSpec(), currentStageIdx);
         stageBanner.visible = true;
         runStats.startedAtMs = performance.now();
-        audio.playBgm(bgmIdForStage(STAGES[currentStageIdx]!.id));
+        audio.playBgm(bgmIdForStage(currentStageSpec().id));
       }
     } else if (stagePhase === 'victoryStats') {
       const anyAction =
@@ -784,7 +847,7 @@ async function main() {
         input.justPressed('pick3') ||
         input.justPressed('up');
       if (anyAction) {
-        startNewRun();
+        startMissionSelect();
       }
     }
 
@@ -860,8 +923,8 @@ async function main() {
       lives,
       maxLives: MAX_LIVES,
       stageIdx: currentStageIdx,
-      stageName: STAGES[currentStageIdx]!.name,
-      totalStages: STAGES.length,
+      stageName: currentStageSpec().name,
+      totalStages: currentMission.stageIds.length,
       aliveCount,
       serverInfo: infoLine,
       runMs: elapsedMs,
