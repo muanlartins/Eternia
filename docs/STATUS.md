@@ -19,7 +19,8 @@
 | **6 — Auth + persistence** | Login, JSON store, run sync, leaderboard, MenuScreen + logout | ⏳ 6.A + 6.B + 6.C done; 6.D skipped (JSON suficiente) | `06-server-design.md` |
 | **7 — Lobby UX restructure** | Login → Character → Mission → Run flow + difficulty + room foundation | ✅ 7.A + 7.B + 7.C done | `07-lobby-design.md` |
 | **8 — Multiplayer (Tailscale alpha)** | Network test + Lobby + presence + co-op (mob sync + damage sync + ready-up lobby) | ✅ 8.A → 8.D done | `08-multiplayer-design.md` |
-| **9 — Sprites e arte** | Substituir primitivas por sprites animados (Elesis + mobs + bg) | ⏳ não iniciado | (último, ~50-100h) |
+| **9 — Pre-production (lore + concept art + style guide)** | Tool: Gemini. Style guide, character bibles, concept art locked. NÃO inclui sprite work — esse é Phase 10. | ⏳ 9.0 + 9.A em progresso | `09-art-bible.md` |
+| **10 — Sprite implementation** | Convert concept art → sprite sheets, replace primitives in-game | ⏳ não iniciado |
 
 ## O que ainda falta dentro das phases "ativas"
 
@@ -129,8 +130,16 @@ sprites são o último polish.
      - Limitações: projéteis (archer arrows) não sincronizados ainda;
        stage progression entre stages pode divergir. Single-stage co-op
        sólido pra alpha.
-9. ⏳ **Phase 9 — Sprites/arte** — substitui primitivas. Decisão pendente:
-   extrair do GC original vs gerar via SD. ~50-100h. (último).
+9. ⏳ **Phase 9 — Pre-production** — em progresso (re-frame: era "sprites",
+   virou pré-produção. Implementação foi pra Phase 10).
+   - 9.0 done: tool choice (Gemini), pipeline, style anchor.
+   - 9.A in progress: Astrid bible v1 + concept art prompt v1 (em
+     `docs/09-art-bible.md`). User vai rodar no Gemini, trazer
+     resultado, iterar.
+   - 9.B/C/D/E/F pendente.
+10. ⏳ **Phase 10 — Sprite implementation** — converte concept art em
+    sprite sheets, substitui primitivas. Inicia depois que 9.A pelo
+    menos estiver fechada.
 
 ## Decisões pendentes (não-bloqueantes)
 
