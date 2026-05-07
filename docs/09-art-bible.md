@@ -165,10 +165,33 @@ background, single character framed centrally. Aspect ratio portrait
   trocar os marcadores visuais específicos. Pedir 4 variações com axes:
   hair style, outfit silhouette, color accents, distinguishing marker.
 
+- **v2**: 4 variações geradas, salvas em `art/anchors/astrid-v2.png`.
+  User selecionou a **variação 4 (direita)** como direção.
+  Elementos travados a partir dela:
+  - **Espada asiática** (katana/wakizashi-style, dark scabbard) no hip
+    esquerdo. Quebra o padrão "knight com longsword reta" — posiciona
+    Astrid como swordswoman com treinamento híbrido oriente-ocidente.
+  - **Outfit two-tone**: torso em deep crimson, sleeves em black,
+    leggings em scarlet. Two-tone breaking the Elesis red+white default.
+  - **Bronze/copper armor accents**: pauldrons (ombros), cotovelos,
+    joelheiras. Toque de leveza marcial sem ser heavy plate. Subtle
+    samurai/eastern vibe.
+  - **Cabelo mais curto, low ponytail** (não o high ponytail icônico
+    da Elesis). Hair color stays crimson scarlet.
+  - **Pose**: mão na cintura, postura confiante, leve sorriso de canto.
+
+  Refinamentos pendentes pra v3:
+  - Earrings asimétricos (axis C marker) ainda pouco visíveis — pode
+    enfatizar
+  - Face proportions/expression specifics
+  - Detalhe da espada (tsuba/handle wrapping)
+  - Cor/textura dos copper accents (mais opaco vs polido)
+
 #### Anchor (uma vez locked)
 
-- Path: `art/anchors/astrid-base-front.png` (a criar)
-- Image hash / Gemini conversation link: TBD
+- Path: `art/anchors/astrid-v2.png` (v2, 4-variation grid; var 4 chosen)
+- Iteration continues — not yet final solo anchor.
+- Pra anchor final solo: `art/anchors/astrid-base-front-v3.png`
 
 #### Concept art prompt v2 — pede 4 variações
 
@@ -249,6 +272,88 @@ same character archetype (red-haired young swordswoman).
    elementos (de qualquer variação) ressoam mais.
 4. Iteramos selecionando características das melhores variações pra
    um v3 final-ish.
+
+#### Concept art prompt v3 — refina v4 escolhida
+
+Cole isto no Gemini, idealmente na MESMA conversa onde gerou as 4
+variações (assim ele tem contexto da imagem anterior). Se for nova
+conversa, **upload `art/anchors/astrid-v2.png` antes do prompt**.
+
+```
+Looking at the previous 4-variation design sheet, I want to refine
+variation #4 (the rightmost one) into the final character design for
+Astrid. Generate 4 close refinements of THAT specific design, keeping
+ALL of these locked elements identical across the 4 refinements:
+
+LOCKED (do not change):
+- Female swordswoman, 17, slim athletic build, ~165cm
+- Crimson-scarlet red hair, kept short and tied in a LOW ponytail at
+  the nape (not high). Bangs frame the face.
+- Red eyes, confident smirk, fierce expression
+- Two-tone outfit: deep crimson torso (high-collar fitted top), black
+  long sleeves, scarlet-red leggings, dark boots
+- Bronze/copper armor accents: pauldrons on shoulders, small armor
+  plates on elbows, knee-guards
+- Black thin belt at the waist
+- Asian-style sword at her left hip — straight or slightly curved
+  blade in a dark lacquered scabbard, white/red wrapped hilt
+- Pose: standing front-view, full body, weight on right leg, left
+  hand on hip, plain cream/beige background, character reference
+  sheet style
+- 2D anime cel-shading, bold lineart, vibrant saturated palette,
+  early-2000s Korean MMORPG aesthetic
+
+REFINE THESE DETAILS across the 4 variations:
+
+DETAIL 1 — EARRINGS (asymmetric, more visible than in v2):
+- v3a: small red gem stud on left ear + long thin dangling chain on
+  right ear ending in a small blade-shape
+- v3b: black cuff (cartilage piercing) on right ear + single small
+  pearl drop on left
+- v3c: matching small ruby studs on both ears (less asymmetric, more
+  clean)
+- v3d: red feather earring on one ear, plain stud on the other
+
+DETAIL 2 — SWORD HILT/TSUBA:
+- v3a: round tsuba (guard) with floral cherry-blossom motif, white
+  hilt wrapping
+- v3b: rectangular tsuba with geometric pattern, red hilt wrapping
+  with black diamond pattern (menuki dots)
+- v3c: oval tsuba in dark bronze with engraved flame motif, white
+  with gold thread wrapping
+- v3d: minimalist tsuba (small simple guard), red lacquered scabbard
+  with gold inlay rings, black hilt wrapping
+
+DETAIL 3 — COPPER ARMOR FINISH (slight tone variation):
+- v3a: matte aged bronze (warm orange-brown)
+- v3b: polished copper (high shine, reddish gold)
+- v3c: tarnished darker bronze with green-blue verdigris hints
+- v3d: clean bright bronze (newly forged feel)
+
+DETAIL 4 — FACE/HAIR FINER DETAILS:
+- v3a: a single thin red ribbon tied at the base of the low ponytail
+- v3b: hair has a few strands escaping/messy, a thin braid weaving
+  through the side
+- v3c: clean cut, hair smoothly tied, with side-locks framing the face
+- v3d: hair pinned with a small bronze hair-stick (kanzashi-style)
+
+OUTPUT: 4 refined character designs (full body, front view) in a 2x2
+grid OR side by side. Each variation should look like the FINAL Astrid,
+just with different combinations of the 4 detail dimensions above. The
+overall silhouette and color palette should remain consistent across
+all 4 — only the listed details change.
+```
+
+#### Próximos refinamentos esperados
+
+Após o v3, deve dar pra escolher 1 das 4 (ou montar a final fundindo
+detalhes específicos). Quando travar, salvamos como
+`art/anchors/astrid-base-front-v3.png` e isso vira a referência canônica
+pra:
+- Turnaround sheets (front / 3-quarter / side / back)
+- Pose sheets (idle, walk, attack, dodge, etc.) — input pro Phase 10
+- Reference pra slots 2/3/4 (`--sref` equivalente: upload Astrid no
+  prompt + descrição de outro personagem na mesma estética)
 
 ## Prompt format / anatomy
 
