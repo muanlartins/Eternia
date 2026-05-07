@@ -165,6 +165,12 @@ background, single character framed centrally. Aspect ratio portrait
   trocar os marcadores visuais específicos. Pedir 4 variações com axes:
   hair style, outfit silhouette, color accents, distinguishing marker.
 
+- **v3 (refinement de v2-var4)**: 4 close refinements gerados, salvos em
+  `art/anchors/astrid-v3.png`. User selecionou **v3a (esquerda)** como
+  design final. Bronze armor matte, espada com hilt branco, low ponytail
+  curto, brincos asimétricos (gem stud + dangling chain). Próximo passo:
+  gerar anchor solo final.
+
 - **v2**: 4 variações geradas, salvas em `art/anchors/astrid-v2.png`.
   User selecionou a **variação 4 (direita)** como direção.
   Elementos travados a partir dela:
@@ -354,6 +360,108 @@ pra:
 - Pose sheets (idle, walk, attack, dodge, etc.) — input pro Phase 10
 - Reference pra slots 2/3/4 (`--sref` equivalente: upload Astrid no
   prompt + descrição de outro personagem na mesma estética)
+
+#### Concept art prompt v4 — anchor canônico solo
+
+Cole no Gemini, na MESMA conversa onde gerou v3 (assim Gemini lembra
+das 4 refinements). Se for nova conversa, **upload `art/anchors/astrid-v3.png`
+antes do prompt**.
+
+```
+Take variation 1 (the LEFTMOST design) from the previous v3 refinement
+sheet and produce a clean, single, high-quality solo character
+reference image. This becomes the CANONICAL anchor for Astrid — the
+master reference used for all future generations (turnarounds, action
+poses, future characters in the same world).
+
+LOCKED FINAL DESIGN — every detail below MUST appear exactly:
+
+CHARACTER: Astrid, 17-year-old female swordswoman. Slim athletic
+build, around 165 cm. Personality: confident, impulsive, fierce —
+slight playful smirk on her lips, fiery red eyes alight with energy,
+looking directly at the viewer. Subtle anime-style large expressive
+eyes.
+
+HAIR: crimson-scarlet red, shoulder-length, tied in a LOW ponytail at
+the nape of the neck. The ponytail itself is short — just past the
+shoulder blades. Side bangs frame the face; a few short loose strands
+at the front. Clean and tidy, NOT messy.
+
+EYES: bright red, almond-shaped, large, expressive (anime style).
+
+EARRINGS (asymmetric, must be clearly visible):
+- LEFT ear: a single small red gem stud
+- RIGHT ear: a thin dangling silver chain ending in a small
+  blade-shaped pendant (~1.5cm long)
+
+OUTFIT (her "base" form, no heavy armor over the body):
+- High-collar fitted top in DEEP CRIMSON RED, sleeveless
+- BLACK long fitted under-sleeves on both arms (separate from the top,
+  full length to the wrist)
+- A thin BLACK belt at the waist with a small bronze buckle
+- SCARLET-RED leggings (slightly brighter than the top to differentiate)
+- Dark RED mid-calf boots with a slight cuff fold at the top, dark
+  bronze accent band
+
+ARMOR ACCENTS in MATTE AGED BRONZE (warm orange-brown finish, not
+shiny):
+- Angular bronze pauldrons on both shoulders — small but prominent,
+  asymmetric edges, slightly weathered look
+- Bronze elbow plates (ovoid, fitted)
+- Bronze knee guards covering the front of each knee, slightly
+  pointed at the bottom
+- Small bronze bracers at both wrists
+
+WEAPON (Asian-style sword at her LEFT hip):
+- Katana-length, slightly curved blade (sheathed)
+- Scabbard: BLACK lacquered, smooth finish
+- Tsuba (guard): ROUND, with a subtle cherry-blossom (sakura) flower
+  motif etched into dark bronze
+- Tsuka (hilt): WHITE wrap in classic diamond pattern (tsukamaki),
+  with a small dark menuki ornament
+- A red corded sageo wraps the scabbard near the belt
+- Total visible length: from hip to about mid-calf
+
+POSE: standing front-view, full body visible from head to feet,
+centered. Weight slightly on the right leg; left leg relaxed. RIGHT
+hand resting on the hilt of the sheathed sword (or near the pommel).
+LEFT hand on her left hip. Direct gaze at viewer, slight smirk.
+
+LIGHTING: soft cinematic lighting from upper-left. Gentle subtle
+shadows on the right side of the body. Highlights on hair, pauldrons,
+and sword hilt.
+
+BACKGROUND: plain solid cream/beige (#F2EAD6 ish), like a clean
+character reference sheet. NO scenery, NO other characters, NO text,
+NO logos, NO watermarks, NO grid panels — just the single isolated
+character.
+
+STYLE: full 2D anime illustration (NOT pixel art), bold clean black
+lineart, cel-shaded coloring with crisp shadow shapes, vibrant
+saturated palette. Slight chibi-leaning anime anatomy (head about
+1/6 of body height). Early-2000s Korean MMORPG illustration aesthetic
+(Grand Chase / Ragnarok Online era 2D character art).
+
+OUTPUT: ONE single character, full body, centered in frame, portrait
+aspect ratio (taller than wide), highest available resolution. This is
+the canonical anchor reference image — make it as clean and detailed as
+possible.
+```
+
+#### Após gerar anchor
+
+1. Salvar a imagem como `art/anchors/astrid-anchor.png` (clean name —
+   essa é a master reference daqui pra frente).
+2. Atualizar o bible com o path final.
+3. Próximo passo: turnaround sheet — usar essa anchor como upload e
+   gerar 4 ângulos (front / 3/4 / side / back) na mesma estética.
+4. Depois: pose sheets pra animações (idle, walk, attack swings, dodge,
+   etc.) — input direto pra Phase 10.
+
+Se a anchor sair com algum bug (mãos estranhas, espada deformada,
+brincos invisíveis), iteramos via follow-up: "perfect, but please fix
+the right hand — it should rest on the sword pommel cleanly". Gemini
+geralmente ajusta bem em follow-up no chat.
 
 ## Prompt format / anatomy
 
