@@ -861,6 +861,151 @@ correct but fix the back view — the quiver and ears are missing".
 
 Salva como `art/anchors/naia-turnaround.png` quando travar.
 
+#### Concept art prompt v2.1 — Turnaround com rotações DISTINCTAS
+
+**v2 falhou**: Gemini gerou view 1 e 2 quase idênticas (ambas front-ish),
+view 3 ainda mostrando rosto frontal (não profile real). Só view 4
+(back) estava distinta. Fix: graus explícitos + descrição visual
+específica do que deve ser visível em cada ângulo + linguagem forte
+forçando diferenciação.
+
+Cole no Gemini, **NOVA conversa**. **Upload `art/anchors/naia-anchor.png`
+ANTES** do prompt.
+
+```
+Generate a 4-VIEW CHARACTER TURNAROUND SHEET of Naia (the elven archer
+from the uploaded reference image). The 4 views must show the character
+at 4 DISTINCTLY DIFFERENT angles of body rotation. Each view MUST look
+DRAMATICALLY different from the others — this is the entire purpose of
+a turnaround sheet, NOT four near-identical front-views.
+
+ROTATION ANGLES (arranged left to right in a single landscape image):
+
+VIEW 1 — FULL FRONT (0° rotation):
+- Character facing the camera DIRECTLY, both shoulders perfectly level
+  and equally visible
+- Nose pointing straight at viewer; both eyes equally visible
+- Both pointed elf ears symmetrically visible on either side of the head
+- Body squared up to camera, chest plane parallel to image plane
+- Bow held in her left hand at her left side
+- Quiver behind shoulders, only the tops of arrows poking up over both
+  shoulders
+
+VIEW 2 — THREE-QUARTER (45° rotation; the character has turned 45° to
+HER OWN right, so the viewer now sees more of her LEFT side):
+- This MUST be visibly different from VIEW 1
+- Her face is at 3/4 angle: viewer sees about 75% of the face but with
+  visible depth — the FAR cheek (her right cheek) recedes, the NEAR
+  cheek (her left cheek) is forward and prominent
+- The far ear (right) is partly hidden behind hair; the near ear (left)
+  is fully visible
+- Her right shoulder pulls back, body twists 45°
+- The bow held in her left hand is now MORE prominent from this angle,
+  positioned forward
+- Quiver and arrows visible behind her right shoulder receding back
+- The hair side-braid should be on whichever side is visible
+
+VIEW 3 — FULL RIGHT-SIDE PROFILE (90° rotation, strict side view):
+- This is a STRICT PROFILE silhouette — the character's face is shown
+  ENTIRELY from the side
+- ONLY ONE eye visible (her right eye), ONLY ONE ear visible (her right
+  ear) — the other side of the face is completely hidden
+- Nose silhouette points to image-right
+- Body is fully rotated 90° — the chest plane is perpendicular to the
+  image plane (we see her right side)
+- Long emerald hair flows down behind her, ponytail-like or loose,
+  visible cascading down her back from this angle
+- Bow held in left hand is on the FAR side (away from viewer), partially
+  obscured behind her body
+- Quiver visible directly behind her shoulders, arrows poking up
+  behind/above
+- This view MUST look DRAMATICALLY different from view 1 — NO frontal
+  view of the face is allowed; if you can see both cheeks, it is wrong
+
+VIEW 4 — FULL BACK (180° rotation, character's back to the viewer):
+- We see the back of her head; long flowing emerald hair cascading down
+  her back fully visible
+- The pointed elf ears poke out behind the hair (small detail)
+- Body fully facing AWAY from viewer; back of the green tunic and brown
+  leather bodice (back-laces if the bodice has them) visible
+- The QUIVER is the dominant feature in this view — clearly visible
+  centered on her back, arrows pointing up
+- Bow held in left hand visible from behind, jutting out at her left
+  side as a silhouette
+- No facial features visible (face hidden)
+
+ALL 4 VIEWS share these LOCKED elements (must remain identical across
+all rotations):
+
+CHARACTER: Naia, elven archer. Slim agile build, ~160cm. Calm composed
+expression with soft slight smile (visible in views 1 and 2; partial
+in view 3; not visible in view 4).
+
+HAIR: deep emerald-green jewel tone (NOT lime, NOT olive), long flowing
+past mid-back. Single thin side braid framing the face. Color and
+length identical across views.
+
+EYES: bright emerald-green, almond-shaped, large expressive (when
+visible).
+
+ELF EARS: long pointed.
+
+GLASSES: thin wire-frame round eyeglasses, almost frameless, small
+horizontally-oval lenses — librarian style. Visible in views 1 and 2;
+visible from the side in view 3 as part of the profile; not visible in
+view 4 (back of head).
+
+OUTFIT (must match the anchor exactly):
+- Long-sleeve fitted DEEP EMERALD GREEN tunic, mid-thigh length
+- BROWN leather laced vest/bodice over the tunic
+- BLACK fitted leggings
+- BROWN leather mid-calf boots
+- BROWN leather bracers on both forearms
+- Thin BROWN leather belt
+- Small leaf-shaped SILVER pendant at throat (front and 3/4 only)
+
+WEAPON & GEAR:
+- Short wooden RECURVE BOW held in her LEFT hand at her side, lowered
+  vertical position, in all 4 views
+- BROWN leather QUIVER on her back with 5-7 fletched arrows over the
+  right shoulder
+
+POSE: standing relaxed, weight balanced. Arms at sides except left
+hand holding bow. NO combat poses, NO drawn bow.
+
+OUTPUT REQUIREMENTS:
+- ONE single landscape image (~3:1 to 4:1 ratio)
+- 4 character views in a row, equal size, evenly spaced
+- All on a single continuous plain cream/beige background
+- NO text labels, NO panel dividers, NO scenery
+- Bold clean black lineart, cel-shaded, vibrant saturated palette,
+  early-2000s Korean MMORPG anime aesthetic
+- Highest quality
+
+CRITICAL CHECKS — if any of these fail, the turnaround is wrong:
+- View 1 and View 2 must be VISIBLY DIFFERENT (not near-identical)
+- View 3 must be a STRICT PROFILE — only one eye, only one ear visible
+- View 4 must show the BACK clearly with the quiver dominant
+- All 4 views must be the SAME character with the SAME outfit/hair/gear
+```
+
+#### Avaliando o turnaround da Naia v2.1
+
+Os checks acima — na ordem de prioridade:
+1. **Views 1 e 2 são visivelmente diferentes**? Se sim, primeiro problema
+   resolvido.
+2. **View 3 é profile estrito** (1 olho, 1 ear, sem rosto frontal)? Se
+   sim, segundo problema resolvido.
+3. View 4 back tá com quiver e ears? (já tava OK, manter).
+4. Mesmo personagem nos 4 (cabelo, óculos, outfit)?
+
+Se ainda falhar em um view específico, follow-up: "Regenerate keeping
+views 1, 2, 4 correct but fix view 3 — it MUST be a strict profile
+showing only one side of the face. The character must be rotated 90
+degrees, with chest pointing to the right of the image."
+
+Salva como `art/anchors/naia-turnaround.png` quando travar.
+
 ## Prompt format / anatomy
 
 Pra você reusar e adaptar:
