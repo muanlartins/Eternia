@@ -71,6 +71,11 @@ elenco principal tiver bibles fechadas.
 
 ## Cast
 
+> Cast atual no `client/src/data/characters.ts`: `astrid` (available),
+> `naia` / `slot3` / `slot4` (locked). Renomeei Elesis → Astrid e Lire
+> → Naia conforme a gente vai travando os bibles. Slots 3 e 4 ainda
+> com placeholder name `?`.
+
 ### Astrid (slot 1 — Knight)
 
 **Status**: bible v1, concept art em iteração.
@@ -619,6 +624,135 @@ Salva como `art/anchors/astrid-turnaround.png`. Próximos steps:
    character").
 
 3. **Mob designs**, **biomes**, **UI** — depois.
+
+### Naia (slot 2 — Elven Archer)
+
+**Status**: bible v1, concept art prompt v1 escrito (a rodar).
+
+#### Bible
+
+| Campo | Valor |
+|---|---|
+| Nome | Naia |
+| Classe (1ª) | Archer (arqueira élfica de arco curto) |
+| Inspiração | Lire (Grand Chase) — https://grandchase.fandom.com/pt-br/wiki/Lire |
+| Idade | 17 (mesma faixa da Astrid) |
+| Build | esguia ágil, ~160cm (levemente menor que Astrid) |
+| Personalidade | sábia, calma, observadora. Conectada à natureza. Contraste direto com Astrid impulsiva. |
+| Race | Elf — orelhas pontudas |
+| Cabelo | verde-esmeralda profundo (jewel tone, NÃO leafy/druid green), longo, mostly solto com single thin side braid |
+| Olhos | verde-esmeralda |
+| Arma | arco curto recurvo de madeira (Lire 1ª classe vibe) + quiver de couro nas costas |
+| Distinguishing | óculos pequenos redondos sem aro grosso (librarian-style) — reforça vibe sábia |
+| Origem | TBD (sugestão: descendente de bibliotecários élficos de uma floresta antiga, deixou seu refúgio em busca da Eternia) |
+
+#### Outfit (light archer attire)
+
+- DEEP EMERALD GREEN long-sleeve fitted tunic ending mid-thigh
+- BROWN leather laced bodice/vest sobre o tunic
+- BLACK fitted leggings (mid-thigh down)
+- BROWN mid-calf leather boots com fivela simples
+- BROWN leather bracers nos dois antebraços (bowstring guards)
+- Thin BROWN leather belt
+- Small leaf-shaped silver pendant na garganta (elven heritage marker)
+- Brown leather quiver nas costas, strap diagonal cruzando o peito,
+  arrows visíveis sobre o ombro direito
+
+#### Concept art prompt v1 (anchor target)
+
+Cole no Gemini, preferencialmente em **NOVA conversa**. **IMPORTANTE**:
+upload `art/anchors/astrid-anchor.png` ANTES do prompt — vamos usar a
+Astrid como style reference (não character reference) para garantir
+consistência visual entre os dois personagens da Eternia.
+
+```
+I'm generating concept art for Naia — the second character of the same
+adventuring party as Astrid (the crimson swordswoman from the uploaded
+reference image). Use the uploaded Astrid reference image ONLY for
+art-style consistency (line quality, cel-shading style, color
+saturation, anime proportions, early-2000s Korean MMORPG aesthetic).
+Naia is a COMPLETELY DIFFERENT character — different person, different
+race, different look — but they live in the same world and should feel
+visually cohesive.
+
+CHARACTER: Naia, 17-year-old female elven archer. Slim agile build,
+~160cm (slightly shorter than Astrid). Personality: wise, calm,
+observant. Composed expression — soft slight smile, kind but focused
+gaze. The contrast in personality from Astrid is intentional.
+
+ELF FEATURES: long pointed elven ears, clearly visible through her
+hair (especially in front and 3/4 angles).
+
+HAIR: deep emerald-green color (jewel tone, like dark jade or deep
+emerald — NOT lime-green, NOT olive, NOT druid forest-green). Long,
+mostly loose, flowing past her mid-back. A single thin braid woven on
+one side framing her face.
+
+EYES: bright emerald-green (matching hair tone), almond-shaped, large
+and expressive in anime style.
+
+GLASSES: thin wire-frame round eyeglasses, almost frameless, with
+small horizontally-oval lenses — librarian/scholar style. Delicate,
+NOT thick or oversized. Sit naturally on the bridge of her nose. They
+should be clearly visible but subtle.
+
+OUTFIT (light archer attire):
+- Long-sleeve fitted DEEP EMERALD GREEN tunic ending at mid-thigh
+- BROWN leather vest/bodice over the tunic, laced up the front with
+  brown cord, snug fit
+- BLACK fitted leggings from mid-thigh down to the boots
+- BROWN leather mid-calf boots with simple buckle and slight cuff fold
+- BROWN leather bracers on both forearms (bowstring guards), simple
+  craftsmanship
+- Thin BROWN leather belt at the waist
+- Small leaf-shaped SILVER pendant at her throat (elven heritage)
+
+WEAPON & GEAR:
+- A short wooden recurve bow held in her LEFT hand at her side, lowered
+  but ready. Simple wooden craftsmanship, leather wrap at the grip, NO
+  flashy ornamentation, an honest practical bow.
+- BROWN leather quiver on her back, leather strap diagonally across her
+  chest. 5-7 fletched arrows clearly visible jutting over her right
+  shoulder.
+
+POSE: standing front-view, full body visible from head to feet,
+centered. Weight slightly on the right leg; left leg relaxed. RIGHT
+hand resting near her right hip (open, relaxed). LEFT hand holding the
+bow at her side. Composed posture, calm gentle smile, looking directly
+at the viewer through her glasses.
+
+LIGHTING: soft cinematic lighting from upper-left (matching Astrid
+reference). Gentle shadows on the right side of the body.
+
+BACKGROUND: plain solid cream/beige (#F2EAD6 ish), like a clean
+character reference sheet. NO scenery, NO other characters, NO text,
+NO logos, NO watermarks.
+
+STYLE: full 2D anime illustration (NOT pixel art), bold clean black
+lineart, cel-shaded coloring with crisp shadow shapes, vibrant
+saturated palette. Slight chibi-leaning anime anatomy (head about
+1/6 of body height). Early-2000s Korean MMORPG illustration aesthetic.
+**Match the line quality, cel-shading style, and overall art language
+of the uploaded Astrid reference exactly — same world, same era, same
+illustrator's hand.**
+
+OUTPUT: ONE single character, full body, centered in frame, portrait
+aspect ratio (taller than wide), highest available resolution. This is
+the canonical anchor reference image for Naia.
+```
+
+#### Iteration log
+
+- v1 (a rodar): primeiro prompt, target anchor direta. Usando Astrid
+  anchor como style reference (uploaded ao Gemini). Avaliar se hair
+  ficou no jewel-tone certo, óculos visíveis, arco e quiver claros,
+  outfit como descrito. Se vier OK direto, salvamos como
+  `art/anchors/naia-anchor.png` e seguimos pra turnaround. Se algo bug,
+  iteramos via follow-up.
+
+#### Anchor (uma vez locked)
+
+- Path: `art/anchors/naia-anchor.png` (a criar)
 
 ## Prompt format / anatomy
 

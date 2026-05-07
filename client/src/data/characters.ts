@@ -8,30 +8,31 @@ export interface CharacterSpec {
 
 export const CHARACTERS: readonly CharacterSpec[] = [
   {
-    id: 'elesis',
-    name: 'Elesis',
-    className: 'Knight (1st class)',
+    id: 'astrid',
+    name: 'Astrid',
+    className: 'Knight (1ª classe)',
     description:
-      'Espadachim equilibrada — combo Z, 3 skills, parry janelado, dodge roll.',
+      'Espadachim crimson, espada asiática, confiante e impulsiva — combo Z, 3 skills, parry janelado, dodge roll.',
     available: true,
   },
   {
-    id: 'lire',
-    name: 'Lire',
+    id: 'naia',
+    name: 'Naia',
     className: 'Elven Archer (planned)',
-    description: 'Em breve — atiradora à distância com ataques ricocheteantes.',
+    description:
+      'Em breve — arqueira élfica de cabelo verde-esmeralda, sábia e calma, atira de longe com arco curto.',
     available: false,
   },
   {
-    id: 'arme',
-    name: 'Arme',
-    className: 'Hechicera (planned)',
-    description: 'Em breve — bruxa close-range com teleporte.',
+    id: 'slot3',
+    name: '?',
+    className: 'Mage (planned)',
+    description: 'Em breve — caster místico, alta dmg burst, frágil.',
     available: false,
   },
   {
-    id: 'ronan',
-    name: 'Ronan',
+    id: 'slot4',
+    name: '?',
     className: 'Spell Knight (planned)',
     description: 'Em breve — espada + magia híbrida.',
     available: false,
