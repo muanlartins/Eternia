@@ -229,6 +229,8 @@ async function main() {
   const missionSelect = new MissionSelect(GAME_W, GAME_H);
   uiStage.addChild(missionSelect.container);
 
+  const audio = new GameAudio();
+
   const controls = new Text({
     text:
       'controls: ← → = move (hold = run), ↑ = jump, ↓ = drop through platform / enter portal. double-tap ← / → = dash. ' +
@@ -394,8 +396,6 @@ async function main() {
   let bossSparkCooldownMs = 0;
   let bossDramaTimerMs = 0;
   let lastSaveRun: Promise<void> | null = null;
-
-  const audio = new GameAudio();
 
   function impactFromDamage(applied: number): { shake: number; shakeDur: number; pause: number; intensity: HitIntensity } {
     if (applied >= 50) return { shake: 14, shakeDur: 260, pause: 90, intensity: 'massive' };
