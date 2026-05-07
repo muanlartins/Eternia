@@ -743,16 +743,123 @@ the canonical anchor reference image for Naia.
 
 #### Iteration log
 
-- v1 (a rodar): primeiro prompt, target anchor direta. Usando Astrid
-  anchor como style reference (uploaded ao Gemini). Avaliar se hair
-  ficou no jewel-tone certo, óculos visíveis, arco e quiver claros,
-  outfit como descrito. Se vier OK direto, salvamos como
-  `art/anchors/naia-anchor.png` e seguimos pra turnaround. Se algo bug,
-  iteramos via follow-up.
+- **v1 (uploading Astrid)**: leaked — Gemini interpretou o upload de
+  Astrid como character reference em vez de style reference, regenerou
+  Astrid em vez de Naia. Conclusão: pra novos personagens, NÃO uploadar
+  anchor de outro personagem.
 
-#### Anchor (uma vez locked)
+- **v1.1 (no upload, prompt-only)**: ✓ LOCKED. Resultado: deep emerald
+  hair longo com side braid, orelhas élficas pontudas visíveis, óculos
+  finos round perfeitos, tunic verde + leather bodice + black leggings
+  + brown boots, recurve bow na esquerda baixa, quiver com arrows
+  visíveis. Soft smile, contraste perfeito com Astrid impulsiva.
+  Salvo em `art/anchors/naia-anchor.png`.
 
-- Path: `art/anchors/naia-anchor.png` (a criar)
+#### Anchor LOCKED ✓
+
+- Master reference: **`art/anchors/naia-anchor.png`**
+- Esta é a master reference da Naia daqui pra frente. Pra novas
+  gerações da Naia (turnaround, poses, etc.) — fazer upload desta
+  imagem.
+
+#### Concept art prompt v2 — Turnaround sheet
+
+Cole no Gemini, **NOVA conversa**. **Upload `art/anchors/naia-anchor.png`
+ANTES do prompt** — gerar Naia a partir da Naia é o uso correto.
+
+```
+Using THE EXACT character from the uploaded reference image (Naia, the
+elven archer with deep emerald-green hair, librarian glasses, green
+tunic with brown leather bodice, and short wooden bow) as the locked
+visual reference, generate a CHARACTER TURNAROUND SHEET showing the
+SAME character from 4 different angles, arranged side-by-side in a
+single landscape image.
+
+THE 4 VIEWS (left to right, equal size, evenly spaced):
+1. FRONT — character facing the viewer
+2. THREE-QUARTER — character rotated about 45° to the character's right
+   (viewer sees the front-right of the body and partial profile)
+3. SIDE — full right-side profile (character facing image-right)
+4. BACK — character's back facing the viewer (we see the rear of the
+   long hair, the back of the outfit, and the quiver from behind)
+
+POSE (must be IDENTICAL across all 4 views):
+- Standing relaxed, both arms naturally at sides
+- Right hand open at hip; LEFT hand holding the wooden recurve bow
+  lowered at her left side, vertical
+- Feet shoulder-width apart, weight balanced evenly
+- Composed expression with the soft slight smile preserved
+- Calm and serene posture
+
+LOCKED VISUAL DETAILS — every one of these MUST match the anchor and
+remain IDENTICAL across all 4 views:
+
+ELF FEATURES: long pointed elven ears, clearly visible especially in
+front and 3/4 views; visible from side as a profile silhouette; from
+back the ears poke out behind the hair.
+
+HAIR: deep emerald-green (jewel tone, dark jade — NOT lime, NOT
+olive). Long, mostly loose, flowing past the mid-back. Single thin
+braid woven on one side framing the face (visible in front and 3/4).
+Hair length and color identical across all views — visible from BACK
+view as a long flowing emerald cascade.
+
+EYES: bright emerald-green, almond-shaped, large expressive anime
+style.
+
+GLASSES: thin wire-frame round eyeglasses, almost frameless, small
+horizontally-oval lenses — librarian style. Visible in front and 3/4;
+profile view shows them from the side; back view doesn't show glasses
+(face hidden).
+
+OUTFIT:
+- Long-sleeve fitted DEEP EMERALD GREEN tunic ending mid-thigh
+- BROWN leather laced vest/bodice over the tunic, brown cord lacing
+  visible up the front
+- BLACK fitted leggings from mid-thigh down
+- BROWN leather mid-calf boots with simple buckle and slight cuff fold
+- BROWN leather bracers on both forearms
+- Thin BROWN leather belt at the waist
+- Small leaf-shaped SILVER pendant at her throat (visible front and 3/4)
+
+WEAPON & GEAR:
+- Short wooden RECURVE BOW held in her LEFT hand at her side, vertical,
+  lowered. Simple wooden craftsmanship, leather wrap at the grip.
+  Visible in all 4 views (silhouette from side and back).
+- BROWN leather QUIVER on her back, leather strap diagonally across
+  her chest. 5-7 fletched arrows visible jutting over the right
+  shoulder. The QUIVER is especially visible from the BACK view.
+
+OUTPUT REQUIREMENTS:
+- ONE single landscape-aspect image (approximately 3:1 or 4:1 ratio,
+  wide horizontal)
+- 4 character views arranged in a row, equal size, evenly spaced
+- All 4 standing on the same continuous plain cream/beige background
+- NO text labels, NO grid lines, NO panel dividers, NO scenery
+- Bold clean black lineart, cel-shaded coloring, vibrant saturated
+  palette, slight chibi-leaning anime anatomy, early-2000s Korean
+  MMORPG aesthetic — match the anchor exactly
+- Highest quality possible
+```
+
+#### Avaliando o turnaround da Naia
+
+Mesmo procedimento da Astrid:
+- [ ] Mesmo personagem identificável nos 4 ângulos
+- [ ] Hair color e length consistentes
+- [ ] **Ears élficas** visíveis em todos (especialmente front e 3/4)
+- [ ] **Glasses** front + 3/4 (back view não precisa)
+- [ ] Outfit consistente
+- [ ] **Bow** na left hand em todas
+- [ ] **Quiver** visível atrás especialmente na BACK view (esse é o
+  teste-chave — se na BACK view o quiver não aparecer, missing critical
+  detail)
+- [ ] Pose neutra (arms relaxed)
+
+Se algum view tiver bug, follow-up: "regenerate keeping front/3-4/side
+correct but fix the back view — the quiver and ears are missing".
+
+Salva como `art/anchors/naia-turnaround.png` quando travar.
 
 ## Prompt format / anatomy
 
