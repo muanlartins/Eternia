@@ -1327,6 +1327,161 @@ Ao terminar, salvar:
 Não precisa montar num grid — temos as 4 refs separadas em
 full-resolution, MELHOR pra futuro pose generation e sprite work.
 
+##### v3 result: ✓ LOCKED
+
+Estratégia 4-prompts-separados funcionou. 3 novos views gerados +
+naia-anchor reusada como front. Files:
+- `art/anchors/naia-view-front.png` (= naia-anchor.png copy)
+- `art/anchors/naia-view-3q.png` ✓
+- `art/anchors/naia-view-side.png` ✓ (strict profile, bow no lado
+  visível mas correto pq na anchor o bow já está na mão direita
+  dela — corrigimos os prompts pra refletir)
+- `art/anchors/naia-view-back.png` ✓ (quiver dominante, hair cascading)
+
+**Lesson learned chave** (vai aplicar pra todos os turnarounds futuros,
+incluindo refazer Astrid):
+- **NÃO** pedir 4-view turnaround sheet num prompt só — Gemini Pro
+  "Criar Imagem" não é otimizado pra isso, e prompts longos perdem
+  instruções no meio
+- **SIM** pedir 4 single-view full-body images sequentially, mesma
+  sessão, cada prompt curto e direto sobre uma view só
+- **VERIFICAR** qual mão segura a arma na anchor antes de escrever os
+  prompts dos outros 3 views — Naia anchor tinha bow na mão direita,
+  então todos os views devem manter direita (não esquerda como descrito
+  no template original)
+
+## Veo 3.1 mini-trailer experiment
+
+Antes de refazer Astrid turnaround, experimento paralelo: gerar um
+mini-trailer cinematográfico de 8s da Naia em movimento, usando Veo
+3.1 (Gemini Advanced). Goals:
+
+1. **Pipeline test**: Veo mantém consistência multi-angle através de
+   movimento? Se sim, frames de vídeo viram source pra pose sheets
+   futuros — atalho enorme.
+2. **Design validation**: silhouette da Naia funciona em motion?
+3. **Promo asset**: se sair bom, é teaser atmosférico.
+
+### Limitação conhecida
+
+Veo às vezes interpreta personagem 2D em espaço 3D, perdendo
+cel-shading. Mitigação: instruções explícitas "NOT 3D, NOT
+photorealistic, pure 2D animation" várias vezes no prompt. Se rolar
+drift pra 3D, é conhecido do modelo — registramos como limitação e
+seguimos.
+
+### Setup
+
+- Tool: Veo 3.1 via Gemini Advanced
+- Starting frame: upload `naia-anchor.png` como image input
+- Duration: 8 seconds (max do Veo atual)
+- Output: salvar como `art/videos/naia-trailer-v1.mp4` (criar pasta
+  art/videos/ se não existir)
+
+### Prompt A — Character pivot 360° (PIPELINE TEST — recomendado primeiro)
+
+```
+A 2D anime cel-shaded animation in early-2000s Korean MMORPG illustration
+style (Grand Chase / Ragnarok Online era). Pure 2D animation — NOT 3D
+rendering, NOT photorealistic, NOT CGI.
+
+Naia, an elven archer with long deep emerald-green hair (tied with a
+side braid), librarian-style round glasses, a green tunic with brown
+leather laced bodice, black leggings, brown mid-calf boots, holding a
+wooden recurve bow in her right hand, with a leather quiver of arrows
+on her back. She stands centered on a plain cream/beige background.
+
+Animation over 8 seconds:
+
+0:00-0:01 — Naia stands front-facing the camera, calm composed expression,
+soft slight smile. Hair gently shifts as if from a soft breeze.
+
+0:01-0:04 — She slowly pivots clockwise on her right heel. Body rotates
+smoothly from front, through three-quarter angle, to full right-side
+profile. Hair flows naturally with the motion. Bow stays in right hand.
+
+0:04-0:07 — She continues rotating: through back view (showing the
+quiver dominant on her back), then through three-quarter again,
+returning toward front. The motion is smooth and continuous.
+
+0:07-0:08 — She finishes facing the camera again, settling into the
+same composed pose she started in. Soft smile.
+
+Camera: static eye-level shot, full body framing (head to feet
+visible at all times). No camera movement.
+
+Style emphasis: pure 2D anime cel-shaded animation, bold black
+lineart, vibrant saturated palette. The character must remain
+flat-shaded throughout (no 3D rendering, no realistic textures, no
+photographic style). Background stays plain cream/beige solid color.
+```
+
+### Prompt B — Combat archer moment (CHARACTER reveal — alternative)
+
+Mais cinematográfico, menos "validação" e mais "personality showcase".
+Roda esse depois do A se o A funcionar.
+
+```
+A 2D anime cel-shaded animation in early-2000s Korean MMORPG illustration
+style. Pure 2D animation — NOT 3D, NOT photorealistic, NOT CGI.
+
+Naia, an elven archer with long deep emerald-green hair, librarian
+round glasses, green tunic with brown leather laced bodice, black
+leggings, brown boots, holding a wooden recurve bow, quiver on back.
+Stands centered on a plain cream background.
+
+Animation over 8 seconds:
+
+0:00-0:02 — Standing relaxed, bow lowered in her right hand, arms at
+sides. Calm expression. Slight breathing motion. Hair softly sways.
+
+0:02-0:04 — She raises the bow to a horizontal position with both
+hands. With her left hand, she swiftly draws an arrow from the quiver
+behind her right shoulder, nocks it on the bowstring. Clean,
+practiced motion. Her expression sharpens — focused, alert.
+
+0:04-0:06 — She pulls the bowstring back to her right cheek, taking
+aim toward the camera (slightly to the upper right). Stillness. Eyes
+narrow, brow slightly furrowed in concentration.
+
+0:06-0:07 — Releases the arrow with a sharp motion. The bowstring
+snaps forward. The slight smile returns at the corner of her lips.
+
+0:07-0:08 — Lowers the bow back to her side, returns to the relaxed
+standing pose. Calm settles back over her face.
+
+Camera: static eye-level shot, full body framing. No camera movement.
+Style: pure 2D anime cel-shaded animation, bold black lineart,
+vibrant palette. NO 3D, NO realistic textures.
+```
+
+### Avaliação
+
+Pra cada prompt, verificar:
+- [ ] Estilo 2D mantido (NÃO virou 3D)
+- [ ] Naia consistente nos vários frames (cabelo verde, óculos, outfit)
+- [ ] Movimento smooth (não tremido / glitch)
+- [ ] Background cream estável
+- [ ] Bow + quiver presentes durante toda animação
+
+Se Prompt A der bom e mantiver 2D, podemos extrair frames específicos
+(cada 1s = 8 poses) usando ffmpeg ou similar — input direto pra
+turnaround poses ou para pose sheets de animação.
+
+Se sair 3D, ainda é interessante visualmente mas não vai servir pra
+pose extraction — anotamos como limitação e voltamos pro turnaround
+manual.
+
+### Setup `art/videos/`
+
+```bash
+mkdir -p art/videos
+echo "*.mp4" > art/videos/.gitignore
+echo "*.mov" >> art/videos/.gitignore
+# Trackeamos só pequenos previews (ex: gif derivado), vídeos full-quality
+# ficam local
+```
+
 ## Prompt format / anatomy
 
 Pra você reusar e adaptar:
