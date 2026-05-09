@@ -42,3 +42,6 @@ art/wip/
 # Large generated/intermediate exports (we track only locked anchor PNGs)
 art/raw/
 art/exports/
+# GC reference assets (KOG copyright — local-only, NEVER commit)
+client/art/gc-reference/
+art/gc-reference/
