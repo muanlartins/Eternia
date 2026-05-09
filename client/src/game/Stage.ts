@@ -1,39 +1,31 @@
-import { Container, Graphics, Sprite } from 'pixi.js';
-import {
-  forestTexture,
-  groundVariantFor,
-  platformVariantFor,
-} from './Forest.js';
-import { MOB_SPECS, type StageSpec } from '../data/stages.js';
+import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import type { Shape, StageData } from '../data/stage-data.js';
+import { MOB_SPECS } from '../data/stages.js';
 import { Mob } from './Mob.js';
 import { Projectile } from './Projectile.js';
 import type { AABB } from './types.js';
 
-const GROUND_Y = 480;
-const PORTAL_RX = 44;
-const PORTAL_RY = 12;
-const PORTAL_HITBOX_H = 80;
-
 export class Stage {
-  readonly spec: StageSpec;
+  readonly spec: StageData;
   private readonly worldStage: Container;
   private readonly isLastStage: boolean;
   private readonly hpMul: number;
   private readonly dmgMul: number;
   private mobs: Mob[] = [];
-  private platformGfx: Graphics[] = [];
   private platformBoxes: AABB[] = [];
+  private platformGfx: Graphics[] = [];
+  private mapSprite: Sprite | null = null;
   private projectiles: Projectile[] = [];
   private recentlySpawned: Projectile[] = [];
-  private wallLeft: Graphics | null = null;
-  private wallRight: Graphics | null = null;
   private portal: Graphics | null = null;
+  private portalShape: Shape | null = null;
   private portalTimeMs = 0;
+  private debugOverlay: Graphics | null = null;
 
   private readonly remoteControlled: boolean;
 
   constructor(
-    spec: StageSpec,
+    spec: StageData,
     worldStage: Container,
     opts: {
       isLastStage?: boolean;
@@ -51,66 +43,34 @@ export class Stage {
   }
 
   spawn() {
-    const wallH = 600;
-    const wallW = 24;
-    this.wallLeft = new Graphics();
-    this.wallLeft
-      .rect(-wallW, GROUND_Y - wallH, wallW, wallH + 200)
-      .fill({ color: 0x2a3340, alpha: 0.95 })
-      .stroke({ color: 0x5a6678, width: 2, alpha: 0.7 });
-    this.worldStage.addChild(this.wallLeft);
+    if (this.spec.image) void this.loadPainting(this.spec.image);
 
-    this.wallRight = new Graphics();
-    this.wallRight
-      .rect(this.spec.width, GROUND_Y - wallH, wallW, wallH + 200)
-      .fill({ color: 0x2a3340, alpha: 0.95 })
-      .stroke({ color: 0x5a6678, width: 2, alpha: 0.7 });
-    this.worldStage.addChild(this.wallRight);
-
-    const tileW = 256;
-    const tileH = 128;
-    const groundCount = Math.ceil((this.spec.width + tileW * 2) / tileW);
-    for (let i = 0; i < groundCount; i++) {
-      const variant = groundVariantFor(i);
-      const tex = forestTexture(variant);
-      if (!tex) break;
-      const tile = new Sprite(tex);
-      tile.x = i * tileW;
-      tile.y = GROUND_Y;
-      tile.width = tileW;
-      tile.height = tileH;
-      this.worldStage.addChild(tile);
-    }
-
-    for (const p of this.spec.platforms ?? []) {
-      const variant = platformVariantFor(p.w, p.h);
-      const tex = forestTexture(variant);
-      if (tex) {
-        const sprite = new Sprite(tex);
-        sprite.x = p.x;
-        sprite.y = p.y;
-        sprite.width = p.w;
-        sprite.height = p.h;
-        this.worldStage.addChild(sprite);
-      } else {
-        const g = new Graphics();
-        g.rect(p.x, p.y, p.w, p.h)
-          .fill({ color: 0x4b5563, alpha: 0.95 })
-          .stroke({ color: 0x9ca3af, width: 1, alpha: 0.7 });
-        this.worldStage.addChild(g);
-        this.platformGfx.push(g);
+    for (const s of this.spec.shapes) {
+      if (s.kind === 'solid' || s.kind === 'oneway') {
+        this.platformBoxes.push({ x: s.x, y: s.y, w: s.w, h: s.h });
       }
-      this.platformBoxes.push({ x: p.x, y: p.y, w: p.w, h: p.h });
+      if (s.kind === 'trigger' && s.id === 'portal') {
+        this.portalShape = s;
+      }
+      if (!this.spec.image && (s.kind === 'solid' || s.kind === 'oneway')) {
+        const gfx = new Graphics();
+        const isWall = s.h > s.w * 4;
+        gfx.rect(s.x, s.y, s.w, s.h)
+          .fill({ color: isWall ? 0x2a3340 : 0x4b5563, alpha: 0.95 })
+          .stroke({ color: isWall ? 0x5a6678 : 0x9ca3af, width: 1, alpha: 0.7 });
+        this.worldStage.addChild(gfx);
+        this.platformGfx.push(gfx);
+      }
     }
 
-    for (const s of this.spec.spawns) {
-      const spec = MOB_SPECS[s.type];
+    for (const sp of this.spec.spawns) {
+      const spec = MOB_SPECS[sp.type];
       const defaultY =
         spec.hasGravity === false && spec.hoverY !== undefined
           ? spec.hoverY
-          : GROUND_Y - spec.height;
-      const y = s.y ?? defaultY;
-      const mob = new Mob(spec, s.x, y, {
+          : findGroundUnder(sp.x, this.spec.shapes) - spec.height;
+      const y = sp.y ?? defaultY;
+      const mob = new Mob(spec, sp.x, y, {
         autoRespawn: false,
         hpMul: this.hpMul,
         dmgMul: this.dmgMul,
@@ -123,6 +83,39 @@ export class Stage {
     this.portal = new Graphics();
     this.portal.visible = false;
     this.worldStage.addChild(this.portal);
+
+    if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug')) {
+      this.debugOverlay = new Graphics();
+      this.worldStage.addChild(this.debugOverlay);
+      this.drawDebugOverlay();
+    }
+  }
+
+  private async loadPainting(url: string): Promise<void> {
+    try {
+      const tex = (await Assets.load(url)) as Texture;
+      const sprite = new Sprite(tex);
+      sprite.x = 0;
+      sprite.y = 0;
+      sprite.width = this.spec.width;
+      sprite.height = this.spec.height;
+      this.worldStage.addChildAt(sprite, 0);
+      this.mapSprite = sprite;
+    } catch (err) {
+      console.warn(`[Stage] failed to load painting ${url}:`, err);
+    }
+  }
+
+  private drawDebugOverlay(): void {
+    if (!this.debugOverlay) return;
+    this.debugOverlay.clear();
+    for (const s of this.spec.shapes) {
+      const color = s.kind === 'solid' ? 0x22c55e : s.kind === 'oneway' ? 0xfacc15 : 0x3b82f6;
+      this.debugOverlay
+        .rect(s.x, s.y, s.w, s.h)
+        .fill({ color, alpha: 0.18 })
+        .stroke({ color, width: 2, alpha: 0.85 });
+    }
   }
 
   update(dtMs: number, playerCenterX: number) {
@@ -144,23 +137,25 @@ export class Stage {
       return true;
     });
 
-    if (this.portal && this.isCleared() && !this.isLastStage) {
+    if (this.portal && this.portalShape && this.isCleared() && !this.isLastStage) {
       this.portal.visible = true;
       this.portalTimeMs += dtMs;
       this.portal.clear();
-      const cx = this.spec.width - 100;
-      const cy = GROUND_Y - 4;
+      const cx = this.portalShape.x + this.portalShape.w / 2;
+      const cy = this.portalShape.y + this.portalShape.h - 4;
       const t = this.portalTimeMs / 1000;
       const pulse = 0.7 + 0.25 * Math.sin(t * 4);
+      const rx = 44;
+      const ry = 12;
       this.portal
-        .ellipse(cx, cy, PORTAL_RX + 10, PORTAL_RY + 4)
+        .ellipse(cx, cy, rx + 10, ry + 4)
         .fill({ color: 0xfff066, alpha: 0.16 * pulse });
       this.portal
-        .ellipse(cx, cy, PORTAL_RX, PORTAL_RY)
+        .ellipse(cx, cy, rx, ry)
         .fill({ color: 0xffd700, alpha: 0.65 * pulse })
         .stroke({ color: 0xffffff, width: 2, alpha: 0.95 });
       this.portal
-        .ellipse(cx, cy, PORTAL_RX - 14, PORTAL_RY - 4)
+        .ellipse(cx, cy, rx - 14, ry - 4)
         .fill({ color: 0xffffff, alpha: 0.5 * pulse });
       const arrowAlpha = 0.5 + 0.4 * Math.sin(t * 5);
       this.portal
@@ -229,13 +224,12 @@ export class Stage {
   }
 
   getPortalBox(): AABB | null {
-    if (!this.isCleared() || !this.portal || this.isLastStage) return null;
-    const cx = this.spec.width - 100;
+    if (!this.isCleared() || !this.portal || !this.portalShape || this.isLastStage) return null;
     return {
-      x: cx - PORTAL_RX,
-      y: GROUND_Y - PORTAL_HITBOX_H,
-      w: PORTAL_RX * 2,
-      h: PORTAL_HITBOX_H,
+      x: this.portalShape.x,
+      y: this.portalShape.y,
+      w: this.portalShape.w,
+      h: this.portalShape.h,
     };
   }
 
@@ -255,21 +249,32 @@ export class Stage {
     }
     this.platformGfx = [];
     this.platformBoxes = [];
-    if (this.wallLeft) {
-      this.worldStage.removeChild(this.wallLeft);
-      this.wallLeft.destroy();
-      this.wallLeft = null;
-    }
-    if (this.wallRight) {
-      this.worldStage.removeChild(this.wallRight);
-      this.wallRight.destroy();
-      this.wallRight = null;
+    if (this.mapSprite) {
+      this.worldStage.removeChild(this.mapSprite);
+      this.mapSprite.destroy();
+      this.mapSprite = null;
     }
     if (this.portal) {
       this.worldStage.removeChild(this.portal);
       this.portal.destroy();
       this.portal = null;
     }
+    this.portalShape = null;
+    if (this.debugOverlay) {
+      this.worldStage.removeChild(this.debugOverlay);
+      this.debugOverlay.destroy();
+      this.debugOverlay = null;
+    }
     this.portalTimeMs = 0;
   }
+}
+
+function findGroundUnder(x: number, shapes: readonly Shape[]): number {
+  let bestY = 480;
+  for (const s of shapes) {
+    if (s.kind !== 'solid' && s.kind !== 'oneway') continue;
+    if (x < s.x || x > s.x + s.w) continue;
+    if (s.y < bestY && s.y >= 0) bestY = s.y;
+  }
+  return bestY;
 }

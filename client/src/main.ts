@@ -34,7 +34,8 @@ import { RoomLobby as HtmlRoomLobby } from './ui/screens/RoomLobby/RoomLobby.js'
 import { Network, type RoomStatus } from './game/Network.js';
 import { RemotePlayer } from './game/RemotePlayer.js';
 import { findMission } from './data/missions.js';
-import { MOB_SPECS, stageById, type StageSpec } from './data/stages.js';
+import { MOB_SPECS } from './data/stages.js';
+import { getStageData, type StageData } from './data/stage-data.js';
 import { MISSIONS, type MissionSpec } from './data/missions.js';
 import {
   findDifficulty,
@@ -57,7 +58,7 @@ function bgmIdForStage(stageId: string): BgmId {
   return 'forest';
 }
 
-function stageBannerText(spec: StageSpec, displayIdx: number): string {
+function stageBannerText(spec: StageData, displayIdx: number): string {
   for (const sp of spec.spawns) {
     const m = MOB_SPECS[sp.type];
     if (m.isBoss && m.bossName) {
@@ -182,8 +183,8 @@ async function main() {
   let mobBroadcastAccumMs = 0;
   const MOB_BROADCAST_INTERVAL_MS = 50;
 
-  function currentStageSpec() {
-    return stageById(currentMission.stageIds[currentStageIdx]!)!;
+  function currentStageSpec(): StageData {
+    return getStageData(currentMission.stageIds[currentStageIdx]!)!;
   }
   function isLastStageInMission(idx: number = currentStageIdx) {
     return idx === currentMission.stageIds.length - 1;
@@ -237,7 +238,7 @@ async function main() {
 
   function refreshMiniMap() {
     const stages = currentMission.stageIds.map((id) => {
-      const s = stageById(id)!;
+      const s = getStageData(id)!;
       return { id: s.id, name: s.name };
     });
     htmlMiniMap.setStages(stages, currentMission.name);
@@ -1379,6 +1380,8 @@ async function main() {
       player.y + ELESIS.height / 2,
       0,
       stage.spec.width,
+      0,
+      stage.spec.height,
     );
     camera.update(realDtMs);
 

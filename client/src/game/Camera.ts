@@ -19,15 +19,24 @@ export class Camera {
     worldY: number,
     minX?: number,
     maxX?: number,
+    minY?: number,
+    maxY?: number,
   ) {
     let tx = worldX - this.viewportWidth / 2;
-    const ty = worldY - this.viewportHeight / 2;
+    let ty = worldY - this.viewportHeight / 2;
     if (minX !== undefined && tx < minX) tx = minX;
     if (maxX !== undefined && tx + this.viewportWidth > maxX) {
       tx = maxX - this.viewportWidth;
     }
     if (maxX !== undefined && minX !== undefined && maxX - minX < this.viewportWidth) {
       tx = minX + (maxX - minX - this.viewportWidth) / 2;
+    }
+    if (minY !== undefined && ty < minY) ty = minY;
+    if (maxY !== undefined && ty + this.viewportHeight > maxY) {
+      ty = maxY - this.viewportHeight;
+    }
+    if (maxY !== undefined && minY !== undefined && maxY - minY < this.viewportHeight) {
+      ty = minY + (maxY - minY - this.viewportHeight) / 2;
     }
     this.targetX = tx;
     this.targetY = ty;

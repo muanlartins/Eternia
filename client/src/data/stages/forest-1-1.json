@@ -1,0 +1,25 @@
+{
+  "id": "forest-1-1",
+  "name": "Floresta dos Elfos — 1",
+  "biome": "forest",
+  "image": "/assets/floresta/maps/forest-1-1.png",
+  "width": 1280,
+  "height": 720,
+  "playerStart": { "x": 80, "y": 416 },
+  "shapes": [
+    { "kind": "solid", "x": -24, "y": 0, "w": 24, "h": 720 },
+    { "kind": "solid", "x": 1280, "y": 0, "w": 24, "h": 720 },
+    { "kind": "solid", "x": 0, "y": 480, "w": 1280, "h": 240 },
+    { "kind": "oneway", "x": 240, "y": 400, "w": 180, "h": 12 },
+    { "kind": "oneway", "x": 580, "y": 340, "w": 220, "h": 12 },
+    { "kind": "oneway", "x": 880, "y": 400, "w": 180, "h": 12 },
+    { "kind": "trigger", "id": "portal", "x": 1136, "y": 400, "w": 88, "h": 80 }
+  ],
+  "spawns": [
+    { "type": "slim", "x": 280 },
+    { "type": "slim", "x": 480 },
+    { "type": "racoon", "x": 720 },
+    { "type": "slim", "x": 660, "y": 308 },
+    { "type": "racoon", "x": 1080 }
+  ]
+}
