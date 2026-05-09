@@ -1,6 +1,6 @@
 # Eternia — STATUS (live snapshot)
 
-> Atualização: 2026-05-06.
+> Atualização: 2026-05-08.
 >
 > Este doc é o "tablet do estado atual" do projeto. Atualizar a cada phase.
 >
@@ -130,13 +130,59 @@ sprites são o último polish.
      - Limitações: projéteis (archer arrows) não sincronizados ainda;
        stage progression entre stages pode divergir. Single-stage co-op
        sólido pra alpha.
-9. ⏳ **Phase 9 — Pre-production** — em progresso (re-frame: era "sprites",
-   virou pré-produção. Implementação foi pra Phase 10).
-   - 9.0 done: tool choice (Gemini), pipeline, style anchor.
-   - 9.A in progress: Astrid bible v1 + concept art prompt v1 (em
-     `docs/09-art-bible.md`). User vai rodar no Gemini, trazer
-     resultado, iterar.
-   - 9.B/C/D/E/F pendente.
+**Sprint roadmap 2026-05-07 (paralelo a Phase 9):**
+
+| Sprint | Escopo | Status |
+|---|---|---|
+| **1** | Naia archer kit ingame (basic shot chain, power shot, S1/S2/S3 patterns, step-back hop, no air dash) | ✅ done — tuning pendente |
+| **2** | Mob attack variety (slim spit projectile, racoon pounce lunge, range-based selection) | ⏳ partial — slim+racoon done; outros mobs pendente |
+| **3** | MP polish (projectile sync done; stage progression sync, reconnect handling, public lobby pendente) | ⏳ partial — projectile sync done |
+| **4** | UX/UI redesign (HTML overlay, PGR/Arknights anime-modern, screen by screen) | ✅ done (todos os screens) |
+| **5** | 3D pilot Naia (Tripo/Meshy → Three.js layer) | ✅ done |
+| **6** | Naia 3D ingame (GameThreeLayer overlaid no Pixi) | ✅ done |
+| **7** | UX polish + 3D pipeline cleanup | ⏳ em progresso (7.A → 7.G abaixo) |
+
+**Sprint 7 — UX polish + cleanup:**
+
+| Sub | Escopo | Status |
+|---|---|---|
+| **7.A** | Procedural anims (jump, shoot, hit) substituem Mixamo nos states | ✅ done |
+| **7.B** | RoomLobby 3D portraits (mesma `Character3DPortrait` da CharSelect) | ✅ done |
+| **7.C** | Fix screen transition cascade bugs (mode-select Enter, focus pass-through) | ✅ done |
+| **7.D** | Canvas fullscreen + UI layout polish | ✅ done |
+| **7.E** | CharacterSelect minimalist redesign (GC-inspired, 1 char ativo) | ✅ done |
+| **7.F** | Centralized Naia transforms (head scale 1.3 em 1 lugar só) + headshot pre-cropped + drag-to-spin portrait | ✅ done — 2026-05-08 |
+| **7.G** | MissionSelect → world-map (continent painted + nodes em trilha) | 📐 designed, asset gen pendente |
+| **7.H** | Floresta dos Elfos in-game polish (parallax bg + 2 mobs novos) | 📐 designed, asset gen pendente |
+
+> Docs novos: `10-world-map-design.md`, `11-floresta-dos-elfos.md`,
+> `prompts/world-map.md`. Aesthetic da Floresta LOCKED (palette, lighting,
+> mood, props, lore micro). Mobs propostos: Forest Sprite + Bramble Beast
+> (substitui slim/racoon como vocabulary canônico do bioma).
+
+9. ⏳ **Phase 9 — Pre-production** — em progresso. **Pivot 2026-05-07:
+   Naia-first**. Em vez de gerar 4 chars em paralelo, levamos Naia
+   ponta-a-ponta (anchor → poses → vídeo → sprite ingame jogável) primeiro
+   pra validar o pipeline inteiro com 1 char. Astrid pausada (anchor
+   LOCKED, retomar depois).
+   - 9.0 done: tool choice + pipeline. **Flow** (labs.google/flow) é a
+     tool default — Imagem (Nano Banana Pro / Imagen 4) + Vídeo (Veo) num
+     só projeto, contexto persistente.
+   - **9.A — Naia (active)**: anchor LOCKED. Pipeline pivotou pra **pixel
+     art** após detectar drift grave em illustration high-res (sleeves
+     curtas, lacing pattern variando, pendant position). Pixel art via
+     Nano Banana Pro validou consistência cross-pose. **3 sprites
+     ingame** (idle/run/jump) integrados via `Player.setSpriteTextures`.
+     Naia selecionável em CharacterSelect. Cleanup: removidos
+     illustration poses + video keyframes + static views. `naia-anchor.png`
+     é única source of truth. Doc: `docs/09a-naia.md`.
+   - **9.B — Astrid (paused)**: anchor LOCKED, turnaround tem quality
+     issues. Retomar após Naia validar pipeline (redo turnaround via Flow
+     vídeo→frames). Doc: `docs/09b-astrid.md`.
+   - 9.C/D/E/F/G pendente.
+   - **Reorganização docs 2026-05-07**: `docs/09-art-bible.md` reduzido de
+     1991 → 221 linhas (canonical only). Bibles por char em arquivos
+     separados. Logs históricos ficam no git.
 10. ⏳ **Phase 10 — Sprite implementation** — converte concept art em
     sprite sheets, substitui primitivas. Inicia depois que 9.A pelo
     menos estiver fechada.
