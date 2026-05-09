@@ -85,28 +85,46 @@ async function main() {
   app.stage.addChild(layers.selection);
   app.stage.addChild(layers.drag);
 
-  if (state.stage.image) {
+  const placeholder = new Graphics();
+  placeholder
+    .rect(0, 0, state.stage.width, state.stage.height)
+    .fill({ color: 0x152018, alpha: 1 });
+  layers.image.addChild(placeholder);
+
+  if (state.stage.ground) {
     try {
-      const tex = (await Assets.load(state.stage.image)) as Texture;
+      const tex = (await Assets.load(state.stage.ground.image)) as Texture;
       const sprite = new Sprite(tex);
+      sprite.x = 0;
+      sprite.y = state.stage.ground.y;
       sprite.width = state.stage.width;
-      sprite.height = state.stage.height;
+      sprite.height = state.stage.ground.h;
       sprite.alpha = 0.9;
       layers.image.addChild(sprite);
     } catch (err) {
-      console.warn('[map-editor] painting not loaded:', err);
-      const placeholder = new Graphics();
-      placeholder
-        .rect(0, 0, state.stage.width, state.stage.height)
-        .fill({ color: 0x152018, alpha: 1 });
       const note = new Text({
-        text: `(painting not at ${state.stage.image})`,
-        style: { fill: 0xff8888, fontSize: 14, fontFamily: 'monospace' },
+        text: `(ground not at ${state.stage.ground.image})`,
+        style: { fill: 0xff8888, fontSize: 12, fontFamily: 'monospace' },
       });
       note.x = 20;
-      note.y = 20;
-      layers.image.addChild(placeholder);
+      note.y = state.stage.ground.y + 8;
       layers.image.addChild(note);
+    }
+  }
+
+  for (const sh of state.shapes) {
+    if (!sh.image) continue;
+    try {
+      const tex = (await Assets.load(sh.image)) as Texture;
+      const sprite = new Sprite(tex);
+      sprite.x = sh.x;
+      sprite.y = sh.y;
+      sprite.width = sh.w;
+      sprite.height = sh.h;
+      sprite.alpha = 0.85;
+      layers.image.addChild(sprite);
+    } catch {
+      // shape sprite missing — fine, AABB still drawn by overlay
     }
   }
 
@@ -462,10 +480,11 @@ async function main() {
       id: state.stage.id,
       name: state.stage.name,
       biome: state.stage.biome,
-      image: state.stage.image,
       width: state.stage.width,
       height: state.stage.height,
       playerStart: state.playerStart,
+      ground: state.stage.ground,
+      loadingImage: state.stage.loadingImage,
       shapes: state.shapes,
       spawns: state.spawns,
     };

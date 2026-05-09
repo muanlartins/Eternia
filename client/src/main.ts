@@ -856,7 +856,7 @@ async function main() {
     const dtMs = hitPauseMs > 0 ? 0 : gameDtMs;
     hitPauseMs = Math.max(0, hitPauseMs - realDtMs);
 
-    player.update(dtMs, input, stage.getPlatforms());
+    player.update(dtMs, input, stage.getOnewayBoxes(), stage.getSolidBoxes());
     const newArrows = player.flushPendingArrows();
     if (newArrows.length > 0) {
       stage.addPlayerProjectiles(newArrows);
@@ -1330,19 +1330,6 @@ async function main() {
       bossDramaTimerMs -= dtMs;
       if (bossDramaTimerMs <= 0) {
         stage.killNonBossMobs();
-      }
-    }
-
-    {
-      const stageW = stage.spec.width;
-      if (player.x < 0) {
-        player.x = 0;
-        if (player.vx < 0) player.vx = 0;
-      }
-      const maxX = stageW - ELESIS.width;
-      if (player.x > maxX) {
-        player.x = maxX;
-        if (player.vx > 0) player.vx = 0;
       }
     }
 

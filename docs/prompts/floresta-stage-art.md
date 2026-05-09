@@ -1,149 +1,216 @@
-# Nano Banana Pro — Floresta dos Elfos stage paintings
+# Nano Banana Pro — Floresta dos Elfos stage assets
 
-> **Pivot 2026-05-09**: tile-based art (parallax bgs + platform/ground
-> sprites) abandonado. Cada stage agora é **uma única pintura** com a
-> física desenhada por cima via map editor. Mais identidade visual,
-> menos repetição, exatamente como Grand Chase Season 1 fazia.
+> **Pivot 2 — 2026-05-09**: single-painting-per-stage abandonado. Em
+> vez de uma imagem grande do stage inteiro (que disputava com a
+> parallax bg que já temos), cada stage agora é composto por:
 >
-> Bibles que sustentam estes prompts:
-> - [`11-floresta-dos-elfos.md`](../11-floresta-dos-elfos.md) — biome
->   bible (palette, lighting, mood, props, lore)
+> - **Background parallax** (já gerados — `bg-far/mid/canopy.jpeg`)
+> - **Ground**: 1 imagem painted alta res do chão
+> - **Plataformas**: 1-3 sprites painted tematizados (transparent bg)
+> - **Loading screen** (futuro): cinematic painting da fase pra
+>   "carregando..." estilo GC Chaos
+>
+> A imagem painted única que tinha sido sugerida funciona melhor como
+> loading screen do que como stage horizontal jogável. Aproveita.
+>
+> Bibles:
+> - [`11-floresta-dos-elfos.md`](../11-floresta-dos-elfos.md) — biome bible
 > - [`09-art-bible.md`](../09-art-bible.md) — Eternia visual style
->   global
 
 ## Pasta de saída
 
 ```
-client/src/assets/floresta/maps/
-├── forest-1-1.png   ← este prompt (escopo atual)
-├── forest-1-2.png   (futuro)
-├── forest-1-3.png   (futuro)
-└── forest-1-4.png   (futuro, boss)
+client/src/assets/floresta/maps/forest-1-1/
+├── ground.png        ← chão (ground sprite, esticado horizontalmente)
+├── platform.png      ← 1 sprite reutilizado nas 3 posições
+└── loading.png       ← cinematic da fase (futuro)
 ```
 
-## Convenções pro pipeline
-
-- **Aspect ratio**: 16:9 nativo (Nano Banana Pro produz 16:9 fácil).
-  Sugerido 1920×1080 ou 2560×1440. O viewport do jogo é 1024×576 (16:9
-  também), então a pintura preenche perfeitamente a altura; em x ela
-  pode ser ainda mais larga (camera scrolls).
-- **Layout horizontal**: pintura larga > pintura quadrada. Player
-  caminha left → right e câmera segue. A história visual da pintura
-  acompanha o progresso (entrada → meio → portal de saída).
-- **Background**: painted (NÃO transparente). Vai ser composto com 3
-  parallax bgs atrás (atmosfera distante) — esses ainda existem.
-- **Negative space**: regiões onde vai ter colisão (chão, plataformas,
-  paredes) **devem ter detalhe gráfico moderado**, não busy. Senão o
-  jogador perde o silhouette dos personagens.
+A imagem que você gerou (corredor entre duas árvores) salva como
+`loading.png` — ela vira loading screen quando implementarmos.
 
 ---
 
-## Stage forest-1-1 — "Entrada da Floresta"
+## 1. Ground — chão da forest-1-1
 
-**Filename:** `client/src/assets/floresta/maps/forest-1-1.png`
-**Aspect:** 16:9
-**Resolution:** 1920×1080 (ou 2560×1440 se modelo permitir)
-**Tom narrativo:** entrada do bioma — convidativa, mas o jogador sente
-que está adentrando algo antigo. Primeiro stage do jogo: legibilidade
-> dificuldade visual.
+**Filename:** `client/src/assets/floresta/maps/forest-1-1/ground.png`
+**Aspect:** wide, ~5:1 (~2048×400 ou maior)
+**Background:** painted (não transparente)
 
 ### Prompt
 
 ```
-Painted 2D side-scrolling platformer stage, 16:9 horizontal layout.
-Ancient elven forest at golden hour. The image reads as a single
-horizontal scene the player walks through from left to right.
+Wide horizontal painted ground sprite for a 2D side-scrolling
+platformer. Ancient elven forest floor. View is straight from the
+side (orthographic), as if the camera is at character-eye-level.
+The image reads as a continuous strip the player walks across.
 
-LAYOUT (left to right, all painted into the same image, no UI):
-- Far left: a large mossy stone arch overgrown with luminous teal
-  vines, marking the entrance from a previous biome. Soft sunbeams
-  filter through.
-- Lower 30% of the image: continuous grass-and-moss ground plane
-  that undulates gently — slight rises and dips, not flat. Mid-tone
-  forest greens (#3d6446, #2f4d36) and warm earth (#5a3d2a). This is
-  where the player walks. Keep detail moderate (grass tufts, small
-  stones) but no busy clutter that would compete with character
+ASPECT: 5:1 horizontal (e.g., 2048×400, or 2560×512). The "ground"
+fills the entire image vertically — there is no sky or canopy, this
+is exclusively the walkable surface plus a bit of dirt/soil
+below it.
+
+CONTENT (left to right, continuous):
+- Top edge: clearly defined grass-and-moss line where character feet
+  will plant. Mid-tone forest greens (#3d6446, #6abf95). Slight
+  undulations (1-3 small bumps across the width) but mostly a clear
+  horizontal line at a consistent vertical level — character must
+  silhouette cleanly when standing.
+- Middle band: ground surface. Patches of grass, occasional small
+  flowers (white/pink dots), exposed mossy roots crossing the ground,
+  small stones, fallen leaves, tiny mushroom clusters. Mid-tones
+  throughout — no extreme contrasts that would compete with character
   sprites.
-- Middle horizontal band: 2-3 floating elevated mossy stone platforms
-  carved with elven runes that glow faintly teal (#6abf95). One
-  platform low (~250px above ground), one mid-height (~400px), one
-  higher (~500px) — staggered horizontally so the player can jump
-  between them. Edges of platforms are clearly defined, lit from
-  upper-right (warm sunlight).
-- Upper 40%: dense canopy of broadleaf trees, ancient gnarled trunks,
-  hanging Spanish-moss-like vines. Sun rays cutting through. Background
-  fades to atmospheric haze. Color palette here: deep forest greens
-  + golden sun + soft teal spirit-glow.
-- Far right: a faint circular swirl of warm gold light at ground
-  level, hinting at where the portal will appear after stage clear.
-  Don't draw the portal explicitly — just suggest the spot with a
-  glow.
+- Bottom band: darker dirt/soil with some root tendrils descending,
+  fading to deeper earth-brown (#3a2515) at the very bottom edge.
 
-STYLE: hand-painted 2D game background, painterly brushstrokes
-visible, soft cel-shading, anime-modern (think Studio Ghibli forests,
-Ori and the Blind Forest, Hollow Knight less moody, Salt and
-Sanctuary, classic Korean MMORPG painted bg).
-NOT photorealistic. NOT 3D-rendered. NOT pixel art. NOT chibi.
+LIGHTING: golden hour, soft warm sunlight from upper-right. Subtle
+warm highlights on grass tops; no harsh shadows.
 
-PALETTE (anchor):
+STYLE: hand-painted 2D, painterly brushstrokes visible, anime-modern.
+NOT photorealistic. NOT pixel art. NOT 3D rendered. Think Ori and
+the Blind Forest ground textures, Hollow Knight (less moody), classic
+Korean MMORPG painted ground (Grand Chase, Elsword).
+
+PALETTE:
 - forest-deep #1f3326
 - forest-mid #3d6446
 - moss-bright #6abf95
-- sun-gold #d4a574
-- bark-warm #5a3d2a
-- spirit-teal #6abf95 (glowing rune accents)
-- highlight #fff3d6 (sunbeam tips)
+- earth-warm #5a3d2a
+- earth-deep #3a2515
+- highlight #d4a574 (small grass tip glints)
 
-MOOD: ancient + mystical + warm. Golden hour, not noon, not dusk.
-A place the elves still tend, even though their numbers have thinned.
-First-stage feel: inviting, low-threat, the player wants to explore.
-
-CRITICAL constraints (silhouette readability):
-- Mid-tone palette throughout — no extreme dark shadows under
-  platforms or in the foreground walking area, no extreme bright
-  highlights mid-frame. Save extremes for far background and
-  sun rays only.
-- Platforms must read as platforms — flat-ish top edges, clear
-  silhouette. No floating organic blobs that confuse hitbox.
-- Ground plane is a clear horizontal band — not jagged, not busy.
-  The character (Naia, a slender elven archer in green/teal,
-  ~64px tall) needs to silhouette cleanly against it.
-- No characters, no creatures, no UI elements, no text in the
-  painting. Pure environment.
+CRITICAL: this is the ground only — no platforms, no characters,
+no creatures, no UI, no sky, no trees standing on the ground.
+The image will be stretched to fill the stage width and stops being
+visible behind the parallax bg above. Keep the silhouette
+zone (top 30-40% of the image) moderately detailed — busy enough to
+look painted, but not so busy that 64px-tall character sprites get
+lost when standing on it.
 ```
 
-### Validação visual antes de exportar
+### Validação visual
 
-Antes de salvar, mentalmente sobreponha:
-1. Um retângulo cobrindo os 30% inferiores (área onde o personagem caminha) — esse retângulo está livre de detalhe excessivo? Se sim, OK.
-2. Cada plataforma tem topo plano e definido? Se sim, OK.
-3. A leitura "esquerda = entrada / direita = saída" é clara? Se sim, OK.
-4. O silhouette de um personagem 64px de altura ficaria visível em qualquer ponto da área inferior? Se sim, OK.
-
-Se alguma falhar: re-prompt com ênfase no critério, ou ajuste no painting tool externo.
-
-### Saída
-
-Salvar em `client/src/assets/floresta/maps/forest-1-1.png` (ou `.jpeg`,
-o loader detecta extensão).
-
-Daí abrir o map editor (`/map-editor.html?stage=forest-1-1`) pra
-desenhar os AABBs em cima.
+1. Top edge é uma linha horizontal mais ou menos plana? OK
+2. A imagem inteira é só ground (sem sky/canopy/trees standing)? OK
+3. Topo tem detalhe moderado (não busy)? OK
+4. Palette é mid-tone (sem extremos que matem silhouette)? OK
 
 ---
 
-## Próximas stages (futuras, não geradas ainda)
+## 2. Platform — plataforma flutuante (reusada 3×)
 
-Cada uma vai ter seu próprio prompt nesse mesmo arquivo, derivado deste
-mas com tom narrativo distinto:
+**Filename:** `client/src/assets/floresta/maps/forest-1-1/platform.png`
+**Aspect:** ~3:1 (~600×180)
+**Background:** transparent (PNG com alpha) ou white (você remove externamente)
 
-- **forest-1-2 — "Trilha Iluminada"**: meio do bioma. Mais plataformas,
-  algumas pedras quebradas no caminho. Sun ainda golden mas começa a
-  esfumaçar. Spirit-teal mais presente.
-- **forest-1-3 — "Floresta Profunda"**: bioma mais escuro. Sub-canopy
-  denso, sun raros, bioluminescência teal nos cogumelos. Palette
-  shift: deep green + cold teal. Tensão antes do boss.
-- **forest-1-4 — "Antro do Insectivorous"**: arena fechada, paredes de
-  raízes gigantes, chão coberto de cocoons quebrados. Sun bloqueado,
-  glow antinatural verde-podre nos pillars. Palette: bog-green + bone-
-  white + sangue seco.
+> Se uma plataforma só te parecer monótono, gere 2-3 variações
+> (`platform-a.png`, `platform-b.png`, `platform-c.png`) com mesma
+> identidade visual mas detalhes ligeiramente diferentes. O JSON da
+> fase pode apontar plataformas diferentes pra cada AABB.
+
+### Prompt
+
+```
+Single floating elven stone platform sprite for a 2D side-scrolling
+platformer. Ancient mossy carved stone with subtle teal-glowing elven
+runes. View is from the side (orthographic). The platform is a
+self-contained piece — no ground attaching it, it visually floats.
+
+ASPECT: ~3:1 horizontal (e.g., 600×180 or 800×240).
+
+DESIGN:
+- Top: flat-ish horizontal surface where character stands. Clearly
+  defined edge. Mossy stone with grass tufts, tiny flowers in the
+  cracks. The character (Naia, slender elven archer ~64px tall)
+  must silhouette cleanly when standing on top — keep the top 1/3
+  of the platform's vertical extent moderately detailed but not
+  busy.
+- Sides: carved stone face, weathered but elegant. 1-2 elven runes
+  carved into the stone, glowing faintly teal (#6abf95). Don't
+  overdo the runes — 1-2 carvings, not a row of them.
+- Bottom: roots, vines, and ivy cascading downward in soft strands,
+  some dripping past the platform's lower edge by ~30-50px (organic
+  asymmetry — the platform feels alive, ancient, not brutalist).
+- The whole shape is roughly oval or hourglass — wider in the middle,
+  tapering at left and right ends. Edges are organic, not perfectly
+  rectangular.
+
+LIGHTING: golden hour, warm light from upper-right. Top surface gets
+sun-gold highlights (#d4a574). Underside is in soft shadow but with
+ambient teal-green bounce light from below.
+
+STYLE: hand-painted 2D, painterly, anime-modern. Same aesthetic as
+the ground sprite (consistent).
+
+PALETTE: same anchor as ground — forest-deep, forest-mid,
+moss-bright, earth-warm, plus spirit-teal #6abf95 for runes.
+
+BACKGROUND: pure white #ffffff (the user will remove externally
+to get a transparent PNG). Do NOT add a colored or patterned bg
+behind the platform — only the platform itself, on white.
+
+NO characters, NO creatures, NO UI, NO ground attached, NO sky.
+Just the platform, isolated.
+```
+
+### Validação visual
+
+1. Top edge é flat e claro? OK
+2. Background é branco puro pra fácil remoção? OK
+3. Roots/ivy descem pra baixo da plataforma orgânicamente? OK
+4. Runes brilham mas sem overcrowding? OK
+
+---
+
+## 3. Loading screen — opcional, futuro
+
+**Filename:** `client/src/assets/floresta/maps/forest-1-1/loading.png`
+
+A imagem que você gerou no primeiro round (corredor entre duas
+árvores formando arch + clearing iluminado central) é perfeita pra
+isso. Renomeia + salva como `loading.png` neste path.
+
+Quando implementarmos o loading screen estilo GC Chaos:
+- Frame decorativo medieval/anime nas bordas
+- Header "Carregando..." top center + barra de progresso
+- Título "Floresta dos Elfos — 1" overlay no centro
+- Subtitle "A entrada do bioma — onde os elfos ainda passam"
+- Hint annotations laterais (controles, sem-spoiler-do-stage)
+
+Tudo HTML/CSS overlay com a `loading.png` como bg — sem precisar
+re-gerar arte.
+
+---
+
+## Como o jogo monta o stage
+
+```
+Layer 1 (back): bg-far parallax           (existing)
+Layer 2:        bg-mid parallax           (existing)
+Layer 3:        bg-canopy parallax        (existing)
+Layer 4:        ground sprite             (NEW — esticado pra stage.width)
+Layer 5:        platform sprites          (NEW — uma por shape AABB)
+Layer 6:        mobs / player / FX
+Layer 7:        HUD HTML
+```
+
+Ground stretched pra stage.width. Platforms posicionadas nos AABBs do
+JSON via Stage.ts. Os AABBs são desenhados/editados via map editor
+sobrepondo as artes — você vê a relação visual ↔ física.
+
+---
+
+## Próximas stages (futuras)
+
+Mesmo template — cada uma com seu próprio ground + platform tematizado:
+
+- **forest-1-2 (Trilha Iluminada)**: ground com mais flores brilhando
+  + sun rays caindo no chão; platform com runas mais densas, sun-gold
+  dourado intenso.
+- **forest-1-3 (Floresta Profunda)**: ground escuro com cogumelos
+  bioluminescentes teal; platform com bark torcida + glow azul-teal,
+  menos sun.
+- **forest-1-4 (Antro do Insectivorous)**: ground com cocoons
+  quebrados + chitin caído; platform com bone-white + sangue seco
+  marrom, glow verde-podre.

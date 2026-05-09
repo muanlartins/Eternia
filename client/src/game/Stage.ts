@@ -12,9 +12,11 @@ export class Stage {
   private readonly hpMul: number;
   private readonly dmgMul: number;
   private mobs: Mob[] = [];
-  private platformBoxes: AABB[] = [];
+  private solidBoxes: AABB[] = [];
+  private onewayBoxes: AABB[] = [];
   private platformGfx: Graphics[] = [];
-  private mapSprite: Sprite | null = null;
+  private platformSprites: Sprite[] = [];
+  private groundSprite: Sprite | null = null;
   private projectiles: Projectile[] = [];
   private recentlySpawned: Projectile[] = [];
   private portal: Graphics | null = null;
@@ -43,21 +45,26 @@ export class Stage {
   }
 
   spawn() {
-    if (this.spec.image) void this.loadPainting(this.spec.image);
+    if (this.spec.ground) {
+      void this.loadGround(this.spec.ground.image, this.spec.ground.y, this.spec.ground.h);
+    }
 
     for (const s of this.spec.shapes) {
-      if (s.kind === 'solid' || s.kind === 'oneway') {
-        this.platformBoxes.push({ x: s.x, y: s.y, w: s.w, h: s.h });
-      }
-      if (s.kind === 'trigger' && s.id === 'portal') {
+      if (s.kind === 'solid') {
+        this.solidBoxes.push({ x: s.x, y: s.y, w: s.w, h: s.h });
+      } else if (s.kind === 'oneway') {
+        this.onewayBoxes.push({ x: s.x, y: s.y, w: s.w, h: s.h });
+      } else if (s.kind === 'trigger' && s.id === 'portal') {
         this.portalShape = s;
       }
-      if (!this.spec.image && (s.kind === 'solid' || s.kind === 'oneway')) {
+
+      if (s.image && (s.kind === 'solid' || s.kind === 'oneway')) {
+        void this.loadShapeSprite(s);
+      } else if (!s.image && s.kind === 'oneway') {
         const gfx = new Graphics();
-        const isWall = s.h > s.w * 4;
         gfx.rect(s.x, s.y, s.w, s.h)
-          .fill({ color: isWall ? 0x2a3340 : 0x4b5563, alpha: 0.95 })
-          .stroke({ color: isWall ? 0x5a6678 : 0x9ca3af, width: 1, alpha: 0.7 });
+          .fill({ color: 0x4b5563, alpha: 0.95 })
+          .stroke({ color: 0x9ca3af, width: 1, alpha: 0.7 });
         this.worldStage.addChild(gfx);
         this.platformGfx.push(gfx);
       }
@@ -91,18 +98,34 @@ export class Stage {
     }
   }
 
-  private async loadPainting(url: string): Promise<void> {
+  private async loadGround(url: string, y: number, h: number): Promise<void> {
     try {
       const tex = (await Assets.load(url)) as Texture;
       const sprite = new Sprite(tex);
       sprite.x = 0;
-      sprite.y = 0;
+      sprite.y = y;
       sprite.width = this.spec.width;
-      sprite.height = this.spec.height;
+      sprite.height = h;
       this.worldStage.addChildAt(sprite, 0);
-      this.mapSprite = sprite;
+      this.groundSprite = sprite;
     } catch (err) {
-      console.warn(`[Stage] failed to load painting ${url}:`, err);
+      console.warn(`[Stage] failed to load ground ${url}:`, err);
+    }
+  }
+
+  private async loadShapeSprite(s: Shape): Promise<void> {
+    if (!s.image) return;
+    try {
+      const tex = (await Assets.load(s.image)) as Texture;
+      const sprite = new Sprite(tex);
+      sprite.x = s.x;
+      sprite.y = s.y;
+      sprite.width = s.w;
+      sprite.height = s.h;
+      this.worldStage.addChildAt(sprite, this.groundSprite ? 1 : 0);
+      this.platformSprites.push(sprite);
+    } catch (err) {
+      console.warn(`[Stage] failed to load shape sprite ${s.image}:`, err);
     }
   }
 
@@ -120,7 +143,7 @@ export class Stage {
 
   update(dtMs: number, playerCenterX: number) {
     for (const m of this.mobs) {
-      m.update(dtMs, playerCenterX, this.platformBoxes);
+      m.update(dtMs, playerCenterX, this.onewayBoxes);
       const newProjectiles = m.flushPendingProjectiles();
       for (const p of newProjectiles) {
         this.projectiles.push(p);
@@ -195,8 +218,12 @@ export class Stage {
     return out;
   }
 
-  getPlatforms(): readonly AABB[] {
-    return this.platformBoxes;
+  getOnewayBoxes(): readonly AABB[] {
+    return this.onewayBoxes;
+  }
+
+  getSolidBoxes(): readonly AABB[] {
+    return this.solidBoxes;
   }
 
   isCleared(): boolean {
@@ -248,12 +275,18 @@ export class Stage {
       g.destroy();
     }
     this.platformGfx = [];
-    this.platformBoxes = [];
-    if (this.mapSprite) {
-      this.worldStage.removeChild(this.mapSprite);
-      this.mapSprite.destroy();
-      this.mapSprite = null;
+    for (const s of this.platformSprites) {
+      this.worldStage.removeChild(s);
+      s.destroy();
     }
+    this.platformSprites = [];
+    if (this.groundSprite) {
+      this.worldStage.removeChild(this.groundSprite);
+      this.groundSprite.destroy();
+      this.groundSprite = null;
+    }
+    this.solidBoxes = [];
+    this.onewayBoxes = [];
     if (this.portal) {
       this.worldStage.removeChild(this.portal);
       this.portal.destroy();

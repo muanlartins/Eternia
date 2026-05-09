@@ -182,7 +182,12 @@ export class Player {
     this.facingMarker.visible = !hidden;
   }
 
-  update(dtMs: number, input: Input, platforms: readonly AABB[] = []) {
+  update(
+    dtMs: number,
+    input: Input,
+    onewayBoxes: readonly AABB[] = [],
+    solidBoxes: readonly AABB[] = [],
+  ) {
     this.stateTimeMs += dtMs;
     this.coyoteMs = Math.max(0, this.coyoteMs - dtMs);
     this.jumpBufferMs = Math.max(0, this.jumpBufferMs - dtMs);
@@ -341,10 +346,46 @@ export class Player {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
+    for (const s of solidBoxes) {
+      if (
+        this.x + this.spec.width <= s.x ||
+        this.x >= s.x + s.w ||
+        this.y + this.spec.height <= s.y ||
+        this.y >= s.y + s.h
+      ) continue;
+      const overlapL = this.x + this.spec.width - s.x;
+      const overlapR = s.x + s.w - this.x;
+      const overlapT = this.y + this.spec.height - s.y;
+      const overlapB = s.y + s.h - this.y;
+      const minH = Math.min(overlapL, overlapR);
+      const minV = Math.min(overlapT, overlapB);
+      if (minV <= minH) {
+        if (overlapT < overlapB) {
+          this.y = s.y - this.spec.height;
+          if (this.vy > 0) this.vy = 0;
+        } else {
+          this.y = s.y + s.h;
+          if (this.vy < 0) this.vy = 0;
+        }
+      } else {
+        if (overlapL < overlapR) {
+          this.x = s.x - this.spec.width;
+          if (this.vx > 0) this.vx = 0;
+        } else {
+          this.x = s.x + s.w;
+          if (this.vx < 0) this.vx = 0;
+        }
+      }
+    }
+
     let effectiveGroundY = GROUND_Y;
     const playerCenterX = this.x + this.spec.width / 2;
+    for (const s of solidBoxes) {
+      if (playerCenterX < s.x || playerCenterX > s.x + s.w) continue;
+      if (s.y < effectiveGroundY && s.y + s.h > this.y) effectiveGroundY = s.y;
+    }
     if (this.dropThroughMs <= 0) {
-      for (const p of platforms) {
+      for (const p of onewayBoxes) {
         if (playerCenterX < p.x || playerCenterX > p.x + p.w) continue;
         const lastFeetY = this.y + this.spec.height - this.vy * dt;
         if (this.vy >= 0 && lastFeetY <= p.y + 4 && p.y < effectiveGroundY) {

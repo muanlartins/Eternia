@@ -10,6 +10,7 @@ export interface Shape {
   readonly y: number;
   readonly w: number;
   readonly h: number;
+  readonly image?: string;
 }
 
 export interface SpawnEntry {
@@ -18,14 +19,21 @@ export interface SpawnEntry {
   readonly y?: number;
 }
 
+export interface GroundSpec {
+  readonly image: string;
+  readonly y: number;
+  readonly h: number;
+}
+
 export interface StageData {
   readonly id: string;
   readonly name: string;
   readonly biome: 'forest' | 'swamp';
-  readonly image: string | null;
   readonly width: number;
   readonly height: number;
   readonly playerStart: { readonly x: number; readonly y: number };
+  readonly ground?: GroundSpec;
+  readonly loadingImage?: string;
   readonly shapes: readonly Shape[];
   readonly spawns: readonly SpawnEntry[];
 }
@@ -86,7 +94,6 @@ function legacyToStageData(id: string): StageData | null {
     id: legacy.id,
     name: legacy.name,
     biome: biomeFor(legacy.id),
-    image: null,
     width: legacy.width,
     height: DEFAULT_HEIGHT,
     playerStart: { x: 80, y: DEFAULT_GROUND_Y - 64 },
