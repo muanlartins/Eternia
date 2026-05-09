@@ -55,7 +55,7 @@ purples for the swamp.
 - **Filename:** `client/src/assets/world-map/node-forest.png`
 - **Aspect:** 1:1
 - **Recomendado:** 512×512
-- **Background:** transparent (PNG com alpha)
+- **Background:** plain white (`#FFFFFF`) — usuário remove externamente
 
 ```
 Stage marker icon for a fantasy game world map.
@@ -74,7 +74,8 @@ Style: hand-painted JRPG icon (Grand Chase / Ragnarok / Brave Frontier
 era), thick clean black outlines (~2px equivalent), toon-shaded with
 soft rim-light, vibrant saturated colors.
 
-Background: fully transparent (PNG with alpha channel).
+Background: plain white (#FFFFFF), no shadows on the background, no other
+elements — subject fully isolated. (User removes white externally.)
 
 Lighting: warm fey green-gold glow from within the lantern, cool teal
 rim light from above-left.
@@ -87,7 +88,7 @@ Square format 1:1. NO text, NO labels.
 - **Filename:** `client/src/assets/world-map/node-locked.png`
 - **Aspect:** 1:1
 - **Recomendado:** 512×512
-- **Background:** transparent (PNG com alpha)
+- **Background:** plain white (`#FFFFFF`) — usuário remove externamente
 
 ```
 Mystery stage marker icon for a fantasy game world map.
@@ -105,7 +106,8 @@ era), thick clean black outlines (~2px equivalent), toon-shaded, MUTED
 color saturation (compared to unlocked icons — this should read as
 "locked, not yet revealed").
 
-Background: fully transparent (PNG with alpha channel).
+Background: plain white (#FFFFFF), no shadows on the background, no other
+elements — subject fully isolated. (User removes white externally.)
 
 Lighting: low-key, cold violet ambient with dim runic glow.
 

@@ -81,9 +81,7 @@ function saveState(s: AuthState | null) {
   try {
     if (s) localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
     else localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
+  } catch {}
 }
 
 export class Auth {
@@ -143,10 +141,7 @@ export class Auth {
   }
 
   async saveRun(payload: RunPayload): Promise<void> {
-    if (!this.state) {
-      console.warn('[auth] saveRun skipped: not authenticated (playing as guest)');
-      return;
-    }
+    if (!this.state) return;
     const safe = {
       durationMs: Math.round(payload.durationMs),
       damageDealt: Math.round(payload.damageDealt),
@@ -163,20 +158,13 @@ export class Auth {
         body: JSON.stringify(safe),
       });
       if (res.status === 401) {
-        console.warn('[auth] saveRun got 401 — token invalid; logging out');
         this.logout();
         return;
       }
-      if (!res.ok) {
-        console.warn(`[auth] saveRun failed: HTTP ${res.status}`);
-        return;
-      }
+      if (!res.ok) return;
       const data = (await res.json()) as { records: ServerRecords };
       this.serverRecords = data.records;
-      console.log('[auth] run saved', data.records);
-    } catch (e) {
-      console.warn('[auth] saveRun network error', e);
-    }
+    } catch {}
   }
 
   private authHeader(): Record<string, string> | null {
@@ -197,15 +185,22 @@ export class Auth {
         headers: { 'Content-Type': 'application/json', ...auth },
         body: JSON.stringify({ mission, difficulty, mode }),
       });
-      if (!res.ok) {
-        console.warn(`[auth] createRoom failed: HTTP ${res.status}`);
-        return null;
-      }
+      if (!res.ok) return null;
       const data = (await res.json()) as { room: Room };
       return data.room;
-    } catch (e) {
-      console.warn('[auth] createRoom network error', e);
+    } catch {
       return null;
+    }
+  }
+
+  async listRooms(): Promise<Room[]> {
+    try {
+      const res = await fetch('/api/rooms');
+      if (!res.ok) return [];
+      const data = (await res.json()) as { rooms: Room[] } | Room[];
+      return Array.isArray(data) ? data : (data.rooms ?? []);
+    } catch {
+      return [];
     }
   }
 
@@ -232,14 +227,10 @@ export class Auth {
         method: 'POST',
         headers: auth,
       });
-      if (!res.ok) {
-        console.warn(`[auth] joinRoom failed: HTTP ${res.status}`);
-        return null;
-      }
+      if (!res.ok) return null;
       const data = (await res.json()) as { room: Room };
       return data.room;
-    } catch (e) {
-      console.warn('[auth] joinRoom network error', e);
+    } catch {
       return null;
     }
   }
@@ -252,9 +243,7 @@ export class Auth {
         method: 'POST',
         headers: auth,
       });
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 
   async refreshRecords(): Promise<void> {
@@ -270,8 +259,6 @@ export class Auth {
       if (!res.ok) return;
       const data = (await res.json()) as { records: ServerRecords };
       this.serverRecords = data.records;
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 }

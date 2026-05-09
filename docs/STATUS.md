@@ -1,196 +1,109 @@
-# Eternia — STATUS (live snapshot)
+# Eternia — STATUS
 
-> Atualização: 2026-05-08.
+> Last updated: 2026-05-09 (post codebase cleanup pass).
 >
-> Este doc é o "tablet do estado atual" do projeto. Atualizar a cada phase.
->
-> Plano original: `~/repos/grand-chase/docs/eternia-mvp.md` (constituição, imutável).
+> Live snapshot of project state. Plano original (imutável):
+> `~/repos/grand-chase/docs/eternia-mvp.md`.
 
-## Phase status overview
+## TL;DR
 
-| Phase | Escopo original | Status | Onde está documentado |
-|---|---|---|---|
-| **0 — Foundation** | Monorepo (client+server+shared), pnpm, Vite, hello-world WS | ✅ done | inicial |
-| **1 — Movement** | walk/run/jump/double_jump/dash/dash_jump, camera, parallax | ✅ done | `01-movement-design.md` |
-| **2 — Combat** | Combo Z, S1/S2/S3, dash atk, dodge, parry, charge-Z, counter | ✅ done (2.A → 2.I) | `02-combat-design.md` |
-| **3 — Mobs/AI** | 9 mob types (slim, racoon, archer, brute, wisp, bog-frog, mire-wraith, insectivorous, drowned-king) + gravity + multi-phase boss | ✅ done (3.A → 3.J) | `03-mobs-design.md` |
-| **4 — Stage flow + buffs** | 6 stages (forest 1-4 + swamp 1-2), buff cards, modifiers, run completion, records, mini-map, portal | ✅ gameplay done (4.A → 4.M) | `04-stages-design.md` |
-| **5 — Audio + polish** | Hit pause, screen shake, KO flash, damage numbers, SFX synth, HUD redesign, parallax bg, BGM, audio settings UI | ✅ done (5.A → 5.F + 5.D.2) | `05-polish-design.md` |
-| **6 — Auth + persistence** | Login, JSON store, run sync, leaderboard, MenuScreen + logout | ⏳ 6.A + 6.B + 6.C done; 6.D skipped (JSON suficiente) | `06-server-design.md` |
-| **7 — Lobby UX restructure** | Login → Character → Mission → Run flow + difficulty + room foundation | ✅ 7.A + 7.B + 7.C done | `07-lobby-design.md` |
-| **8 — Multiplayer (Tailscale alpha)** | Network test + Lobby + presence + co-op (mob sync + damage sync + ready-up lobby) | ✅ 8.A → 8.D done | `08-multiplayer-design.md` |
-| **9 — Pre-production (lore + concept art + style guide)** | Tool: Gemini. Style guide, character bibles, concept art locked. NÃO inclui sprite work — esse é Phase 10. | ⏳ 9.0 + 9.A em progresso | `09-art-bible.md` |
-| **10 — Sprite implementation** | Convert concept art → sprite sheets, replace primitives in-game | ⏳ não iniciado |
+A floresta jogável está completa em 3D + áudio + arte pintada. Naia e os
+dois mobs do bioma (Forest Sprite + Bramble Beast) renderizam via
+Three.js sobre Pixi. Multiplayer Tailscale alpha funcional. Pântano
+ainda é placeholder visual (palette procedural + mobs primitivos).
 
-## O que ainda falta dentro das phases "ativas"
+## Phase status
 
-### Phase 4 (apenas server-side)
-- 4.K — sync de records pro servidor (depende de Phase 6)
+| Phase | Escopo | Status |
+|---|---|---|
+| 0 — Foundation | Monorepo + Vite + WS hello | ✅ |
+| 1 — Movement | walk/run/jump/dash/parallax | ✅ |
+| 2 — Combat | combo Z + S1/S2/S3 + dash atk + parry + counter | ✅ |
+| 3 — Mobs/AI | 9 mob types + multi-phase boss | ✅ |
+| 4 — Stage flow + buffs | 6 stages, buffs, modifiers, mini-map, portal | ✅ |
+| 5 — Audio + polish | hit pause, shake, BGM, audio settings | ✅ |
+| 6 — Auth + persistence | login, JSON store, leaderboard, menu | ✅ (6.D SQLite/Postgres skipped — JSON suficiente) |
+| 7 — Lobby UX restructure | Login → CharSelect → Mission → RoomList → RoomLobby | ✅ |
+| 8 — Multiplayer (Tailscale alpha) | host-authoritative co-op, projectile sync | ✅ |
+| 9 — Art pipeline (Naia + bioma 1) | anchor LOCKED, pivot to 3D Tripo, Naia + 2 mobs ingame | ✅ |
+| 10 — Polish + extra biomes | swamp art, more characters, etc. | ⏳ pendente |
 
-### Phase 5 — Polish
-- ✅ tudo implementado. 5.D (BGM sintético) entregue na sessão de 2026-05-06.
-
-## Conteúdo atual (snapshot)
+## Conteúdo atual
 
 | Categoria | Quantidade | Detalhe |
 |---|---|---|
-| Stages | 6 | forest-1-1 → forest-1-4 (mid-boss), swamp-1-1 → swamp-1-2 (final boss) |
-| Mob types | 9 | slim, racoon, archer, brute, wisp (aerial), bog-frog (leaper), mire-wraith (glass cannon), insectivorous (mid-boss), drowned-king (final boss) |
+| Stages | 6 | forest-1-1 → forest-1-4 (mid-boss), swamp-1-1 → swamp-1-2 (boss) |
+| Mob types | 9 | slim, racoon, archer, brute, wisp, bog-frog, mire-wraith, insectivorous (mid-boss), drowned-king (final) |
+| Mobs com 3D | 2 | Forest Sprite (substitui slim visualmente), Bramble Beast (substitui racoon) |
+| Personagens jogáveis | 1 ativa | Naia (3D, archer kit). Astrid pausada. 2 slots futuros. |
 | Buffs (run-pickup) | 15 | 11 common + 4 rare |
-| Modifiers (run-start) | 9 | tradeoffs grandes (glass cannon, tank, berserker, etc.) |
-| Skills | 3 | S1 (light), S2 (medium), S3 (heavy) — todas com MP cost + cooldown |
-| Combat moves | 6 | combo Z (3 hits), dash atk, jump atk, charge Z (counter), parry, dodge |
-| Stages w/ records | sim | best time, best damage, fewest deaths, totals — localStorage |
+| Modifiers (run-start) | 9 | tradeoffs grandes |
+| Skills | 3 | S1 light / S2 medium / S3 heavy, com MP cost + cooldown |
+| BGM tracks | 4 | menu, mission, forest-explore, forest-combat (fallback p/ deep/boss/swamp) |
+| SFX library | ~30 | bow draw/shoot, footsteps, mob deaths, UI, stings — ElevenLabs |
+| Forest art | 11 sprites | 3 parallax bgs + foreground vines + 4 plataformas + 3 ground tiles |
 
-## Sub-phases extras feitas além do plano original
-
-O plano `eternia-mvp.md` é a constituição. Estas são features que apareceram
-durante iteração e foram sendo absorvidas:
-
-- **Counter via charge-Z** (Phase 2.H.5 → 2.H.8) — sistema GC-style de cancel
-  de mob attack via Z carregado. Não estava no plano; emergiu de playtest.
-- **Run modifiers separados de buffs** (Phase 4.G) — escolha no início da
-  run, com tradeoff grande. Plano original só tinha buffs.
-- **Closed rectangular maps + portal** (Phase 4.H) — plano original era
-  scroll horizontal infinito. Mudou para mapas fechados estilo GC.
-- **Mini-map em TAB** (Phase 4.H) — mostra progresso de run.
-- **Air parry/dodge + spawn invincibility** (Phase 2.I) — quality-of-life.
-- **Cinematic phase pause** (Phase 2.I) — congela player durante banners
-  de transição.
-- **Boss death drama** (Phase 4.J) — phase intermediária entre boss kill e
-  victory para a animação de fade do boss completar.
-
-## Próximas etapas — sequência atualizada (re-priorizada pelo user)
-
-Phase 7 (lobby) e Phase 8 (multiplayer) movidos pra antes da Phase 9 (sprites).
-Razões: lobby UX é prep pra MP; MP via Tailscale precisa room concept;
-sprites são o último polish.
-
-1. ✅ **5.D — BGM sintético** (~3-4h, feito 2026-05-06) — Phase 5 fechada.
-   Web Audio API procedural com 3 perfis (forest / deep / boss) por stage.
-   Crossfade 0.7s entre stages. Stop em bossDeathDrama / gameOver / new run.
-2. ✅ **Multi-phase boss** (feito 2026-05-06) — Insectivorous Phase 2 < 50%
-   HP. Cooldown ×0.55, telegraph ×0.7, damage ×1.2, walk ×1.4, combo break
-   ×0.7. Visual: red tint + pulse + red HP bar. Audio: sting + BGM crossfade
-   pra `bossRage` (130 BPM). Trigger FX: dual spark ring + screen shake +
-   PHASE 2! popup.
-3. ✅ **Boss intro + healthbar dedicada** (feito 2026-05-06) — banner
-   "★ BOSS ★ INSECTIVOROUS" + BossHpBar persistente no topo do HUD com
-   Phase 2 indicator. Plus aerial bonus (×1.3 + popup azul) e backstab
-   bonus (×1.3 + popup roxo) — ambos multiplicativos.
-4. ✅ **Wisp aéreo** (feito 2026-05-06) — `hasGravity: false`, hoverY=380,
-   bobbing 6px senoidal, dive attack vy=320 + vx=60 horizontal, lerp de
-   volta pra hoverY em recover. Palette roxa + glow circles pulsantes.
-   Spawnado em stages 2 e 3. Sempre aerial = bonus ×1.3 garantido.
-5. ⏳ **Phase 6 — Auth + persistence** — em progresso.
-   - 6.A done (2026-05-06): JSON store + REST (login/runs/me) + LoginScreen
-     UI + run sync após victory/gameOver. Username-only auth (sem senha)
-     suficiente pra friends-only.
-   - 6.B done (2026-05-06): leaderboard global (top per user, time/damage/deaths
-     metrics) + display em VictoryStats com row do player highlighted.
-   - 6.B.2 done (2026-05-06): bug fix do leaderboard ficando "carregando"
-     em runs guest/empty — adicionado `leaderboardLoaded` flag + sequenciamento
-     saveRun→fetchLeaderboard.
-   - 6.C done (2026-05-06): MenuScreen unificado (substitui SettingsMenu).
-     Tecla `O`/`Esc` abre menu com 3 sections: Leaderboard (TIME/DAMAGE/DEATHS
-     toggle), Sound (volumes + mute), Logout. Logout limpa localStorage e
-     reabre LoginScreen pra trocar de user.
-   - 6.D pending: migrar JSON pra SQLite se escalar.
-6. ✅ **Pântano dos Esquecidos** (feito 2026-05-06) — segundo bioma. 2 stages
-   novos (swamp-1-1, swamp-1-2) + 3 mobs novos (Bog Frog leap-attack, Mire
-   Wraith glass-cannon, Drowned King boss multi-phase). Nova BGM 'swamp' +
-   palettes 'swamp'/'swampBoss'. Insectivorous virou mid-boss; Drowned King
-   é o final-boss. Run agora ~6-8min, 6 stages.
-7. ⏳ **Phase 7 — Lobby UX restructure** — em progresso.
-   - 7.A done (2026-05-06): Login → CharacterSelect → MissionSelect → Run
-     flow. Forest e Swamp viraram missions independentes (cada um seu run
-     roguelike). 4 character slots (1 ativo + 3 "coming soon" greyed).
-   - 7.B done (2026-05-06): Difficulty levels (Easy/Normal/Hard) integrados
-     em MissionSelect como tab bar. Mob HP×{0.7, 1.0, 1.4}, dmg×{0.7, 1.0,
-     1.3}, lives {4, 3, 2}. Persistente em localStorage.
-   - 7.C done (2026-05-06): Room model + REST endpoints
-     (POST/GET/join/leave/list). Cada run cria silenciosamente uma room
-     no server. Room code aparece no HUD top-right (`@user · ABCDEF`).
-     Sem UI de create/join ainda — vem em 8.B junto com lobby/MP.
-8. ✅ **Phase 8 — Multiplayer (Tailscale alpha)** — done.
-   - 8.A (Tailscale + Vite host: true): testado pelo user, funcionando.
-   - 8.B (lobby): LobbyScreen com Solo / Create Public / Join by Code +
-     Room.mode flag (solo invisível no list público).
-   - 8.C (presence): WS hub server-side, Network class client-side,
-     RemotePlayer ghost rendering.
-   - 8.D (co-op completo) — 2026-05-07:
-     - Pre-game RoomLobby com ready-up + start (host) / ready (joiner).
-     - Host-authoritative mob state: Mob.remoteControlled flag, host
-       broadcast 20Hz, joiner mirrors via applyRemoteState. AI/physics
-       runs only on host.
-     - Damage sync: joiner sends player_hit; host applyRemoteHit; novo
-       HP via próximo mob_states.
-     - Smoother movement: 20Hz state rate + dead-reckoning extrapolation
-       em RemotePlayer.
-     - Limitações: projéteis (archer arrows) não sincronizados ainda;
-       stage progression entre stages pode divergir. Single-stage co-op
-       sólido pra alpha.
-**Sprint roadmap 2026-05-07 (paralelo a Phase 9):**
+## Sprint timeline (recente)
 
 | Sprint | Escopo | Status |
 |---|---|---|
-| **1** | Naia archer kit ingame (basic shot chain, power shot, S1/S2/S3 patterns, step-back hop, no air dash) | ✅ done — tuning pendente |
-| **2** | Mob attack variety (slim spit projectile, racoon pounce lunge, range-based selection) | ⏳ partial — slim+racoon done; outros mobs pendente |
-| **3** | MP polish (projectile sync done; stage progression sync, reconnect handling, public lobby pendente) | ⏳ partial — projectile sync done |
-| **4** | UX/UI redesign (HTML overlay, PGR/Arknights anime-modern, screen by screen) | ✅ done (todos os screens) |
-| **5** | 3D pilot Naia (Tripo/Meshy → Three.js layer) | ✅ done |
-| **6** | Naia 3D ingame (GameThreeLayer overlaid no Pixi) | ✅ done |
-| **7** | UX polish + 3D pipeline cleanup | ⏳ em progresso (7.A → 7.G abaixo) |
+| 7.A | Procedural anims (jump, shoot, hit) substituem Mixamo | ✅ |
+| 7.B | RoomLobby 3D portraits | ✅ |
+| 7.C | Fix screen transition cascade bugs | ✅ |
+| 7.D | Canvas fullscreen + UI layout polish | ✅ |
+| 7.E | CharacterSelect minimalist redesign | ✅ |
+| 7.F | Centralized Naia transforms (head scale 1.3) + headshot pre-cropped + drag-to-spin | ✅ |
+| 7.G | MissionSelect → world-map | ✅ |
+| 7.G.1 | Strip MissionSelect (só mapa) + new RoomList screen | ✅ |
+| 7.G.2 | Polish: trocar herói pill + RoomList stage card hero + RoomLobby Naia front+idle + solo-start fix | ✅ |
+| 7.K | Forest Sprite + Bramble Beast 3D ingame | ✅ |
+| 7.L | Audio integration (file-based BGM + SFX library) | ✅ |
+| 7.M | Floresta painted assets ingame (parallax bgs + plataformas + ground tiles) | ✅ |
+| Cleanup | Remove dead Pixi UI, sprite plumbing, procedural audio, comments | ✅ (2026-05-09) |
 
-**Sprint 7 — UX polish + cleanup:**
+## Arquitetura atual
 
-| Sub | Escopo | Status |
-|---|---|---|
-| **7.A** | Procedural anims (jump, shoot, hit) substituem Mixamo nos states | ✅ done |
-| **7.B** | RoomLobby 3D portraits (mesma `Character3DPortrait` da CharSelect) | ✅ done |
-| **7.C** | Fix screen transition cascade bugs (mode-select Enter, focus pass-through) | ✅ done |
-| **7.D** | Canvas fullscreen + UI layout polish | ✅ done |
-| **7.E** | CharacterSelect minimalist redesign (GC-inspired, 1 char ativo) | ✅ done |
-| **7.F** | Centralized Naia transforms (head scale 1.3 em 1 lugar só) + headshot pre-cropped + drag-to-spin portrait | ✅ done — 2026-05-08 |
-| **7.G** | MissionSelect → world-map (continent painted + nodes em trilha) | 📐 designed, asset gen pendente |
-| **7.H** | Floresta dos Elfos in-game polish (parallax bg + 2 mobs novos) | 📐 designed, asset gen pendente |
+Ver [`architecture.md`](./architecture.md) — descreve módulos do client,
+camada Three sobre Pixi, sistema de áudio, bridge multiplayer e fluxo
+completo de uma run.
 
-> Docs novos: `10-world-map-design.md`, `11-floresta-dos-elfos.md`,
-> `prompts/world-map.md`. Aesthetic da Floresta LOCKED (palette, lighting,
-> mood, props, lore micro). Mobs propostos: Forest Sprite + Bramble Beast
-> (substitui slim/racoon como vocabulary canônico do bioma).
+## Próximas etapas (não-bloqueantes)
 
-9. ⏳ **Phase 9 — Pre-production** — em progresso. **Pivot 2026-05-07:
-   Naia-first**. Em vez de gerar 4 chars em paralelo, levamos Naia
-   ponta-a-ponta (anchor → poses → vídeo → sprite ingame jogável) primeiro
-   pra validar o pipeline inteiro com 1 char. Astrid pausada (anchor
-   LOCKED, retomar depois).
-   - 9.0 done: tool choice + pipeline. **Flow** (labs.google/flow) é a
-     tool default — Imagem (Nano Banana Pro / Imagen 4) + Vídeo (Veo) num
-     só projeto, contexto persistente.
-   - **9.A — Naia (active)**: anchor LOCKED. Pipeline pivotou pra **pixel
-     art** após detectar drift grave em illustration high-res (sleeves
-     curtas, lacing pattern variando, pendant position). Pixel art via
-     Nano Banana Pro validou consistência cross-pose. **3 sprites
-     ingame** (idle/run/jump) integrados via `Player.setSpriteTextures`.
-     Naia selecionável em CharacterSelect. Cleanup: removidos
-     illustration poses + video keyframes + static views. `naia-anchor.png`
-     é única source of truth. Doc: `docs/09a-naia.md`.
-   - **9.B — Astrid (paused)**: anchor LOCKED, turnaround tem quality
-     issues. Retomar após Naia validar pipeline (redo turnaround via Flow
-     vídeo→frames). Doc: `docs/09b-astrid.md`.
-   - 9.C/D/E/F/G pendente.
-   - **Reorganização docs 2026-05-07**: `docs/09-art-bible.md` reduzido de
-     1991 → 221 linhas (canonical only). Bibles por char em arquivos
-     separados. Logs históricos ficam no git.
-10. ⏳ **Phase 10 — Sprite implementation** — converte concept art em
-    sprite sheets, substitui primitivas. Inicia depois que 9.A pelo
-    menos estiver fechada.
+1. **Pântano dos Esquecidos — arte pintada**: gerar parallax bgs,
+   plataformas, ground tiles seguindo o mesmo template da Floresta
+   (`docs/prompts/floresta-stage-art.md`). Bog Frog + Mire Wraith +
+   Drowned King 3D models.
+2. **Naia animations**: walk, jump, shoot, hit clips contra o Tripo
+   rig. Hoje só idle está autorizado; runtime aceita os outros mas no-op.
+3. **Foreground vines overlay**: layer entre worldStage e uiStage com
+   `foreground-vines.jpeg` (asset já está em disco, não está sendo
+   renderizada).
+4. **Hooks de áudio remanescentes**: `playStageClear` (transição entre
+   stages), `playUiClick`/`playUiConfirm` (botões), `playFootstep`
+   (timer de stride no Player), `playCardPickup` (buff/modifier pick),
+   `playPortalOpen` (portal ativa).
+5. **2ª personagem jogável** — Astrid (knight). Anchor LOCKED. Refazer
+   turnaround, gerar Tripo GLB, plugar nos extension points.
+6. **Scope creep candidate**: SQLite/Postgres swap para o store
+   (atualmente JSON file) se base de jogadores crescer.
 
-## Decisões pendentes (não-bloqueantes)
+## Decisões pendentes
 
-- **Sprite source**: rip do client S1 vs gerar do zero (Phase 7)
-- **BGM source**: rip + clear vs gerar com Suno/Udio (Phase 5.D / 7)
-- **Run-start lives**: continuar 3? configurar via modifier? (gameplay tuning)
-- **Quanto de meta-progression** entre runs (XP, unlocks)? Hades faz, GC não. 
-  Plano original: NÃO. Pode mudar em V1.1.
+- Run-start lives — continuar 3? Configurar via modifier? (gameplay tuning)
+- Meta-progression entre runs (XP, unlocks)? Plano original: NÃO.
+  Pode mudar em V1.1.
+
+## Docs index
+
+- `00-spec.md` — original spec
+- `01..05-*-design.md` — per-phase design logs
+- `06-server-design.md` — Go server (REST + WS)
+- `07-lobby-design.md` — lobby UX restructure
+- `08-multiplayer-design.md` — Tailscale alpha co-op
+- `09-art-bible.md` — Eternia visual style canonical
+- `09a-naia.md` / `09b-astrid.md` — character bibles
+- `09c-naia-3d.md` — Tripo pipeline + bone mapping
+- `10-world-map-design.md` — overworld map
+- `11-floresta-dos-elfos.md` — biome 1 design
+- `architecture.md` — current code shape (this cleanup pass)
+- `prompts/` — Gemini Nano Banana / ElevenLabs / Tripo prompts

@@ -131,7 +131,7 @@ export class Mob {
   private pendingProjectiles: Projectile[] = [];
 
   constructor(
-    private readonly spec: MobSpec,
+    readonly spec: MobSpec,
     x: number,
     y: number,
     options?: {
@@ -167,6 +167,11 @@ export class Mob {
 
   isBoss(): boolean {
     return this.spec.isBoss === true;
+  }
+
+  setRenderingHidden(hidden: boolean): void {
+    this.body.visible = !hidden;
+    this.facingMarker.visible = !hidden;
   }
 
   isRemoteControlled(): boolean {
@@ -232,10 +237,6 @@ export class Mob {
 
   private remoteHitCounter = -1;
 
-  // Direct-application damage path used by the host when a remote (joiner)
-  // client reports a hit on this mob. Joiner-side dedup ensures we receive
-  // each player attack once per mob; we generate a synthetic negative
-  // attackId so it can't collide with host-local positive ids.
   applyRemoteHit(damage: number, knockbackVx: number): { applied: number } | null {
     const synth = this.remoteHitCounter--;
     return this.receiveHit(synth, damage, knockbackVx);
@@ -413,14 +414,25 @@ export class Mob {
     return this.spec.attacks[this.currentAttackIdx]!;
   }
 
-  private pickAttack(): number {
-    const total = this.spec.attacks.reduce((s, a) => s + a.weight, 0);
-    let r = Math.random() * total;
+  private pickAttack(distance?: number): number {
+    const validIdx: number[] = [];
+    let totalW = 0;
     for (let i = 0; i < this.spec.attacks.length; i++) {
-      r -= this.spec.attacks[i]!.weight;
-      if (r <= 0) return i;
+      const a = this.spec.attacks[i]!;
+      if (distance !== undefined) {
+        if (a.minRange !== undefined && distance < a.minRange) continue;
+        if (a.maxRange !== undefined && distance > a.maxRange) continue;
+      }
+      validIdx.push(i);
+      totalW += a.weight;
     }
-    return 0;
+    if (validIdx.length === 0) return 0;
+    let r = Math.random() * totalW;
+    for (const idx of validIdx) {
+      r -= this.spec.attacks[idx]!.weight;
+      if (r <= 0) return idx;
+    }
+    return validIdx[0]!;
   }
 
   update(dtMs: number, playerCenterX: number, platforms: readonly AABB[] = []) {
@@ -432,8 +444,6 @@ export class Mob {
     }
 
     if (this.remoteControlled) {
-      // Visual interpolation toward last applied target. AI / physics are
-      // run by the host; we only render the most recent state we received.
       const lerpRate = 22;
       const t = Math.min(1, lerpRate * dt);
       this.renderX += (this.x - this.renderX) * t;
@@ -561,7 +571,7 @@ export class Mob {
     if (dist <= this.spec.attackRange && this.attackCooldownMs <= 0) {
       this.facing = dir;
       this.vx = 0;
-      this.currentAttackIdx = this.pickAttack();
+      this.currentAttackIdx = this.pickAttack(dist);
       this.setState(MobState.Telegraph);
       return;
     }

@@ -3,17 +3,16 @@
 Personal browser-based action game. Inspired by Grand Chase Season 1 BR (Level Up era,
 2007-2008), redesigned with modern feel + roguelike build cards.
 
-**Status:** ~Phase 5 (polish, mostly done). See `docs/STATUS.md` for the live roadmap snapshot.
+**Status:** Phases 0–9 done. Floresta dos Elfos is fully playable in 3D (Naia + Forest Sprite + Bramble Beast) with painted parallax, file-based audio, and Tailscale-alpha co-op. See `docs/STATUS.md` for the live snapshot and `docs/architecture.md` for current code shape.
 
 > Private project, friends-only access. Not for commercial use. No "Grand Chase" branding
 > in distributable form.
 
 ## Stack
 
-- **Client:** TypeScript 5.6+, Pixi.js v8, Vite (HMR), Web Audio API
+- **Client:** TypeScript 5.6+, Pixi.js v8 + Three.js (overlay), Vite (HMR), Web Audio API
 - **Server:** Go 1.23+, gorilla/websocket, JSON file storage (alpha — SQLite/Postgres swap-in later)
-- **Shared:** TypeScript types (zero runtime, just `import`s)
-- **Workspace:** pnpm workspaces
+- **Workspace:** pnpm workspaces (just client; the old `shared/` package was removed in the 2026-05-09 cleanup — protocol now lives in `client/src/game/Network.ts`)
 - **Hot reload:** Vite HMR for client, [air](https://github.com/air-verse/air) for server (auto-installed by `server/dev`)
 - **Target:** desktop browsers (Chrome/Firefox/Safari latest)
 
@@ -21,9 +20,8 @@ Personal browser-based action game. Inspired by Grand Chase Season 1 BR (Level U
 
 ```
 Eternia/
-├── client/      # browser game (TS + Pixi)
+├── client/      # browser game (TS + Pixi + Three)
 ├── server/      # game server (Go)
-├── shared/      # TypeScript types shared cliente <-> server
 ├── docs/        # architecture docs, ADRs, runbooks tied to code
 └── package.json # root workspace
 ```

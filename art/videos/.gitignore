@@ -1,7 +1,0 @@
-# Full-quality video files stay local — don't bloat repo
-*.mp4
-*.mov
-*.webm
-# But preview gifs and thumbnails can be tracked if useful
-!*-preview.gif
-!*-thumb.png

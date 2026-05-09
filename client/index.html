@@ -4,35 +4,81 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eternia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
     <style>
-        body {
+        :root { color-scheme: dark; }
+        html, body {
             margin: 0;
             padding: 0;
-            background: #0a0a0a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            color: #ddd;
+            background: #000;
+            color: #e8ede9;
+            font-family: 'Pretendard', system-ui, sans-serif;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        /* Viewport-filling shell. Hosts the logical 1024x576 stage centered,
+           with black letterbox bars on whichever axis the viewport doesn't
+           match the 16:9 game aspect ratio. */
+        #viewport {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            overflow: hidden;
+        }
+        /* The stage stays at the LOGICAL game resolution (1024x576) so all
+           CSS pixel values inside still match the game's logical units. It's
+           scaled+translated by JS via the --scale / --tx / --ty CSS vars
+           so the visual size fills the viewport while preserving aspect. */
+        #stage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1024px;
+            height: 576px;
+            transform-origin: 0 0;
+            transform: translate(var(--tx, 0), var(--ty, 0)) scale(var(--scale, 1));
+            box-shadow: 0 20px 80px rgb(0 0 0 / 0.6), 0 0 0 1px rgba(46, 139, 87, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
         }
         #game-container {
-            border: 2px solid #333;
-            box-shadow: 0 0 40px rgba(120, 80, 200, 0.2);
+            position: absolute;
+            inset: 0;
+        }
+        #ui-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #ui-overlay > * {
+            pointer-events: auto;
         }
         #status {
             position: fixed;
-            top: 8px;
-            left: 8px;
-            font-size: 12px;
-            font-family: ui-monospace, monospace;
-            color: #777;
+            top: 12px;
+            left: 16px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            color: rgba(184, 194, 187, 0.4);
+            letter-spacing: 0.08em;
+            z-index: 100;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <div id="status">Eternia v0.0.1 - Phase 0</div>
-    <div id="game-container"></div>
+    <div id="status">ETERNIA · v0.0.1</div>
+    <div id="viewport">
+        <div id="stage">
+            <div id="game-container"></div>
+            <div id="ui-overlay"></div>
+        </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

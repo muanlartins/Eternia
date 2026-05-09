@@ -35,6 +35,7 @@ type clientMessage struct {
 	Hit      json.RawMessage `json:"hit,omitempty"`
 	Phase    string          `json:"phase,omitempty"`
 	Payload  json.RawMessage `json:"payload,omitempty"`
+	Proj     json.RawMessage `json:"proj,omitempty"`
 }
 
 func roomStatusPayload(code string, members []*hub.Member, hostUserID int, matchStarted bool) map[string]any {
@@ -241,6 +242,15 @@ func handleWS(s *store.Store, h *hub.Hub) http.HandlerFunc {
 					"t":       "stage_phase",
 					"phase":   msg.Phase,
 					"payload": msg.Payload,
+				}))
+			case "projectile_spawn":
+				if currentRoom == "" || currentMember == nil {
+					continue
+				}
+				h.Broadcast(currentRoom, conn, mustJSON(map[string]any{
+					"t":      "projectile_spawn",
+					"userId": currentMember.UserID,
+					"proj":   msg.Proj,
 				}))
 			}
 		}

@@ -8,19 +8,18 @@ export interface CharacterSpec {
 
 export const CHARACTERS: readonly CharacterSpec[] = [
   {
-    id: 'astrid',
-    name: 'Astrid',
-    className: 'Knight (1ª classe)',
+    id: 'naia',
+    name: 'Naia',
+    className: 'Elven Archer',
     description:
-      'Espadachim crimson, espada asiática, confiante e impulsiva — combo Z, 3 skills, parry janelado, dodge roll.',
+      'Arqueira élfica de cabelo verde-esmeralda. Calma, observadora, letal de longe.',
     available: true,
   },
   {
-    id: 'naia',
-    name: 'Naia',
-    className: 'Elven Archer (planned)',
-    description:
-      'Em breve — arqueira élfica de cabelo verde-esmeralda, sábia e calma, atira de longe com arco curto.',
+    id: 'astrid',
+    name: 'Astrid',
+    className: 'Knight (planned)',
+    description: 'Em breve — espadachim crimson, parry + dodge, kit melee.',
     available: false,
   },
   {

@@ -1,0 +1,218 @@
+/*
+ * MiniMap — TAB-hold panel showing journey progression through stages
+ * Layout: dim overlay + centered card with stage rows (current highlighted, completed checked)
+ */
+
+.root {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 12, 9, 0.55);
+  backdrop-filter: blur(4px);
+  font-family: var(--font-body);
+  color: var(--neutral-50);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-soft);
+  z-index: 30;
+}
+
+.root[data-visible='true'] {
+  display: flex;
+  opacity: 1;
+}
+
+.panel {
+  position: relative;
+  width: min(440px, 88%);
+  background:
+    linear-gradient(180deg, rgba(22, 39, 31, 0.95), rgba(15, 28, 24, 0.97));
+  border: 1px solid rgba(46, 139, 87, 0.32);
+  border-radius: var(--r-lg);
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+  box-shadow: var(--shadow-deep);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transform: translateY(8px);
+  animation: miniMapRise 200ms var(--ease-decel) forwards;
+}
+
+@keyframes miniMapRise {
+  to { transform: translateY(0); }
+}
+
+.panelCorner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(225deg, var(--accent-500), transparent 60%);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid rgba(46, 139, 87, 0.18);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-widest);
+  color: var(--accent-300);
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  content: '';
+  width: 14px;
+  height: 1px;
+  background: var(--accent-500);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  letter-spacing: var(--tracking-display);
+  color: var(--neutral-50);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* Stage rows */
+.stages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
+  background: rgba(15, 28, 24, 0.5);
+  border: 1px solid rgba(46, 139, 87, 0.12);
+  border-radius: var(--r-base);
+  font-family: var(--font-body);
+  transition: all var(--dur-base) var(--ease-soft);
+}
+
+.stage[data-state='completed'] {
+  background: rgba(46, 139, 87, 0.1);
+  border-color: rgba(106, 191, 149, 0.3);
+}
+
+.stage[data-state='current'] {
+  background:
+    linear-gradient(90deg, rgba(212, 165, 116, 0.18), rgba(168, 125, 77, 0.08));
+  border-color: var(--accent-400);
+  box-shadow: 0 0 16px rgba(212, 165, 116, 0.2);
+}
+
+.stageMarker {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 12, 10, 0.6);
+  border: 1px solid rgba(46, 139, 87, 0.2);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  color: rgba(184, 194, 187, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.stage[data-state='completed'] .stageMarker {
+  background: rgba(46, 139, 87, 0.25);
+  border-color: rgba(106, 191, 149, 0.55);
+  color: var(--primary-300);
+}
+
+.stage[data-state='current'] .stageMarker {
+  background: rgba(212, 165, 116, 0.25);
+  border-color: var(--accent-400);
+  color: var(--accent-200);
+  box-shadow: 0 0 12px rgba(245, 200, 112, 0.5);
+}
+
+.stageBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stageName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  color: var(--neutral-100);
+  text-transform: uppercase;
+}
+
+.stage[data-state='locked'] .stageName {
+  color: rgba(184, 194, 187, 0.5);
+}
+
+.stageHint {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wider);
+  color: rgba(184, 194, 187, 0.5);
+  text-transform: uppercase;
+}
+
+.stage[data-state='current'] .stageHint {
+  color: var(--accent-300);
+}
+
+.stageState {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wider);
+  color: rgba(184, 194, 187, 0.4);
+  text-transform: uppercase;
+  text-align: right;
+}
+
+.stage[data-state='completed'] .stageState {
+  color: var(--primary-300);
+}
+
+.stage[data-state='current'] .stageState {
+  color: var(--accent-300);
+}
+
+.hint {
+  display: flex;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wider);
+  color: rgba(184, 194, 187, 0.45);
+  text-transform: uppercase;
+  padding-top: var(--space-2);
+  border-top: 1px dashed rgba(46, 139, 87, 0.18);
+}
+
+.hintKey {
+  color: var(--accent-300);
+}

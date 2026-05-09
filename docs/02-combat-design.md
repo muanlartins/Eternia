@@ -978,3 +978,46 @@ modifier dá ~80 dmg, justificando o setup.
   já transmite a info. Adicionar SFX seria polish marginal.
 - **Knockback diferenciado**: não — só dano. Mob continua com mesmo vx
   knockback. Mantém consistência física.
+
+## Naia (archer) — kit ranged (LOCKED 2026-05-07, ready pra Sprint 1)
+
+> Naia é a primeira personagem com sprite ingame jogável. Combat kit
+> ranged que substitui o melee combo da Astrid. Design completo em
+> [`09a-naia.md`](./09a-naia.md). Resumo + diferenças vs Astrid:
+
+| Move | Input | Diferença vs Astrid |
+|---|---|---|
+| **Basic shot chain** | Z tap (3 chain) | Single arrow chainável 3 hits ~0.3 s gap; substitui combo Z melee |
+| **Power shot** | Z hold + release | 3-tier charge (475/950/1425 ms), ballistic arc com gravity; substitui charge-Z counter |
+| S1 Triple Shot | 1 | 3-arrow fan ~30° spread |
+| S2 Arc Shot | 2 | Overhead arc, ground AOE |
+| S3 Piercing Volley | 3 | Multi-arrow horizontal piercing line |
+| Dash atk | Shift+Z | Rolling shot |
+| Jump atk | Jump+Z | Aerial shot |
+| **Step-back hop** | Espaço | Substitui parry estática — pequeno hop pra trás (~80 px) com i-frames |
+| Double jump | Jump 2× | Mesma Astrid; **SEM air dash** pra archer |
+
+### Diferenças locked
+
+- ❌ Air dash removido pra Naia
+- ❌ Counter (power-shot interrupt) removido — charge é puramente offensive
+- ✅ Step-back hop substitui parry estática
+- ✅ Arrows unlimited (Lire feel), MP gates skills
+- ✅ Keyboard horizontal aim — direction segue facing, arrows com arc gravity
+- ✅ Charge tiers idênticos a Astrid (475/950/1425 ms)
+
+### Implementação (Sprint 1 da roadmap)
+
+Code path planejado:
+1. Add `archer.ts` analogous a `elesis.ts` com spec da Naia (HP, MP,
+   skills, charge tiers, basic shot chain frames)
+2. Refator Player pra suportar **per-character spec injection**
+   (atualmente hard-coded ELESIS) — Naia precisa do seu próprio spec
+3. Add `Arrow.ts` (Projectile subclass) com ballistic motion (gravity)
+4. Add basic shot chain mechanic (similar a combo Z, mas projectile
+   spawn em vez de hitbox)
+5. Add power shot charge state (hold Z, release at tier)
+6. Implement S1/S2/S3 com arrow patterns
+7. Add step-back hop state (espaço = hop backward + i-frames)
+8. Sync arrows in MP (broadcast on spawn)
+9. Tune damage / MP / cooldowns via playtest

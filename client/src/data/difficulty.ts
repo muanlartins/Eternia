@@ -42,18 +42,14 @@ export function loadDifficulty(): Difficulty {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw === 'easy' || raw === 'normal' || raw === 'hard') return raw;
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return 'normal';
 }
 
 export function saveDifficulty(d: Difficulty) {
   try {
     localStorage.setItem(STORAGE_KEY, d);
-  } catch {
-    /* ignore */
-  }
+  } catch {}
 }
 
 export function findDifficulty(id: Difficulty): DifficultySpec {

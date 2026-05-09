@@ -1,0 +1,322 @@
+/*
+ * MissionSelect — clean world-map screen.
+ *
+ * Just the continent painting + clickable stage nodes. All other UI
+ * (room list, difficulty, records, mode toggle) is in the RoomList
+ * screen and the RoomLobby that follow it.
+ *
+ * Tokens: `client/src/ui/tokens.css`.
+ */
+
+/* --- root + atmosphere ---------------------------------------------- */
+
+.root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-deep);
+  color: var(--neutral-100);
+  font-family: var(--font-body);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--dur-stage) var(--ease-soft),
+    visibility 0s var(--dur-stage);
+  visibility: hidden;
+}
+
+.root[data-visible='true'] {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+  transition:
+    opacity var(--dur-stage) var(--ease-soft),
+    visibility 0s 0s;
+}
+
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 50%, transparent 0%, rgba(10, 20, 16, 0.45) 80%, rgba(10, 20, 16, 0.85) 100%);
+}
+
+.motes {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 18% 28%, rgba(245, 200, 112, 0.07) 0%, transparent 1.5%),
+    radial-gradient(circle at 82% 36%, rgba(106, 191, 149, 0.05) 0%, transparent 1.5%),
+    radial-gradient(circle at 64% 78%, rgba(245, 200, 112, 0.06) 0%, transparent 1.5%);
+  animation: motesDrift 22s ease-in-out infinite alternate;
+}
+
+@keyframes motesDrift {
+  to { transform: translate(8px, -10px); }
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image:
+    repeating-radial-gradient(circle at 0 0, transparent 0, rgba(255, 255, 255, 0.4) 1px, transparent 2px);
+}
+
+/* --- hero-swap chip (top-left, "trocar herói") --------------------- */
+
+.heroSwap {
+  position: absolute;
+  z-index: 4;
+  top: var(--space-5);
+  left: var(--space-7);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  color: var(--neutral-300);
+  background: rgba(15, 28, 24, 0.7);
+  border: 1px solid rgba(106, 191, 149, 0.18);
+  border-radius: var(--r-pill);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-soft),
+    border-color var(--dur-fast) var(--ease-soft),
+    background var(--dur-fast) var(--ease-soft),
+    transform var(--dur-fast) var(--ease-soft);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.heroSwap:hover {
+  color: var(--accent-200);
+  border-color: rgba(245, 200, 112, 0.4);
+  background: rgba(22, 39, 31, 0.85);
+  transform: translateX(-2px);
+}
+
+.heroSwapArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(46, 139, 87, 0.18);
+  color: var(--primary-300);
+  font-size: var(--text-sm);
+  line-height: 1;
+  transition:
+    background var(--dur-fast) var(--ease-soft),
+    color var(--dur-fast) var(--ease-soft),
+    transform var(--dur-base) var(--ease-soft);
+}
+
+.heroSwap:hover .heroSwapArrow {
+  background: rgba(245, 200, 112, 0.18);
+  color: var(--accent-300);
+  transform: translateX(-2px);
+}
+
+.heroSwapLabel {
+  letter-spacing: var(--tracking-display);
+}
+
+/* --- map stage (centered, full bleed) ------------------------------ */
+
+.mapStage {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-7);
+  min-height: 0;
+}
+
+.mapFrame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 1480px;
+  max-height: calc(100vh - var(--space-7) * 2);
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  border: var(--border-soft);
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.6),
+    inset 0 0 80px rgba(10, 20, 16, 0.55),
+    inset 0 0 0 1px rgba(245, 200, 112, 0.07);
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 50%, rgba(46, 139, 87, 0.08) 0%, transparent 70%),
+    var(--bg-base);
+  opacity: 0;
+  animation: mapIn 880ms var(--ease-decel) 220ms forwards;
+}
+
+@keyframes mapIn {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.mapImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(1.05) contrast(1.05) brightness(0.95);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Subtle warm vignette over the map so node icons pop more. */
+.mapFrame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 50%, transparent 0%, rgba(10, 20, 16, 0.35) 75%, rgba(10, 20, 16, 0.65) 100%);
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+/* SVG trail between nodes — coords are 0..100 to match node % positioning. */
+.trail {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(245, 200, 112, 0.5));
+  animation: trailFlow 9s linear infinite;
+}
+
+@keyframes trailFlow {
+  to { stroke-dashoffset: -30; }
+}
+
+.nodes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* --- map nodes ------------------------------------------------------ */
+
+.node {
+  position: absolute;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+  transition: transform var(--dur-base) var(--ease-anime);
+}
+
+.node[data-locked='true'] {
+  cursor: default;
+}
+
+.node:hover:not([data-locked='true']),
+.node[data-selected='true']:not([data-locked='true']) {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.nodeIconWrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nodeIcon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6));
+  transition: filter var(--dur-base) var(--ease-soft);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.node[data-locked='true'] .nodeIcon {
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6)) saturate(0.55) brightness(0.78);
+}
+
+/* Unlocked nodes always pulse softly to invite the click. Hover deepens. */
+.nodePulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 200, 112, 0.32) 0%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.node:not([data-locked='true']) .nodePulse {
+  opacity: 1;
+  animation: nodePulse 2.6s var(--ease-soft) infinite;
+}
+
+.node:hover:not([data-locked='true']) .nodeIcon {
+  filter:
+    drop-shadow(0 6px 18px rgba(0, 0, 0, 0.7))
+    drop-shadow(0 0 14px rgba(245, 200, 112, 0.6));
+}
+
+@keyframes nodePulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.45; }
+  50%      { transform: scale(1.3); opacity: 0; }
+}
+
+.nodeLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-display);
+  color: var(--neutral-200);
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow:
+    0 0 8px rgba(0, 0, 0, 0.85),
+    0 1px 2px rgba(0, 0, 0, 0.95);
+  padding: 2px 8px;
+  background: rgba(10, 20, 16, 0.55);
+  border-radius: var(--r-sm);
+  backdrop-filter: blur(2px);
+  transition: color var(--dur-fast) var(--ease-soft);
+}
+
+.node[data-locked='true'] .nodeLabel {
+  color: var(--neutral-500);
+}
+
+.node:hover:not([data-locked='true']) .nodeLabel {
+  color: var(--accent-200);
+  text-shadow:
+    0 0 8px rgba(0, 0, 0, 0.85),
+    0 0 14px rgba(245, 200, 112, 0.55);
+}

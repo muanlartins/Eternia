@@ -1,9 +1,10 @@
 import { Container, Graphics } from 'pixi.js';
-import type { ElesisSpec } from '../data/elesis.js';
+import type { CharacterSpec } from '../data/archer.js';
 import type { BuffSpec, PlayerModifiers } from '../data/buffs.js';
 import { DEFAULT_MODIFIERS } from '../data/buffs.js';
 import type { RunModifier } from '../data/modifiers.js';
 import type { Input } from './Input.js';
+import { Projectile } from './Projectile.js';
 import { PlayerState, STATE_COLOR, type AABB, type ActiveHit, type Facing } from './types.js';
 
 const GROUND_Y = 480;
@@ -82,7 +83,11 @@ export class Player {
   private facingMarker: Graphics;
   private hitboxMarker: Graphics;
 
-  constructor(private readonly spec: ElesisSpec) {
+  spec: CharacterSpec;
+  private pendingArrows: Projectile[] = [];
+
+  constructor(spec: CharacterSpec) {
+    this.spec = spec;
     this.mp = spec.maxMp;
     this.hp = spec.maxHp;
     this.dodgeBar = spec.dodgeBarMax;
@@ -93,6 +98,88 @@ export class Player {
     this.view.addChild(this.facingMarker);
     this.view.addChild(this.hitboxMarker);
     this.redraw();
+  }
+
+  switchSpec(newSpec: CharacterSpec) {
+    this.spec = newSpec;
+    this.maxHpRefresh();
+  }
+
+  private maxHpRefresh() {
+    this.hp = Math.min(this.hp, this.spec.maxHp);
+    this.mp = Math.min(this.mp, this.spec.maxMp);
+    this.dodgeBar = Math.min(this.dodgeBar, this.spec.dodgeBarMax);
+  }
+
+  flushPendingArrows(): Projectile[] {
+    const out = this.pendingArrows;
+    this.pendingArrows = [];
+    return out;
+  }
+
+  private spawnArrowsForState(damage: number, knockback: number) {
+    if (this.spec.kind !== 'archer') return;
+    if (this.state === PlayerState.JumpAtk) {
+      this.spawnArrow(damage, knockback, { angleDeg: 18 });
+      return;
+    }
+    if (this.state === PlayerState.Skill1) {
+      this.spawnArrow(damage, knockback, { angleDeg: -15 });
+      this.spawnArrow(damage, knockback, { angleDeg: 0 });
+      this.spawnArrow(damage, knockback, { angleDeg: 15 });
+      return;
+    }
+    if (this.state === PlayerState.Skill2) {
+      this.spawnArrow(Math.round(damage * 1.4), knockback, { angleDeg: -45, vxMul: 1.1 });
+      return;
+    }
+    if (this.state === PlayerState.Skill3) {
+      this.spawnArrow(damage, knockback, { angleDeg: -3, vxMul: 1.3, pierce: 5 });
+      this.spawnArrow(damage, knockback, { angleDeg: 0, vxMul: 1.3, pierce: 5 });
+      this.spawnArrow(damage, knockback, { angleDeg: 3, vxMul: 1.3, pierce: 5 });
+      return;
+    }
+    this.spawnArrow(damage, knockback);
+  }
+
+  private spawnArrow(
+    damage: number,
+    knockback: number,
+    opts?: { vyBias?: number; vxMul?: number; angleDeg?: number; pierce?: number },
+  ) {
+    if (this.spec.kind !== 'archer') return;
+    const cx = this.x + this.spec.width / 2 + this.facing * this.spec.arrowSpawnDx;
+    const cy = this.y + this.spec.height / 2 + this.spec.arrowSpawnDy;
+    const speed = this.spec.arrowSpeed * (opts?.vxMul ?? 1);
+    const angleRad = ((opts?.angleDeg ?? 0) * Math.PI) / 180;
+    const vx = this.facing * speed * Math.cos(angleRad);
+    const vy = (opts?.vyBias ?? 0) + speed * Math.sin(angleRad);
+    const projOpts: import('./Projectile.js').ProjectileOptions = {
+      vy,
+      gravity: this.spec.arrowGravity,
+      owner: 'player',
+      visual: 'arrow',
+    };
+    if (opts?.pierce !== undefined) projOpts.pierce = opts.pierce;
+    const arrow = new Projectile(
+      cx,
+      cy,
+      vx,
+      damage,
+      knockback,
+      this.spec.arrowWidth,
+      this.spec.arrowHeight,
+      this.spec.arrowLifetimeMs,
+      this.facing,
+      undefined,
+      projOpts,
+    );
+    this.pendingArrows.push(arrow);
+  }
+
+  setRenderingHidden(hidden: boolean) {
+    this.body.visible = !hidden;
+    this.facingMarker.visible = !hidden;
   }
 
   update(dtMs: number, input: Input, platforms: readonly AABB[] = []) {
@@ -345,6 +432,7 @@ export class Player {
 
   isInvincible(): boolean {
     if (this.spawnInvincibleMs > 0) return true;
+    if (this.spec.kind === 'archer' && this.state === PlayerState.Parry) return true;
     return (
       this.state === PlayerState.DodgeStand ||
       this.state === PlayerState.DodgeRoll ||
@@ -357,6 +445,7 @@ export class Player {
   }
 
   isParryActive(): boolean {
+    if (this.spec.kind === 'archer') return false;
     if (this.state !== PlayerState.Parry) return false;
     return (
       this.stateTimeMs >= this.spec.parryActiveStartMs &&
@@ -381,7 +470,9 @@ export class Player {
 
     const wasCharging = this.chargingActive;
     const counterEligible =
-      wasCharging && this.chargingMs >= this.spec.chargeTier1Ms;
+      this.spec.kind !== 'archer' &&
+      wasCharging &&
+      this.chargingMs >= this.spec.chargeTier1Ms;
     if (counterEligible) {
       const chargedMp =
         (this.chargingMs / this.spec.chargeTier3Ms) * this.spec.skills.s3.mpCost;
@@ -500,7 +591,7 @@ export class Player {
     const heightAboveGround = (GROUND_Y - this.spec.height) - this.y;
 
     const dtap = input.consumeDoubleTap();
-    if (dtap !== 0 && !this.airDashUsed && ax === dtap) {
+    if (this.spec.hasAirDash && dtap !== 0 && !this.airDashUsed && ax === dtap) {
       if (heightAboveGround >= this.spec.airDashMinHeight) {
         this.startAirDash(dtap);
         return;
@@ -750,12 +841,18 @@ export class Player {
     }
   }
 
-  private tickParry(_dtMs: number) {
-    this.vx = 0;
-    this.vy = 0;
+  private tickParry(dtMs: number) {
+    if (this.spec.kind === 'archer') {
+      const dt = dtMs / 1000;
+      this.vy += this.spec.gravity * dt;
+      if (this.vy > this.spec.maxFallSpeed) this.vy = this.spec.maxFallSpeed;
+    } else {
+      this.vx = 0;
+      this.vy = 0;
+    }
     if (this.stateTimeMs >= this.spec.parryDurationMs) {
       this.parryCooldownMs = this.spec.parryCooldownMs;
-      this.setState(PlayerState.Idle);
+      this.setState(this.onGround ? PlayerState.Idle : PlayerState.Fall);
     }
   }
 
@@ -816,8 +913,13 @@ export class Player {
   }
 
   private startParry() {
-    this.vx = 0;
-    this.vy = 0;
+    if (this.spec.kind === 'archer') {
+      this.vx = -this.facing * this.spec.stepBackHopVx;
+      this.vy = this.spec.stepBackHopVy;
+    } else {
+      this.vx = 0;
+      this.vy = 0;
+    }
     this.setState(PlayerState.Parry);
   }
 
@@ -1009,11 +1111,24 @@ export class Player {
     }
 
     if (activeIdx !== this.lastActiveHitIdx) {
-      if (activeIdx >= 0) this.currentAttackId++;
+      if (activeIdx >= 0) {
+        this.currentAttackId++;
+        if (this.spec.kind === 'archer') {
+          const h = hits[activeIdx]!;
+          const isCombo =
+            this.state === PlayerState.Attack1 ||
+            this.state === PlayerState.Attack2 ||
+            this.state === PlayerState.Attack3;
+          let dmg = h.damage;
+          if (isCombo) dmg *= this.modifiers.comboDamageMul;
+          this.spawnArrowsForState(Math.round(dmg), h.knockback);
+        }
+      }
       this.lastActiveHitIdx = activeIdx;
     }
 
     if (activeIdx < 0) return null;
+    if (this.spec.kind === 'archer') return null;
 
     const h = hits[activeIdx]!;
     const hb = h.hitbox;
@@ -1066,6 +1181,9 @@ export class Player {
     this.airDashBufferedDir = 0;
     this.airDashBufferedMs = 0;
     if (this.state === PlayerState.Hurt || this.state === PlayerState.Dead) {
+      return;
+    }
+    if (this.spec.kind === 'archer' && this.state === PlayerState.Parry) {
       return;
     }
     this.setState(PlayerState.Land);
@@ -1126,6 +1244,10 @@ export class Player {
         .stroke({ color: 0xffffff, width: 2 });
     }
 
+    this.redrawHitbox();
+  }
+
+  private redrawHitbox() {
     this.hitboxMarker.clear();
     if (this.activeHit !== null) {
       const hb = this.activeHit.bbox;

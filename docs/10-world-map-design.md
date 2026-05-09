@@ -55,12 +55,21 @@ para cada fase, e isso casa naturalmente com:
 
 | Zona | Descrição |
 |---|---|
-| **Top bar** | mantida — chapter label + difficulty selector (Easy/N/H) |
+| **Top bar** | ❌ removido (sem chapter label / difficulty / título) |
 | **Mapa** | `continent.png` full-frame painted, layer 0 |
-| **Trail** | SVG path entre nodes — solid no caminho desbloqueado, dashed nos locked |
-| **Nodes** | `<button>` posicionados em `%` absolutos (responsive ao letterbox) |
-| **Side panel** | desliza da direita ao selecionar node, fade-out ao sair de seleção |
-| **Bottom bar** | mantida — records (esq) + Solo/Aliança + ENTER hint (dir) |
+| **Trail** | SVG path entre nodes — dashed em loop |
+| **Nodes** | `<button>` posicionados em `%` absolutos (click = ir pra RoomList) |
+| **Side panel** | ❌ removido (info da fase migrou pra RoomList) |
+| **Bottom bar** | ❌ removido (records / Solo / Aliança / código / start moveram pra RoomList + RoomLobby) |
+| **Back link** | "← voltar" discreto no canto superior esquerdo |
+
+> **Pivot 2026-05-08:** strip de tudo no MissionSelect. Tela agora é
+> apenas o mapa clean. Click num node abre o `RoomList` (overlay sobre
+> o mapa) — segue o flow Grand Chase: list de salas + criar sala +
+> info da fase. Difficulty default 'normal' silenciosamente; UI pra
+> escolher pode voltar mais tarde. Solo/multiplayer agora é
+> consequência de "estar sozinho ou não na sala", definido na
+> `RoomLobby`.
 
 ## Esquema de coordenadas dos nodes
 

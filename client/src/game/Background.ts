@@ -1,4 +1,5 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, TilingSprite } from 'pixi.js';
+import { forestTexture } from './Forest.js';
 
 interface Palette {
   readonly skyTop: number;
@@ -59,6 +60,11 @@ export class Background {
   private starLayer: Graphics;
   private farLayer: Graphics;
   private midLayer: Graphics;
+
+  private paintedFar: TilingSprite | null = null;
+  private paintedMid: TilingSprite | null = null;
+  private paintedCanopy: TilingSprite | null = null;
+
   private currentPaletteId: string | null = null;
   private readonly gameW: number;
   private readonly gameH: number;
@@ -77,11 +83,79 @@ export class Background {
     this.setStage('default');
   }
 
+  private ensurePaintedForest(): void {
+    if (this.paintedFar && this.paintedMid && this.paintedCanopy) return;
+
+    const farTex = forestTexture('bgFar');
+    const midTex = forestTexture('bgMid');
+    const canopyTex = forestTexture('bgCanopy');
+    if (!farTex || !midTex || !canopyTex) return;
+
+    if (!this.paintedFar) {
+      this.paintedFar = new TilingSprite({
+        texture: farTex,
+        width: this.gameW,
+        height: this.gameH,
+      });
+      this.paintedFar.tileScale.set(this.gameH / farTex.height);
+      this.container.addChild(this.paintedFar);
+    }
+    if (!this.paintedMid) {
+      this.paintedMid = new TilingSprite({
+        texture: midTex,
+        width: this.gameW,
+        height: this.gameH,
+      });
+      this.paintedMid.tileScale.set(this.gameH / midTex.height);
+      this.container.addChild(this.paintedMid);
+    }
+    if (!this.paintedCanopy) {
+      this.paintedCanopy = new TilingSprite({
+        texture: canopyTex,
+        width: this.gameW,
+        height: this.gameH,
+      });
+      this.paintedCanopy.tileScale.set(this.gameH / canopyTex.height);
+      this.container.addChild(this.paintedCanopy);
+    }
+  }
+
+  private isForestPalette(paletteId: string): boolean {
+    return paletteId === 'forest' || paletteId === 'deep' || paletteId === 'boss';
+  }
+
+  private setProceduralVisible(visible: boolean): void {
+    this.skyLayer.visible = visible;
+    this.starLayer.visible = visible;
+    this.farLayer.visible = visible;
+    this.midLayer.visible = visible;
+  }
+
+  private setPaintedForestVisible(visible: boolean): void {
+    if (this.paintedFar) this.paintedFar.visible = visible;
+    if (this.paintedMid) this.paintedMid.visible = visible;
+    if (this.paintedCanopy) this.paintedCanopy.visible = visible;
+  }
+
   setStage(stageId: string) {
     const paletteId = this.paletteIdFor(stageId);
+    const palette = PALETTES[paletteId] ?? PALETTES.default!;
+
+    if (this.isForestPalette(paletteId)) {
+      this.ensurePaintedForest();
+      if (this.paintedFar) {
+        this.setProceduralVisible(false);
+        this.setPaintedForestVisible(true);
+        this.currentPaletteId = paletteId;
+        return;
+      }
+    } else {
+      this.setPaintedForestVisible(false);
+      this.setProceduralVisible(true);
+    }
+
     if (this.currentPaletteId === paletteId) return;
     this.currentPaletteId = paletteId;
-    const palette = PALETTES[paletteId] ?? PALETTES.default!;
     this.redraw(palette);
   }
 
@@ -168,6 +242,19 @@ export class Background {
     this.farLayer.y = cameraOffsetY * 0.5;
     this.midLayer.x = cameraOffsetX * 0.5;
     this.midLayer.y = cameraOffsetY;
+
+    if (this.paintedFar) {
+      this.paintedFar.tilePosition.x = cameraOffsetX * 0.15;
+      this.paintedFar.tilePosition.y = cameraOffsetY * 0.5;
+    }
+    if (this.paintedMid) {
+      this.paintedMid.tilePosition.x = cameraOffsetX * 0.4;
+      this.paintedMid.tilePosition.y = cameraOffsetY * 0.7;
+    }
+    if (this.paintedCanopy) {
+      this.paintedCanopy.tilePosition.x = cameraOffsetX * 0.7;
+      this.paintedCanopy.tilePosition.y = cameraOffsetY * 0.9;
+    }
   }
 }
 

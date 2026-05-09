@@ -10,12 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@eternia/shared": "workspace:*",
-    "howler": "^2.2.4",
-    "pixi.js": "^8.6.4"
+    "pixi.js": "^8.6.4",
+    "three": "^0.184.0"
   },
   "devDependencies": {
-    "@types/howler": "^2.2.12",
+    "@types/three": "^0.184.1",
     "vite": "^5.4.10"
   }
 }

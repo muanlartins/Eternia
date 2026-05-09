@@ -1,15 +1,49 @@
 export type HitIntensity = 'light' | 'medium' | 'heavy' | 'massive';
 
-export type BgmId = 'forest' | 'deep' | 'boss' | 'bossRage' | 'swamp';
+export type BgmId =
+  | 'forest'
+  | 'deep'
+  | 'boss'
+  | 'bossRage'
+  | 'swamp'
+  | 'menu'
+  | 'mission'
+  | 'forestCombat';
 
-interface BgmSpec {
-  rootHz: number;
-  bpm: number;
-  melody: readonly number[];
-  bass: readonly number[];
-  voice: 'pluck' | 'pad' | 'aggressive';
-  bassDurBeats: number;
-}
+import forestExploreUrl from '../assets/audio/bgm/forest-explore.mp3?url';
+import forestCombatUrl from '../assets/audio/bgm/forest-combat.mp3?url';
+import menuAmbientUrl from '../assets/audio/bgm/menu-ambient.mp3?url';
+import missionSelectUrl from '../assets/audio/bgm/mission-select.mp3?url';
+
+const BGM_URLS: Record<BgmId, string> = {
+  forest: forestExploreUrl,
+  forestCombat: forestCombatUrl,
+  deep: forestCombatUrl,
+  boss: forestCombatUrl,
+  bossRage: forestCombatUrl,
+  swamp: forestExploreUrl,
+  menu: menuAmbientUrl,
+  mission: missionSelectUrl,
+};
+
+const SFX_VOLUME_BOOST: Record<string, number> = {
+  'beast-step': 3.0,
+  'beast-hit': 3.0,
+};
+
+const SFX_GLOB = import.meta.glob('../assets/audio/sfx/*.wav', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+
+const SFX_URLS: Record<string, string> = (() => {
+  const out: Record<string, string> = {};
+  for (const [path, url] of Object.entries(SFX_GLOB)) {
+    const match = path.match(/([^/]+)\.wav$/);
+    if (match) out[match[1]!] = url;
+  }
+  return out;
+})();
 
 const SETTINGS_KEY = 'eternia.audio.v1';
 
@@ -48,63 +82,130 @@ function saveAudioSettings(s: AudioSettings) {
   }
 }
 
-const BGM_SPECS: Record<BgmId, BgmSpec> = {
-  forest: {
-    rootHz: 220,
-    bpm: 72,
-    melody: [12, 15, 19, 15, 12, 19, 17, 12, 12, 15, 19, 22, 19, 17, 15, -1],
-    bass: [-12, -1, -1, -1, -12, -1, -1, -1, -7, -1, -1, -1, -7, -1, -1, -1],
-    voice: 'pluck',
-    bassDurBeats: 4,
-  },
-  deep: {
-    rootHz: 196,
-    bpm: 60,
-    melody: [12, -1, -1, 17, -1, -1, 15, -1, 12, -1, -1, 17, -1, -1, 14, -1],
-    bass: [-12, -1, -1, -1, -1, -1, -1, -1, -10, -1, -1, -1, -1, -1, -1, -1],
-    voice: 'pad',
-    bassDurBeats: 8,
-  },
-  boss: {
-    rootHz: 146.83,
-    bpm: 110,
-    melody: [12, 14, 15, 14, 17, 15, 14, 12, 12, 14, 15, 17, 19, 17, 15, 14],
-    bass: [-12, -12, -7, -7, -12, -12, -10, -10, -12, -12, -7, -7, -12, -10, -7, -5],
-    voice: 'aggressive',
-    bassDurBeats: 1,
-  },
-  bossRage: {
-    rootHz: 146.83,
-    bpm: 130,
-    melody: [12, 14, 15, 17, 14, 15, 17, 19, 15, 17, 19, 22, 19, 17, 15, 14],
-    bass: [-12, -10, -7, -5, -12, -10, -7, -5, -12, -10, -7, -5, -12, -10, -8, -5],
-    voice: 'aggressive',
-    bassDurBeats: 1,
-  },
-  swamp: {
-    rootHz: 174.61,
-    bpm: 56,
-    melody: [12, -1, -1, 15, -1, -1, 13, -1, 12, -1, -1, 17, -1, -1, 14, -1],
-    bass: [-12, -1, -1, -1, -1, -1, -1, -1, -8, -1, -1, -1, -1, -1, -1, -1],
-    voice: 'pad',
-    bassDurBeats: 8,
-  },
-};
-
 export class GameAudio {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private bgmBus: GainNode | null = null;
   private sfxBus: GainNode | null = null;
-  private bgmGain: GainNode | null = null;
-  private bgmSpecId: BgmId | null = null;
-  private bgmStep = 0;
-  private bgmTimerId: number | null = null;
 
   private settings: AudioSettings;
 
+  private sfxBuffers = new Map<string, AudioBuffer>();
+  private bgmAudioEl: HTMLAudioElement | null = null;
+  private bgmAudioSource: MediaElementAudioSourceNode | null = null;
+  private bgmAudioGain: GainNode | null = null;
+  private bgmFileId: BgmId | null = null;
+  private sfxLibraryLoaded = false;
+
   constructor() {
     this.settings = loadAudioSettings();
+  }
+
+  async preloadSfxLibrary(): Promise<void> {
+    if (this.sfxLibraryLoaded) return;
+    this.ensureCtx();
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const entries = Object.entries(SFX_URLS);
+    await Promise.all(
+      entries.map(async ([name, url]) => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const arrayBuf = await res.arrayBuffer();
+          const audioBuf = await ctx.decodeAudioData(arrayBuf);
+          this.sfxBuffers.set(name, audioBuf);
+        } catch (err) {
+          console.warn(`[GameAudio] failed to preload sfx '${name}':`, err);
+        }
+      }),
+    );
+    this.sfxLibraryLoaded = true;
+  }
+
+  playSfx(name: string, volumeMul = 1): void {
+    if (this.settings.muted) return;
+    this.ensureCtx();
+    if (!this.ctx || !this.sfxBus) return;
+    const buffer = this.sfxBuffers.get(name);
+    if (!buffer) return;
+
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const gain = this.ctx.createGain();
+    gain.gain.value = volumeMul * (SFX_VOLUME_BOOST[name] ?? 1);
+
+    source.connect(gain).connect(this.sfxBus);
+    source.start();
+  }
+
+  playBgm(id: BgmId): void {
+    if (this.bgmFileId === id) return;
+    this.ensureCtx();
+    if (!this.ctx || !this.bgmBus) return;
+    const url = BGM_URLS[id];
+    if (!url) return;
+    const ctx = this.ctx;
+
+    if (this.bgmAudioGain && this.bgmAudioEl) {
+      const oldGain = this.bgmAudioGain;
+      const oldEl = this.bgmAudioEl;
+      const oldSrc = this.bgmAudioSource;
+      oldGain.gain.cancelScheduledValues(ctx.currentTime);
+      oldGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.7);
+      window.setTimeout(() => {
+        try {
+          oldEl.pause();
+          oldSrc?.disconnect();
+          oldGain.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }, 800);
+    }
+
+    const audio = new Audio(url);
+    audio.loop = true;
+    audio.crossOrigin = 'anonymous';
+    const source = ctx.createMediaElementSource(audio);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.0);
+    source.connect(gain).connect(this.bgmBus);
+
+    audio.play().catch((err) => {
+      console.warn('[GameAudio] BGM play() failed (autoplay policy?):', err);
+    });
+
+    this.bgmAudioEl = audio;
+    this.bgmAudioSource = source;
+    this.bgmAudioGain = gain;
+    this.bgmFileId = id;
+  }
+
+  stopBgm(): void {
+    if (this.bgmAudioGain && this.bgmAudioEl && this.ctx) {
+      const ctx = this.ctx;
+      const oldGain = this.bgmAudioGain;
+      const oldEl = this.bgmAudioEl;
+      const oldSrc = this.bgmAudioSource;
+      oldGain.gain.cancelScheduledValues(ctx.currentTime);
+      oldGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+      window.setTimeout(() => {
+        try {
+          oldEl.pause();
+          oldSrc?.disconnect();
+          oldGain.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }, 600);
+    }
+    this.bgmAudioEl = null;
+    this.bgmAudioSource = null;
+    this.bgmAudioGain = null;
+    this.bgmFileId = null;
   }
 
   private ensureCtx() {
@@ -197,404 +298,77 @@ export class GameAudio {
     this.setMasterVolume(v);
   }
 
-  playBgm(specId: BgmId) {
-    if (this.bgmSpecId === specId) return;
-    this.ensureCtx();
-    if (!this.ctx || !this.bgmBus) return;
-    const ctx = this.ctx;
-
-    if (this.bgmGain) {
-      const old = this.bgmGain;
-      old.gain.cancelScheduledValues(ctx.currentTime);
-      old.gain.setValueAtTime(old.gain.value, ctx.currentTime);
-      old.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.7);
-      window.setTimeout(() => {
-        try {
-          old.disconnect();
-        } catch {
-          /* ignore */
-        }
-      }, 800);
-    }
-    if (this.bgmTimerId !== null) {
-      window.clearTimeout(this.bgmTimerId);
-      this.bgmTimerId = null;
-    }
-
-    this.bgmSpecId = specId;
-    this.bgmStep = 0;
-
-    this.bgmGain = ctx.createGain();
-    this.bgmGain.gain.setValueAtTime(0, ctx.currentTime);
-    this.bgmGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.0);
-    this.bgmGain.connect(this.bgmBus);
-
-    this.scheduleBgmStep();
+  playHit(intensity: HitIntensity): void {
+    void intensity;
+    this.playSfx('arrow-hit-flesh');
   }
 
-  stopBgm() {
-    if (this.bgmTimerId !== null) {
-      window.clearTimeout(this.bgmTimerId);
-      this.bgmTimerId = null;
-    }
-    if (this.bgmGain && this.ctx) {
-      const ctx = this.ctx;
-      const old = this.bgmGain;
-      old.gain.cancelScheduledValues(ctx.currentTime);
-      old.gain.setValueAtTime(old.gain.value, ctx.currentTime);
-      old.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6);
-      window.setTimeout(() => {
-        try {
-          old.disconnect();
-        } catch {
-          /* ignore */
-        }
-      }, 700);
-    }
-    this.bgmGain = null;
-    this.bgmSpecId = null;
+  playParrySuccess(): void {
+    this.playSfx('parry-clang');
   }
 
-  private scheduleBgmStep() {
-    if (this.bgmSpecId === null || !this.ctx || !this.bgmGain) return;
-    const spec = BGM_SPECS[this.bgmSpecId];
-    const beatDur = 60 / spec.bpm;
-    const step = this.bgmStep % spec.melody.length;
-    const melodyOff = spec.melody[step];
-    const bassOff = spec.bass[step];
-
-    if (melodyOff !== undefined && melodyOff >= 0) {
-      const freq = spec.rootHz * Math.pow(2, melodyOff / 12);
-      this.playBgmMelodyNote(freq, beatDur, spec.voice);
-    }
-    if (bassOff !== undefined && bassOff >= 0) {
-      const freq = spec.rootHz * Math.pow(2, bassOff / 12);
-      this.playBgmBassNote(freq, beatDur * spec.bassDurBeats);
-    }
-
-    this.bgmStep++;
-    this.bgmTimerId = window.setTimeout(() => this.scheduleBgmStep(), beatDur * 1000);
+  playPlayerHurt(): void {
+    this.playSfx('hit-taken-grunt');
   }
 
-  private playBgmMelodyNote(freq: number, beatDur: number, voice: BgmSpec['voice']) {
-    if (!this.ctx || !this.bgmGain) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-    const dur = beatDur * (voice === 'pad' ? 1.4 : voice === 'aggressive' ? 0.5 : 0.7);
-
-    const osc = ctx.createOscillator();
-    osc.type = voice === 'pluck' ? 'triangle' : voice === 'pad' ? 'sine' : 'sawtooth';
-    osc.frequency.setValueAtTime(freq, now);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(voice === 'aggressive' ? 1900 : 1300, now);
-
-    const gain = ctx.createGain();
-    const peak = voice === 'pad' ? 0.06 : voice === 'aggressive' ? 0.09 : 0.07;
-    const attack = voice === 'pad' ? 0.15 : 0.01;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(peak, now + attack);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-
-    osc.connect(filter).connect(gain).connect(this.bgmGain);
-    osc.start(now);
-    osc.stop(now + dur + 0.05);
-  }
-
-  private playBgmBassNote(freq: number, dur: number) {
-    if (!this.ctx || !this.bgmGain) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-    const noteDur = dur * 0.95;
-
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, now);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.13, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + noteDur);
-
-    osc.connect(gain).connect(this.bgmGain);
-    osc.start(now);
-    osc.stop(now + noteDur + 0.05);
-  }
-
-  playHit(intensity: HitIntensity) {
-    if (this.settings.muted) return;
-    this.ensureCtx();
-    if (!this.ctx || !this.sfxBus) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-
-    const params = {
-      light: { freq: 280, drop: 140, gain: 0.16, dur: 0.1 },
-      medium: { freq: 200, drop: 90, gain: 0.24, dur: 0.14 },
-      heavy: { freq: 130, drop: 55, gain: 0.34, dur: 0.18 },
-      massive: { freq: 90, drop: 38, gain: 0.45, dur: 0.24 },
-    }[intensity];
-
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(params.freq, now);
-    osc.frequency.exponentialRampToValueAtTime(params.drop, now + params.dur * 0.6);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(2000, now);
-    filter.frequency.exponentialRampToValueAtTime(400, now + params.dur);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(params.gain, now + 0.005);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + params.dur);
-
-    osc.connect(filter).connect(gain).connect(this.sfxBus);
-    osc.start(now);
-    osc.stop(now + params.dur + 0.05);
-  }
-
-  playParrySuccess() {
-    if (this.settings.muted) return;
-    this.ensureCtx();
-    if (!this.ctx || !this.sfxBus) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-
-    const osc1 = ctx.createOscillator();
-    osc1.type = 'triangle';
-    osc1.frequency.setValueAtTime(880, now);
-    osc1.frequency.exponentialRampToValueAtTime(1760, now + 0.06);
-
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(1320, now);
-    osc2.frequency.exponentialRampToValueAtTime(2200, now + 0.06);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.32, now + 0.005);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(this.sfxBus);
-    osc1.start(now);
-    osc1.stop(now + 0.5);
-    osc2.start(now);
-    osc2.stop(now + 0.5);
-  }
-
-  playPlayerHurt() {
-    if (this.settings.muted) return;
-    this.ensureCtx();
-    if (!this.ctx || !this.sfxBus) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(220, now);
-    osc.frequency.exponentialRampToValueAtTime(110, now + 0.2);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(800, now);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.22, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-
-    osc.connect(filter).connect(gain).connect(this.sfxBus);
-    osc.start(now);
-    osc.stop(now + 0.32);
-  }
-
-  playMobDeath(isBoss: boolean) {
-    if (this.settings.muted) return;
-    this.ensureCtx();
-    if (!this.ctx || !this.sfxBus) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-
+  playMobDeath(isBoss: boolean): void {
     if (isBoss) {
-      const osc1 = ctx.createOscillator();
-      osc1.type = 'sawtooth';
-      osc1.frequency.setValueAtTime(120, now);
-      osc1.frequency.exponentialRampToValueAtTime(40, now + 1.0);
-
-      const osc2 = ctx.createOscillator();
-      osc2.type = 'sawtooth';
-      osc2.frequency.setValueAtTime(80, now);
-      osc2.frequency.exponentialRampToValueAtTime(28, now + 1.2);
-      osc2.detune.setValueAtTime(15, now);
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(400, now);
-      filter.frequency.exponentialRampToValueAtTime(80, now + 1.0);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.55, now + 0.06);
-      gain.gain.linearRampToValueAtTime(0.4, now + 0.4);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
-
-      osc1.connect(filter);
-      osc2.connect(filter);
-      filter.connect(gain).connect(this.sfxBus);
-      osc1.start(now);
-      osc1.stop(now + 1.4);
-      osc2.start(now);
-      osc2.stop(now + 1.4);
+      this.playSfx('victory-sting', 0.7);
     } else {
-      const osc = ctx.createOscillator();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(440, now);
-      osc.frequency.exponentialRampToValueAtTime(80, now + 0.18);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.18, now + 0.005);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-
-      osc.connect(gain).connect(this.sfxBus);
-      osc.start(now);
-      osc.stop(now + 0.3);
+      this.playSfx('beast-death');
     }
   }
 
-  playSkillCast(tier: number) {
-    if (this.settings.muted) return;
-    this.ensureCtx();
-    if (!this.ctx || !this.sfxBus) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-
-    const baseFreq = tier === 0 ? 330 : tier === 1 ? 440 : 550;
-    const dur = tier === 0 ? 0.32 : tier === 1 ? 0.45 : 0.65;
-
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(baseFreq, now);
-    osc.frequency.exponentialRampToValueAtTime(baseFreq * 2, now + dur * 0.45);
-
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'sawtooth';
-    osc2.frequency.setValueAtTime(baseFreq * 0.5, now);
-    osc2.frequency.exponentialRampToValueAtTime(baseFreq, now + dur * 0.45);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(700, now);
-    filter.frequency.exponentialRampToValueAtTime(2400, now + dur * 0.5);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.22, now + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-
-    osc.connect(filter);
-    osc2.connect(filter);
-    filter.connect(gain).connect(this.sfxBus);
-    osc.start(now);
-    osc.stop(now + dur + 0.05);
-    osc2.start(now);
-    osc2.stop(now + dur + 0.05);
+  playSkillCast(tier: number): void {
+    void tier;
+    this.playSfx('bow-shoot');
   }
 
-  playJump() {
-    if (this.settings.muted) return;
-    this.ensureCtx();
-    if (!this.ctx || !this.sfxBus) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(440, now);
-    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.08, now + 0.005);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-
-    osc.connect(gain).connect(this.sfxBus);
-    osc.start(now);
-    osc.stop(now + 0.12);
+  playJump(): void {
+    this.playSfx('jump');
   }
 
-  playBossPhase2() {
-    if (this.settings.muted) return;
-    this.ensureCtx();
-    if (!this.ctx || !this.sfxBus) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-
-    const osc1 = ctx.createOscillator();
-    osc1.type = 'sawtooth';
-    osc1.frequency.setValueAtTime(80, now);
-    osc1.frequency.exponentialRampToValueAtTime(180, now + 0.4);
-    osc1.frequency.exponentialRampToValueAtTime(110, now + 0.9);
-
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'square';
-    osc2.frequency.setValueAtTime(60, now);
-    osc2.frequency.exponentialRampToValueAtTime(140, now + 0.5);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(300, now);
-    filter.frequency.exponentialRampToValueAtTime(1600, now + 0.3);
-    filter.frequency.exponentialRampToValueAtTime(700, now + 1.0);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.5, now + 0.05);
-    gain.gain.linearRampToValueAtTime(0.4, now + 0.4);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
-
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(gain).connect(this.sfxBus);
-    osc1.start(now);
-    osc1.stop(now + 1.15);
-    osc2.start(now);
-    osc2.stop(now + 1.15);
+  playDash(): void {
+    this.playSfx('dash');
   }
 
-  playDash() {
-    if (this.settings.muted) return;
-    this.ensureCtx();
-    if (!this.ctx || !this.sfxBus) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-
-    const bufferSize = ctx.sampleRate * 0.12;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
-    }
-
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(900, now);
-    filter.Q.setValueAtTime(2, now);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-    noise.connect(filter).connect(gain).connect(this.sfxBus);
-    noise.start(now);
-    noise.stop(now + 0.13);
+  playBossPhase2(): void {
+    this.playSfx('victory-sting', 0.6);
   }
+
+  playBowDraw(): void { this.playSfx('bow-draw'); }
+  playBowShoot(): void { this.playSfx('bow-shoot'); }
+  playArrowFlight(): void { this.playSfx('arrow-flight'); }
+  playArrowHitFlesh(): void { this.playSfx('arrow-hit-flesh'); }
+  playArrowHitWood(): void { this.playSfx('arrow-hit-wood'); }
+  playLand(): void { this.playSfx('land'); }
+  playRollDodge(): void { this.playSfx('roll-dodge'); }
+  playNaiaDeath(): void { this.playSfx('naia-death'); }
+
+  private footstepIdx = 0;
+  playFootstep(): void {
+    this.footstepIdx = (this.footstepIdx + 1) % 4;
+    this.playSfx(`footstep-grass-${this.footstepIdx + 1}`);
+  }
+
+  playSpriteJab(): void { this.playSfx('sprite-jab'); }
+  playSpriteHop(): void { this.playSfx('sprite-hop'); }
+  playSpriteHit(): void { this.playSfx('sprite-hit'); }
+  playSpriteDeath(): void { this.playSfx('sprite-death'); }
+  playBeastStep(): void { this.playSfx('beast-step'); }
+  playBeastThorn(): void { this.playSfx('beast-thorn-launch'); }
+  playBeastHit(): void { this.playSfx('beast-hit'); }
+  playBeastDeath(): void { this.playSfx('beast-death'); }
+
+  playStageIntro(): void { this.playSfx('stage-intro'); }
+  playStageClear(): void { this.playSfx('stage-clear'); }
+  playPortalOpen(): void { this.playSfx('portal-open'); }
+  playVictorySting(): void { this.playSfx('victory-sting'); }
+  playDefeatSting(): void { this.playSfx('defeat-sting'); }
+
+  playUiHover(): void { this.playSfx('ui-hover'); }
+  playUiClick(): void { this.playSfx('ui-click'); }
+  playUiConfirm(): void { this.playSfx('ui-confirm'); }
+  playUiCancel(): void { this.playSfx('ui-cancel'); }
+  playCardPickup(): void { this.playSfx('card-pickup'); }
 }

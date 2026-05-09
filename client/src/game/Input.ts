@@ -68,6 +68,8 @@ export class Input {
   }
 
   private onKeyDown = (e: KeyboardEvent) => {
+    const t = e.target;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
     const k = KEY_MAP[e.code];
     if (!k) return;
     if (e.repeat) return;
@@ -92,6 +94,8 @@ export class Input {
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
+    const t = e.target;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
     const k = KEY_MAP[e.code];
     if (!k) return;
     if (this.held.has(k)) {

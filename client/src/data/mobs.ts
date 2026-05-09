@@ -24,6 +24,8 @@ export interface AttackVariant {
   readonly moveDuringActiveVy?: number;
   readonly enterActiveJumpVy?: number;
   readonly projectile?: ProjectileSpec;
+  readonly minRange?: number;
+  readonly maxRange?: number;
 }
 
 export interface Phase2Spec {
@@ -57,17 +59,19 @@ export interface MobSpec {
   readonly phase2?: Phase2Spec;
   readonly hasGravity?: boolean;
   readonly hoverY?: number;
+  readonly model3DUrl?: string;
+  readonly baseRotationY3D?: number;
 }
 
 export const SLIM: MobSpec = {
   id: 'slim',
   displayName: 'Slims',
-  width: 36,
-  height: 32,
+  width: 56,
+  height: 44,
   maxHp: 80,
   walkSpeed: 90,
-  aggroRange: 220,
-  attackRange: 54,
+  aggroRange: 280,
+  attackRange: 240,
   attacks: [
     {
       telegraphMs: 420,
@@ -76,7 +80,27 @@ export const SLIM: MobSpec = {
       damage: 12,
       knockback: 280,
       hitbox: { cx: 28, y: -2, w: 44, h: 36 },
+      weight: 2,
+      maxRange: 70,
+    },
+    {
+      telegraphMs: 600,
+      activeMs: 80,
+      recoveryMs: 520,
+      damage: 10,
+      knockback: 220,
+      hitbox: { cx: 28, y: -10, w: 24, h: 24 },
       weight: 1,
+      minRange: 80,
+      maxRange: 240,
+      projectile: {
+        speed: 280,
+        lifetimeMs: 1400,
+        hitboxW: 14,
+        hitboxH: 14,
+        originDx: 24,
+        originDy: 12,
+      },
     },
   ],
   attackCooldownMs: 1400,
@@ -86,17 +110,18 @@ export const SLIM: MobSpec = {
   parriedDamageMultiplier: 1.7,
   comboBreakThreshold: 3,
   respawnMs: 3000,
+  model3DUrl: '/models/forest-sprite.glb',
 };
 
 export const RACOON: MobSpec = {
   id: 'racoon',
   displayName: 'Racoons',
-  width: 46,
-  height: 52,
+  width: 76,
+  height: 60,
   maxHp: 130,
   walkSpeed: 75,
-  aggroRange: 280,
-  attackRange: 68,
+  aggroRange: 320,
+  attackRange: 180,
   attacks: [
     {
       telegraphMs: 540,
@@ -105,7 +130,20 @@ export const RACOON: MobSpec = {
       damage: 18,
       knockback: 360,
       hitbox: { cx: 34, y: -4, w: 56, h: 50 },
+      weight: 2,
+      maxRange: 90,
+    },
+    {
+      telegraphMs: 720,
+      activeMs: 220,
+      recoveryMs: 600,
+      damage: 24,
+      knockback: 480,
+      hitbox: { cx: 50, y: -8, w: 70, h: 56 },
       weight: 1,
+      minRange: 100,
+      maxRange: 180,
+      moveDuringActiveVx: 280,
     },
   ],
   attackCooldownMs: 1800,
@@ -115,6 +153,8 @@ export const RACOON: MobSpec = {
   parriedDamageMultiplier: 1.7,
   comboBreakThreshold: 4,
   respawnMs: 4000,
+  model3DUrl: '/models/bramble-breast.glb',
+  baseRotationY3D: Math.PI / 4,
 };
 
 export const ARCHER: MobSpec = {

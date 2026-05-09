@@ -1,4 +1,9 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Sprite } from 'pixi.js';
+import {
+  forestTexture,
+  groundVariantFor,
+  platformVariantFor,
+} from './Forest.js';
 import { MOB_SPECS, type StageSpec } from '../data/stages.js';
 import { Mob } from './Mob.js';
 import { Projectile } from './Projectile.js';
@@ -19,6 +24,7 @@ export class Stage {
   private platformGfx: Graphics[] = [];
   private platformBoxes: AABB[] = [];
   private projectiles: Projectile[] = [];
+  private recentlySpawned: Projectile[] = [];
   private wallLeft: Graphics | null = null;
   private wallRight: Graphics | null = null;
   private portal: Graphics | null = null;
@@ -61,13 +67,39 @@ export class Stage {
       .stroke({ color: 0x5a6678, width: 2, alpha: 0.7 });
     this.worldStage.addChild(this.wallRight);
 
+    const tileW = 256;
+    const tileH = 128;
+    const groundCount = Math.ceil((this.spec.width + tileW * 2) / tileW);
+    for (let i = 0; i < groundCount; i++) {
+      const variant = groundVariantFor(i);
+      const tex = forestTexture(variant);
+      if (!tex) break;
+      const tile = new Sprite(tex);
+      tile.x = i * tileW;
+      tile.y = GROUND_Y;
+      tile.width = tileW;
+      tile.height = tileH;
+      this.worldStage.addChild(tile);
+    }
+
     for (const p of this.spec.platforms ?? []) {
-      const g = new Graphics();
-      g.rect(p.x, p.y, p.w, p.h)
-        .fill({ color: 0x4b5563, alpha: 0.95 })
-        .stroke({ color: 0x9ca3af, width: 1, alpha: 0.7 });
-      this.worldStage.addChild(g);
-      this.platformGfx.push(g);
+      const variant = platformVariantFor(p.w, p.h);
+      const tex = forestTexture(variant);
+      if (tex) {
+        const sprite = new Sprite(tex);
+        sprite.x = p.x;
+        sprite.y = p.y;
+        sprite.width = p.w;
+        sprite.height = p.h;
+        this.worldStage.addChild(sprite);
+      } else {
+        const g = new Graphics();
+        g.rect(p.x, p.y, p.w, p.h)
+          .fill({ color: 0x4b5563, alpha: 0.95 })
+          .stroke({ color: 0x9ca3af, width: 1, alpha: 0.7 });
+        this.worldStage.addChild(g);
+        this.platformGfx.push(g);
+      }
       this.platformBoxes.push({ x: p.x, y: p.y, w: p.w, h: p.h });
     }
 
@@ -100,6 +132,7 @@ export class Stage {
       for (const p of newProjectiles) {
         this.projectiles.push(p);
         this.worldStage.addChild(p.view);
+        this.recentlySpawned.push(p);
       }
     }
     for (const p of this.projectiles) p.update(dtMs);
@@ -146,6 +179,25 @@ export class Stage {
 
   getProjectiles(): readonly Projectile[] {
     return this.projectiles;
+  }
+
+  addPlayerProjectiles(projs: readonly Projectile[]) {
+    for (const p of projs) {
+      this.projectiles.push(p);
+      this.worldStage.addChild(p.view);
+      if (!p.isGhost) this.recentlySpawned.push(p);
+    }
+  }
+
+  addRemoteProjectile(p: Projectile) {
+    this.projectiles.push(p);
+    this.worldStage.addChild(p.view);
+  }
+
+  consumeRecentlySpawned(): Projectile[] {
+    const out = this.recentlySpawned;
+    this.recentlySpawned = [];
+    return out;
   }
 
   getPlatforms(): readonly AABB[] {

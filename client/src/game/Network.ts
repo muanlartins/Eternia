@@ -1,10 +1,3 @@
-// Phase 8.C: WS layer for room presence + position broadcast.
-//
-// The same WS connection used for the Phase-0 hello is now repurposed
-// for multiplayer presence. Once joined to a room, the client streams
-// its player state at ~10 Hz; the server fans the message out to
-// everyone else in the same room. Mob/world state is NOT shared yet.
-
 export interface RemoteStatePayload {
   x: number;
   y: number;
@@ -61,6 +54,23 @@ export interface PlayerHitPayload {
   backstab: boolean;
 }
 
+export interface ProjectileSpawnPayload {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  width: number;
+  height: number;
+  facing: -1 | 1;
+  damage: number;
+  knockback: number;
+  lifetimeMs: number;
+  gravity: number;
+  visual: 'arrow' | 'rect';
+  owner: 'player' | 'mob';
+  pierce: number;
+}
+
 export interface NetworkHandlers {
   onHello?: (v: string) => void;
   onRoster?: (others: readonly RemoteRosterEntry[]) => void;
@@ -76,6 +86,7 @@ export interface NetworkHandlers {
   onMobEvent?: (payload: unknown) => void;
   onPlayerHit?: (hit: PlayerHitPayload) => void;
   onStagePhase?: (phase: string, payload: unknown) => void;
+  onProjectileSpawn?: (sourceUserId: number, proj: ProjectileSpawnPayload) => void;
   onStatusChange?: (status: 'connecting' | 'connected' | 'closed' | 'error') => void;
 }
 
@@ -149,13 +160,16 @@ export class Network {
     this.send({ t: 'stage_phase', phase, payload: payload ?? null });
   }
 
+  sendProjectileSpawn(proj: ProjectileSpawnPayload) {
+    if (this.currentRoomCode === null) return;
+    this.send({ t: 'projectile_spawn', proj });
+  }
+
   private send(payload: unknown) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     try {
       this.ws.send(JSON.stringify(payload));
-    } catch (e) {
-      console.warn('[net] send failed', e);
-    }
+    } catch {}
   }
 
   private connect() {
@@ -168,7 +182,6 @@ export class Network {
       if (this.wantsHello) {
         this.send({ t: 'hello', v: '0.0.1' });
       }
-      // If we were in a room before reconnecting, rejoin it.
       if (this.currentRoomCode && this.currentToken) {
         this.send({ t: 'enter_room', code: this.currentRoomCode, token: this.currentToken });
       }
@@ -251,6 +264,11 @@ export class Network {
       case 'stage_phase':
         if (typeof msg.phase === 'string') {
           this.handlers.onStagePhase?.(msg.phase, msg.payload);
+        }
+        break;
+      case 'projectile_spawn':
+        if (typeof msg.userId === 'number' && msg.proj) {
+          this.handlers.onProjectileSpawn?.(msg.userId, msg.proj as ProjectileSpawnPayload);
         }
         break;
     }

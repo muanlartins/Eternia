@@ -1,4 +1,8 @@
 export const ELESIS = {
+  kind: 'knight' as const,
+  hasAirDash: true,
+  hasParry: true,
+
   width: 32,
   height: 64,
 

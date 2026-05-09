@@ -1,0 +1,495 @@
+/*
+ * In-game HUD — diegetic, non-intrusive overlay
+ * Layout: top-left (vitals) · top-right (timer + lives + server) · bottom-center (skill tray)
+ * Buffs strip below vitals · stage banner above
+ */
+
+.root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--font-body);
+  color: var(--neutral-50);
+  display: none;
+  user-select: none;
+}
+
+.root[data-visible='true'] {
+  display: block;
+}
+
+/* ============= Top-left vitals panel ============= */
+
+.vitals {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 280px;
+}
+
+.vitalsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 2px;
+}
+
+.vitalsName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-display);
+  color: var(--neutral-50);
+  text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+.vitalsLives {
+  display: flex;
+  gap: 2px;
+  font-family: var(--font-mono);
+}
+
+.vitalsHeart {
+  width: 12px;
+  height: 12px;
+  background:
+    radial-gradient(circle at 35% 30%, #ff8090 0%, #d04050 60%, #802030 100%);
+  clip-path: polygon(50% 100%, 0 35%, 0 15%, 25% 0, 50% 20%, 75% 0, 100% 15%, 100% 35%);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.vitalsHeartLost {
+  background: rgba(108, 120, 114, 0.4);
+  filter: none;
+}
+
+/* HP / MP bars */
+
+.bar {
+  position: relative;
+  height: 14px;
+  background: rgba(8, 12, 10, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.barFill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  transition: transform var(--dur-fast) var(--ease-soft);
+  will-change: transform;
+}
+
+.barLabel {
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-wider);
+  color: var(--neutral-50);
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  z-index: 2;
+}
+
+.barValue {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--neutral-50);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  z-index: 2;
+}
+
+.hpBar .barFill {
+  background:
+    linear-gradient(180deg, #ff5566 0%, #d03040 50%, #ff5566 100%);
+  box-shadow: 0 0 12px rgba(208, 64, 80, 0.4);
+}
+
+.mpBar .barFill {
+  background:
+    linear-gradient(180deg, #5b8bd4 0%, #3a6bb8 50%, #5b8bd4 100%);
+  box-shadow: 0 0 12px rgba(91, 139, 212, 0.4);
+}
+
+/* Charge tier ticks on MP bar */
+.mpTicks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.mpTick {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.mpCursor {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.mpCursor[data-tier='0'] { background: #ddddee; color: #ddddee; }
+.mpCursor[data-tier='1'] { background: #ffe066; color: #ffe066; }
+.mpCursor[data-tier='2'] { background: #ffaa44; color: #ffaa44; }
+.mpCursor[data-tier='3'] { background: #ff5544; color: #ff5544; }
+
+/* Dodge bar — small chips */
+.dodge {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.dodgeChip {
+  flex: 1;
+  height: 5px;
+  border-radius: 2px;
+  background: rgba(8, 12, 10, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background var(--dur-fast) var(--ease-soft);
+}
+
+.dodgeChipFilled {
+  background: linear-gradient(180deg, #88eecc, #44bb88);
+  box-shadow: 0 0 6px rgba(106, 191, 149, 0.55);
+  border-color: rgba(106, 191, 149, 0.6);
+}
+
+/* Parry buff badge */
+.parryBuff {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 10px;
+  background:
+    linear-gradient(180deg, rgba(245, 200, 112, 0.18), rgba(168, 125, 77, 0.22));
+  border: 1px solid rgba(245, 200, 112, 0.6);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: var(--tracking-wider);
+  color: var(--accent-200);
+  text-transform: uppercase;
+  margin-top: var(--space-1);
+  width: max-content;
+  box-shadow: 0 0 12px rgba(245, 200, 112, 0.3);
+  animation: parryPulse 1.4s ease-in-out infinite;
+}
+
+.parryBuff[data-active='true'] {
+  display: flex;
+}
+
+.parryBuffStar {
+  color: var(--accent-300);
+}
+
+@keyframes parryPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(245, 200, 112, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(245, 200, 112, 0.55); }
+}
+
+/* Buffs strip below */
+.buffs {
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: var(--tracking-wide);
+  color: rgba(184, 194, 187, 0.65);
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.buffsLabel {
+  color: var(--accent-300);
+  margin-right: var(--space-2);
+}
+
+.buffsModifier {
+  color: var(--accent-300);
+  margin-right: var(--space-2);
+}
+
+/* ============= Top-right meta ============= */
+
+.meta {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  text-align: right;
+}
+
+.timer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 10px;
+  background: rgba(15, 28, 24, 0.72);
+  border: 1px solid rgba(46, 139, 87, 0.18);
+  border-radius: var(--r-base);
+  backdrop-filter: blur(4px);
+}
+
+.timerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-400);
+  box-shadow: 0 0 6px var(--accent-400);
+  animation: timerPulse 2s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.timerValue {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--text-base);
+  color: var(--neutral-50);
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.serverInfo {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: var(--tracking-wider);
+  color: rgba(184, 194, 187, 0.45);
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+/* ============= Top-center stage banner ============= */
+
+.stageInfo {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: rgba(15, 28, 24, 0.72);
+  border: 1px solid rgba(46, 139, 87, 0.18);
+  border-radius: var(--r-base);
+  backdrop-filter: blur(4px);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--neutral-200);
+}
+
+.stageBadge {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: var(--tracking-display);
+  color: var(--accent-300);
+}
+
+.stageDivider {
+  width: 1px;
+  height: 12px;
+  background: rgba(46, 139, 87, 0.3);
+}
+
+.stageMobs {
+  color: rgba(184, 194, 187, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============= Bottom-center skill tray ============= */
+
+.skillTray {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.skillSlot {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  background:
+    linear-gradient(180deg, rgba(22, 39, 31, 0.85), rgba(15, 28, 24, 0.95));
+  border: 1px solid rgba(46, 139, 87, 0.32);
+  border-radius: var(--r-base);
+  /* Soft chamfered top-right */
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color var(--dur-base) var(--ease-soft),
+    box-shadow var(--dur-base) var(--ease-soft),
+    transform var(--dur-fast) var(--ease-soft);
+}
+
+.skillSlot[data-ready='true'] {
+  border-color: rgba(91, 139, 212, 0.65);
+  box-shadow: 0 0 14px rgba(91, 139, 212, 0.3);
+}
+
+.skillSlot[data-ready='false'] {
+  filter: grayscale(0.6);
+  opacity: 0.65;
+}
+
+.skillSlotKey {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: var(--tracking-wider);
+  color: var(--accent-300);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  z-index: 2;
+}
+
+.skillSlotCost {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 9px;
+  color: rgba(91, 139, 212, 0.75);
+  font-variant-numeric: tabular-nums;
+  z-index: 2;
+}
+
+.skillSlotGlyph {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--neutral-100);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  z-index: 1;
+}
+
+.skillSlot[data-ready='true']:hover .skillSlotGlyph {
+  color: var(--accent-200);
+}
+
+.skillSlotCd {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 12, 10, 0.6);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--accent-300);
+  font-variant-numeric: tabular-nums;
+  z-index: 3;
+  border-radius: inherit;
+  display: none;
+}
+
+.skillSlot[data-ready='false'] .skillSlotCd {
+  display: grid;
+}
+
+/* Cooldown sweep overlay */
+.skillSlotSweep {
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from 0deg,
+    rgba(46, 139, 87, 0.55) 0%,
+    rgba(46, 139, 87, 0.55) var(--cd-pct, 100%),
+    transparent var(--cd-pct, 100%)
+  );
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.skillSlot[data-ready='true'] .skillSlotSweep {
+  display: none;
+}
+
+.skillTrayDivider {
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(180deg, transparent, rgba(46, 139, 87, 0.28), transparent);
+  margin: 0 var(--space-1);
+}
+
+/* Quick-attack reminder slot (Z) */
+.quickSlot {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  background: rgba(15, 28, 24, 0.75);
+  border: 1px solid rgba(212, 165, 116, 0.4);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quickSlotKey {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 9px;
+  color: var(--accent-300);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+.quickSlotGlyph {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--neutral-100);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}

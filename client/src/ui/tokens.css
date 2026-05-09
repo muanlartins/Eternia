@@ -1,0 +1,175 @@
+/*
+ * Eternia design tokens — "Twilight Forest Korean Anime"
+ *
+ * Aesthetic: deep teal-emerald base (Naia palette) + warm hearth amber accent.
+ * Type: Cinzel (display fantasy) + Pretendard (Korean modern body) +
+ * JetBrains Mono (gameplay stats / numerics).
+ * Motion: deliberate, soft eases — not snappy. 320-480ms typical.
+ */
+
+:root {
+  /* ----- Backgrounds ----- */
+  --bg-deep: #0a1410;
+  --bg-base: #0f1c18;
+  --bg-elevated: #16271f;
+  --bg-overlay: #1d3329;
+  --bg-hover: #234135;
+
+  /* ----- Primary (emerald — Naia hair, tunic) ----- */
+  --primary-50: #ecf7f0;
+  --primary-100: #d4f0e0;
+  --primary-200: #a3dcbe;
+  --primary-300: #6abf95;
+  --primary-400: #44a374;
+  --primary-500: #2e8b57;
+  --primary-600: #226d44;
+  --primary-700: #1a5f3a;
+  --primary-800: #0d3520;
+  --primary-900: #07211a;
+
+  /* ----- Accent (warm amber — hearth, leather, gold trim) ----- */
+  --accent-100: #fdf3d8;
+  --accent-200: #f9e3a8;
+  --accent-300: #f5c870;
+  --accent-400: #e6b057;
+  --accent-500: #d4a574;
+  --accent-600: #a87d4d;
+  --accent-700: #8b6a3d;
+  --accent-800: #5e4828;
+
+  /* ----- Neutrals (cool grey-greens) ----- */
+  --neutral-50: #e8ede9;
+  --neutral-100: #d6dcd8;
+  --neutral-200: #b8c2bb;
+  --neutral-300: #94a09a;
+  --neutral-400: #6c7872;
+  --neutral-500: #4f5a55;
+  --neutral-600: #424b46;
+  --neutral-700: #303733;
+  --neutral-800: #1f2622;
+  --neutral-900: #11161a;
+
+  /* ----- Semantic ----- */
+  --danger: #d04050;
+  --danger-glow: rgb(208 64 80 / 0.55);
+  --warning: #d4a574;
+  --success: #2e8b57;
+  --info: #5b8bd4;
+
+  /* ----- Typography ----- */
+  --font-display: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --font-body: 'Pretendard', 'Apple SD Gothic Neo', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  --text-2xs: 0.6875rem;   /* 11px */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 2rem;        /* 32px */
+  --text-4xl: 2.75rem;     /* 44px */
+  --text-5xl: 3.75rem;     /* 60px */
+  --text-6xl: 5rem;        /* 80px */
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-wider: 0.12em;
+  --tracking-widest: 0.24em;
+  --tracking-display: 0.18em;
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* ----- Spacing ----- */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-1: 0.25rem;   /* 4 */
+  --space-2: 0.5rem;    /* 8 */
+  --space-3: 0.75rem;   /* 12 */
+  --space-4: 1rem;      /* 16 */
+  --space-5: 1.5rem;    /* 24 */
+  --space-6: 2rem;      /* 32 */
+  --space-7: 3rem;      /* 48 */
+  --space-8: 4rem;      /* 64 */
+  --space-9: 6rem;      /* 96 */
+  --space-10: 8rem;     /* 128 */
+
+  /* ----- Radii ----- */
+  --r-none: 0;
+  --r-sm: 4px;
+  --r-base: 8px;
+  --r-lg: 12px;
+  --r-xl: 18px;
+  --r-2xl: 24px;
+  --r-pill: 999px;
+
+  /* ----- Shadows + glows ----- */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-base: 0 4px 12px rgb(0 0 0 / 0.5), 0 1px 0 rgb(255 255 255 / 0.04) inset;
+  --shadow-elevated: 0 8px 32px rgb(0 0 0 / 0.55), 0 1px 0 rgb(255 255 255 / 0.06) inset;
+  --shadow-deep: 0 16px 48px rgb(0 0 0 / 0.65), 0 1px 0 rgb(255 255 255 / 0.05) inset;
+
+  --glow-emerald-sm: 0 0 12px rgb(46 139 87 / 0.35);
+  --glow-emerald: 0 0 24px rgb(46 139 87 / 0.45);
+  --glow-amber-sm: 0 0 12px rgb(212 165 116 / 0.35);
+  --glow-amber: 0 0 28px rgb(212 165 116 / 0.5);
+
+  /* Hairline borders that catch light differently */
+  --border-faint: 1px solid rgb(255 255 255 / 0.04);
+  --border-soft: 1px solid rgba(46, 139, 87, 0.15);
+  --border-emerald: 1px solid rgba(46, 139, 87, 0.4);
+  --border-amber: 1px solid rgba(212, 165, 116, 0.45);
+
+  /* ----- Motion ----- */
+  --ease-soft: cubic-bezier(0.32, 0.72, 0.27, 0.99);
+  --ease-decel: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-accel: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-snap: cubic-bezier(0.85, 0, 0.15, 1);
+  --ease-anime: cubic-bezier(0.5, 0.5, 0.2, 1.4);  /* slight overshoot */
+
+  --dur-fast: 200ms;
+  --dur-base: 320ms;
+  --dur-slow: 480ms;
+  --dur-stage: 640ms;
+}
+
+/* Reset selectively without removing too much */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Numeric tabular figures by default in mono spaces */
+.eternia-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Display headings get the fantasy treatment */
+.eternia-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+}

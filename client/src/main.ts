@@ -1,27 +1,36 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import { ELESIS } from './data/elesis.js';
-import { BUFFS, pickRandomBuffs } from './data/buffs.js';
+import { BUFFS, pickRandomBuffs, type BuffSpec } from './data/buffs.js';
 import { Input } from './game/Input.js';
 import { Player } from './game/Player.js';
 import { Camera } from './game/Camera.js';
 import { Stage } from './game/Stage.js';
+import { Projectile } from './game/Projectile.js';
+import { ARCHER } from './data/archer.js';
 import { HitFx } from './game/HitFx.js';
-import { BuffOffer } from './game/BuffOffer.js';
 import { GameAudio, type BgmId, type HitIntensity } from './game/Audio.js';
-import { VictoryStats, type RunStatsView } from './game/VictoryStats.js';
-import { Hud } from './game/Hud.js';
+import { HtmlHud } from './ui/screens/Hud/Hud.js';
+import { CardPick, type CardPickEntry } from './ui/screens/CardPick/CardPick.js';
+import {
+  VictoryStats as HtmlVictoryStats,
+  type RunStatsView,
+} from './ui/screens/VictoryStats/VictoryStats.js';
+import { MenuScreen as HtmlMenuScreen } from './ui/screens/MenuScreen/MenuScreen.js';
+import { BossHpBar as HtmlBossHpBar } from './ui/screens/BossHpBar/BossHpBar.js';
+import { MiniMap as HtmlMiniMap } from './ui/screens/MiniMap/MiniMap.js';
+import { ThreePilot } from './three/ThreePilot.js';
+import { GameThreeLayer } from './three/GameThreeLayer.js';
 import { Background } from './game/Background.js';
-import { RunModifierOffer } from './game/RunModifierOffer.js';
-import { pickRandomModifiers } from './data/modifiers.js';
-import { MiniMap } from './game/MiniMap.js';
-import { MenuScreen } from './game/MenuScreen.js';
-import { BossHpBar } from './game/BossHpBar.js';
+import { loadForestArt } from './game/Forest.js';
+import { pickRandomModifiers, type RunModifier } from './data/modifiers.js';
 import { Auth, fetchLeaderboard, type Room } from './game/Auth.js';
-import { LoginScreen } from './game/LoginScreen.js';
-import { CharacterSelect } from './game/CharacterSelect.js';
-import { MissionSelect } from './game/MissionSelect.js';
-import { LobbyScreen } from './game/LobbyScreen.js';
-import { RoomLobby } from './game/RoomLobby.js';
+import './ui/tokens.css';
+import { Login } from './ui/screens/Login/Login.js';
+import { CharacterSelect as HtmlCharacterSelect } from './ui/screens/CharacterSelect/CharacterSelect.js';
+import { MissionSelect as HtmlMissionSelect } from './ui/screens/MissionSelect/MissionSelect.js';
+import { RoomList as HtmlRoomList } from './ui/screens/RoomList/RoomList.js';
+import { Lobby as HtmlLobby } from './ui/screens/Lobby/Lobby.js';
+import { RoomLobby as HtmlRoomLobby } from './ui/screens/RoomLobby/RoomLobby.js';
 import { Network, type RoomStatus } from './game/Network.js';
 import { RemotePlayer } from './game/RemotePlayer.js';
 import { findMission } from './data/missions.js';
@@ -124,6 +133,22 @@ async function main() {
   if (!container) throw new Error('#game-container missing');
   container.appendChild(app.canvas);
 
+  const stageEl = document.getElementById('stage');
+  if (stageEl) {
+    const fitStage = () => {
+      const sx = window.innerWidth / GAME_W;
+      const sy = window.innerHeight / GAME_H;
+      const scale = Math.min(sx, sy);
+      const tx = Math.round((window.innerWidth - GAME_W * scale) / 2);
+      const ty = Math.round((window.innerHeight - GAME_H * scale) / 2);
+      stageEl.style.setProperty('--scale', String(scale));
+      stageEl.style.setProperty('--tx', `${tx}px`);
+      stageEl.style.setProperty('--ty', `${ty}px`);
+    };
+    window.addEventListener('resize', fitStage);
+    fitStage();
+  }
+
   const bgStage = new Container();
   const worldStage = new Container();
   const uiStage = new Container();
@@ -140,26 +165,10 @@ async function main() {
     .fill({ color: 0x1f2937 });
   worldStage.addChild(ground);
 
-  for (let x = -4000; x <= 4000; x += 200) {
-    const line = new Graphics();
-    const isMajor = x % 1000 === 0;
-    line
-      .rect(x, GROUND_Y - 20, 2, 20)
-      .fill({ color: isMajor ? 0x6b7280 : 0x374151 });
-    worldStage.addChild(line);
-    if (isMajor) {
-      const label = new Text({
-        text: `${x}`,
-        style: { fontFamily: 'monospace', fontSize: 10, fill: 0x6b7280 },
-      });
-      label.x = x + 4;
-      label.y = GROUND_Y - 18;
-      worldStage.addChild(label);
-    }
-  }
-
   const input = new Input({ doubleTapWindowMs: ELESIS.doubleTapWindowMs });
   const player = new Player(ELESIS);
+
+  let activeCharacterId = 'astrid';
 
   let currentMission: MissionSpec = MISSIONS[0]!;
   let currentStageIdx = 0;
@@ -188,6 +197,10 @@ async function main() {
     });
   }
 
+  void loadForestArt().then(() => {
+    background.setStage(currentStageSpec().id);
+  });
+
   let stage = newStage();
   stage.spawn();
   background.setStage(currentStageSpec().id);
@@ -199,8 +212,7 @@ async function main() {
 
   const camera = new Camera(worldStage, GAME_W, GAME_H);
 
-  const hud = new Hud(GAME_W);
-  uiStage.addChild(hud.container);
+  const htmlHud = new HtmlHud();
 
   const stageBanner = new Text({
     text: '',
@@ -218,50 +230,79 @@ async function main() {
   stageBanner.visible = false;
   uiStage.addChild(stageBanner);
 
-  const buffOffer = new BuffOffer(GAME_W, GAME_H);
-  uiStage.addChild(buffOffer.container);
+  const htmlVictoryStats = new HtmlVictoryStats();
+  const htmlMiniMap = new HtmlMiniMap();
+  const htmlMenuScreen = new HtmlMenuScreen();
+  const htmlBossHpBar = new HtmlBossHpBar();
 
-  const victoryStats = new VictoryStats(GAME_W, GAME_H);
-  uiStage.addChild(victoryStats.container);
-
-  const modifierOffer = new RunModifierOffer(GAME_W, GAME_H);
-  uiStage.addChild(modifierOffer.container);
-
-  const miniMap = new MiniMap(GAME_W, GAME_H);
-  uiStage.addChild(miniMap.container);
   function refreshMiniMap() {
-    miniMap.setStages(
-      currentMission.stageIds.map((id) => {
-        const s = stageById(id)!;
-        return { id: s.id, name: s.name };
-      }),
-    );
+    const stages = currentMission.stageIds.map((id) => {
+      const s = stageById(id)!;
+      return { id: s.id, name: s.name };
+    });
+    htmlMiniMap.setStages(stages, currentMission.name);
   }
   refreshMiniMap();
 
-  const menuScreen = new MenuScreen(GAME_W, GAME_H);
-  uiStage.addChild(menuScreen.container);
-
-  const bossHpBar = new BossHpBar(GAME_W);
-  uiStage.addChild(bossHpBar.container);
-
   const auth = new Auth();
-  const loginScreen = new LoginScreen(GAME_W, GAME_H);
-  uiStage.addChild(loginScreen.container);
 
-  const characterSelect = new CharacterSelect(GAME_W, GAME_H);
-  uiStage.addChild(characterSelect.container);
+  const uiOverlay = document.getElementById('ui-overlay');
+  const htmlLogin = new Login();
+  uiOverlay?.appendChild(htmlLogin.element);
 
-  const missionSelect = new MissionSelect(GAME_W, GAME_H);
-  uiStage.addChild(missionSelect.container);
+  const htmlCharacterSelect = new HtmlCharacterSelect();
+  uiOverlay?.appendChild(htmlCharacterSelect.element);
 
-  const lobbyScreen = new LobbyScreen(GAME_W, GAME_H);
-  uiStage.addChild(lobbyScreen.container);
+  const htmlMissionSelect = new HtmlMissionSelect();
+  uiOverlay?.appendChild(htmlMissionSelect.element);
 
-  const roomLobby = new RoomLobby(GAME_W, GAME_H);
-  uiStage.addChild(roomLobby.container);
+  const htmlRoomList = new HtmlRoomList();
+  uiOverlay?.appendChild(htmlRoomList.element);
+
+  const htmlLobby = new HtmlLobby();
+  uiOverlay?.appendChild(htmlLobby.element);
+
+  const htmlRoomLobby = new HtmlRoomLobby();
+  uiOverlay?.appendChild(htmlRoomLobby.element);
+
+  uiOverlay?.appendChild(htmlHud.element);
+
+  const htmlCardPick = new CardPick();
+  uiOverlay?.appendChild(htmlCardPick.element);
+
+  uiOverlay?.appendChild(htmlVictoryStats.element);
+  uiOverlay?.appendChild(htmlMenuScreen.element);
+  uiOverlay?.appendChild(htmlBossHpBar.element);
+  uiOverlay?.appendChild(htmlMiniMap.element);
+
+  const threePilot = new ThreePilot();
+  document.body.appendChild(threePilot.element);
+  window.addEventListener('keydown', (e) => {
+    const t = e.target;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+    if (e.code === 'F9') {
+      e.preventDefault();
+      threePilot.toggle();
+    }
+  });
+  if (new URLSearchParams(location.search).has('pilot')) {
+    threePilot.show();
+  }
 
   const audio = new GameAudio();
+  void audio.preloadSfxLibrary();
+
+  function playMobHitSfx(mobId: string, fallbackIntensity: HitIntensity) {
+    if (mobId === 'slim') audio.playSpriteHit();
+    else if (mobId === 'racoon') audio.playBeastHit();
+    else audio.playHit(fallbackIntensity);
+  }
+  function playMobDeathSfx(mobId: string, isBoss: boolean) {
+    if (isBoss) audio.playMobDeath(true);
+    else if (mobId === 'slim') audio.playSpriteDeath();
+    else if (mobId === 'racoon') audio.playBeastDeath();
+    else audio.playMobDeath(false);
+  }
 
   const remotePlayers = new Map<number, RemotePlayer>();
   function clearRemotePlayers() {
@@ -280,17 +321,6 @@ async function main() {
     rp.destroy();
     remotePlayers.delete(userId);
   }
-
-  const controls = new Text({
-    text:
-      'controls: ← → = move (hold = run), ↑ = jump, ↓ = drop through platform / enter portal. double-tap ← / → = dash. ' +
-      'Z = attack (tap = combo, hold = charge). A/S/D = direct cast skill. ' +
-      'Alt = dodge. Space = parry. Tab = stages map. M = mute. O / Esc = menu.',
-    style: { fontFamily: 'monospace', fontSize: 11, fill: 0x6b7280 },
-  });
-  controls.x = 12;
-  controls.y = GAME_H - 24;
-  uiStage.addChild(controls);
 
   const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
   let serverInfo = 'connecting…';
@@ -324,17 +354,16 @@ async function main() {
     },
     onRoomStatus: (status) => {
       lastRoomStatus = status;
-      if (roomLobby.isOpen()) {
-        roomLobby.applyStatus(status.members);
+      if (htmlRoomLobby.element.dataset.visible === 'true') {
+        htmlRoomLobby.applyStatus(status.members);
       }
       if (status.matchStarted && !isMatchHost && pendingMission && pendingDifficulty) {
-        // Joiner: server says match started; switch into co-op gameplay.
-        if (roomLobby.isOpen()) roomLobby.hide();
+        htmlRoomLobby.hide();
         startCoOpJoinerRun();
       }
     },
     onMatchStart: () => {
-      if (roomLobby.isOpen()) roomLobby.hide();
+      htmlRoomLobby.hide();
       if (isMatchHost) startCoOpHostRun();
       else if (pendingMission && pendingDifficulty) startCoOpJoinerRun();
     },
@@ -353,7 +382,6 @@ async function main() {
       if (!m || !m.alive) return;
       const result = m.applyRemoteHit(hit.damage, hit.knockback);
       if (result === null) return;
-      // Visual feedback on host for the joiner's hit:
       const hb = m.hurtbox();
       const cx = hb.x + hb.w / 2;
       const cy = hb.y + hb.h / 2;
@@ -365,6 +393,31 @@ async function main() {
       hitFx.spark(cx, cy);
       audio.playHit('medium');
       runStats.damageDealt += result.applied;
+    },
+    onProjectileSpawn: (sourceUserId, p) => {
+      if (sourceUserId === auth.getUserId()) return;
+      const isGhost = p.owner === 'player';
+      const ghost = new Projectile(
+        p.x,
+        p.y,
+        p.vx,
+        p.damage,
+        p.knockback,
+        p.width,
+        p.height,
+        p.lifetimeMs,
+        p.facing,
+        undefined,
+        {
+          vy: p.vy,
+          gravity: p.gravity,
+          owner: p.owner,
+          visual: p.visual,
+          pierce: p.pierce,
+          isGhost,
+        },
+      );
+      stage.addRemoteProjectile(ghost);
     },
   });
 
@@ -449,10 +502,78 @@ async function main() {
     refreshMiniMap();
     player.teleportToStart();
 
-    modifierOffer.show(pickRandomModifiers(3));
+    showModifierPick(pickRandomModifiers(3));
     stagePhase = 'modifierPick';
     stageTransitionTimerMs = 0;
     stageBanner.visible = false;
+  }
+
+  function buffToCard(b: BuffSpec): CardPickEntry {
+    return {
+      name: b.name,
+      description: b.description,
+      rarity: b.rarity === 'rare' ? 'rare' : 'common',
+      glyph: b.name.charAt(0).toUpperCase(),
+    };
+  }
+
+  function modifierToCard(m: RunModifier): CardPickEntry {
+    return {
+      name: m.name,
+      description: m.description,
+      rarity: 'modifier',
+      glyph: '★',
+    };
+  }
+
+  function showBuffPick(offers: readonly BuffSpec[]) {
+    htmlCardPick.show({
+      eyebrow: 'Recompensa de stage',
+      title: 'Escolha uma bênção',
+      subtitle: 'Cada caminho deixa uma marca — leve uma para o próximo trecho.',
+      cards: offers.map(buffToCard),
+      hintLabel: 'aplicar bênção',
+      onPick: (i) => {
+        const buff = offers[i];
+        if (buff) {
+          player.applyBuff(buff);
+          runStats.buffsPicked.push(buff.name);
+        }
+        htmlCardPick.hide();
+        currentStageIdx = currentStageIdx + 1;
+        stage.destroy();
+        stage = newStage();
+        stage.spawn();
+        background.setStage(currentStageSpec().id);
+        player.teleportToStart();
+        stagePhase = 'nextAnnounce';
+        stageTransitionTimerMs = 1500;
+        stageBanner.text = stageBannerText(currentStageSpec(), currentStageIdx);
+        stageBanner.visible = true;
+        audio.playBgm(bgmIdForStage(currentStageSpec().id));
+      },
+    });
+  }
+
+  function showModifierPick(offers: readonly RunModifier[]) {
+    htmlCardPick.show({
+      eyebrow: 'Antes da partida',
+      title: 'Sele um caminho',
+      subtitle: 'Cada caminho cobra um preço — escolha aquele que melhor se afina com seu instinto.',
+      cards: offers.map(modifierToCard),
+      hintLabel: 'selar caminho',
+      onPick: (i) => {
+        const mod = offers[i];
+        if (mod) player.applyModifier(mod);
+        htmlCardPick.hide();
+        stagePhase = 'nextAnnounce';
+        stageTransitionTimerMs = 1500;
+        stageBanner.text = stageBannerText(currentStageSpec(), currentStageIdx);
+        stageBanner.visible = true;
+        runStats.startedAtMs = performance.now();
+        audio.playBgm(bgmIdForStage(currentStageSpec().id));
+      },
+    });
   }
 
   function joinWsRoom(room: Room) {
@@ -478,7 +599,9 @@ async function main() {
   }
 
   function showRoomLobbyForRoom(room: Room) {
-    roomLobby.show({
+    htmlMissionSelect.hide();
+    htmlRoomList.hide();
+    htmlRoomLobby.show({
       code: room.code,
       youUserId: auth.getUserId(),
       onReadyToggle: () => {
@@ -489,9 +612,9 @@ async function main() {
         net.sendStartMatch();
       },
       onLeave: () => {
-        roomLobby.hide();
+        htmlRoomLobby.hide();
         leaveCurrentRoom();
-        startLobby();
+        startMissionSelect();
       },
     });
   }
@@ -512,113 +635,127 @@ async function main() {
     pendingDifficulty = null;
   }
 
-  function startMissionSelect(statusText: string | undefined, mode: 'solo' | 'multiplayer') {
-    victoryStats.hide();
-    buffOffer.hide();
-    modifierOffer.hide();
+  function startMissionSelect() {
+    htmlVictoryStats.hide();
+    htmlRoomList.hide();
     stageBanner.visible = false;
-    audio.stopBgm();
+    audio.playBgm('mission');
     stagePhase = 'modifierPick';
     stageTransitionTimerMs = 0;
     leaveCurrentRoom();
-    missionSelect.show({
-      ...(statusText !== undefined ? { statusText } : {}),
-      onConfirm: (mission, difficulty) => {
-        missionSelect.hide();
-        if (mode === 'solo') {
-          applyRunStart(mission, difficulty);
-          void auth.createRoom(mission.id, difficulty.id, 'solo').then((room) => {
-            if (!room) return;
-            currentRoom = room;
-            joinWsRoom(room);
-          });
-        } else {
-          // Multiplayer host: create room + show RoomLobby; defer match start
-          // until host clicks "Start Match" in the lobby.
-          pendingMission = mission;
-          pendingDifficulty = difficulty;
-          isMatchHost = true;
-          void auth.createRoom(mission.id, difficulty.id, 'multiplayer').then((room) => {
-            if (!room) {
-              isMatchHost = false;
-              pendingMission = null;
-              pendingDifficulty = null;
-              startLobby('failed to create room');
-              return;
-            }
-            currentRoom = room;
-            joinWsRoom(room);
-            showRoomLobbyForRoom(room);
-          });
-        }
+    htmlMissionSelect.show({
+      onBack: () => {
+        htmlMissionSelect.hide();
+        startCharacterSelect();
+      },
+      onSelectMission: (mission) => {
+        startRoomList(mission);
       },
     });
   }
 
-  function startLobby(statusText?: string) {
-    victoryStats.hide();
-    buffOffer.hide();
-    modifierOffer.hide();
-    stageBanner.visible = false;
-    audio.stopBgm();
-    leaveCurrentRoom();
-    lobbyScreen.show({
-      onSolo: () => {
-        lobbyScreen.hide();
-        startMissionSelect(statusText, 'solo');
+  function startRoomList(mission: MissionSpec) {
+    const difficulty = findDifficulty('normal');
+    htmlRoomList.show({
+      mission,
+      username: auth.getUsername(),
+      fetchRooms: async (missionId) => {
+        const all = await auth.listRooms();
+        return all.filter((r) => r.mission === missionId && r.status === 'lobby');
       },
-      onCreatePublic: () => {
-        lobbyScreen.hide();
-        startMissionSelect(statusText, 'multiplayer');
-      },
-      onJoinByCode: async (code) => {
-        const room = await auth.joinRoom(code);
-        if (!room) return { ok: false, error: 'room not found' };
-        const mission = findMission(room.mission);
-        if (!mission) return { ok: false, error: 'invalid mission in room' };
-        const difficulty = findDifficulty(room.difficulty as 'easy' | 'normal' | 'hard');
-        currentRoom = room;
-        lobbyScreen.hide();
-        if (room.mode === 'multiplayer') {
-          // Joiner: stash mission/diff, enter WS room, wait in RoomLobby until host starts.
-          pendingMission = mission;
-          pendingDifficulty = difficulty;
-          isMatchHost = false;
+      onCreateRoom: () => {
+        htmlRoomList.hide();
+        pendingMission = mission;
+        pendingDifficulty = difficulty;
+        isMatchHost = true;
+        void auth.createRoom(mission.id, difficulty.id, 'multiplayer').then((room) => {
+          if (!room) {
+            isMatchHost = false;
+            pendingMission = null;
+            pendingDifficulty = null;
+            startRoomList(mission);
+            return;
+          }
+          currentRoom = room;
           joinWsRoom(room);
           showRoomLobbyForRoom(room);
-        } else {
-          applyRunStart(mission, difficulty);
-          joinWsRoom(room);
-        }
-        return { ok: true };
+        });
+      },
+      onJoinRoom: (room) => {
+        htmlRoomList.hide();
+        const m = findMission(room.mission);
+        if (!m) return;
+        const diff = findDifficulty(room.difficulty as 'easy' | 'normal' | 'hard');
+        pendingMission = m;
+        pendingDifficulty = diff;
+        isMatchHost = false;
+        void auth.joinRoom(room.code).then((joined) => {
+          if (!joined) {
+            startRoomList(mission);
+            return;
+          }
+          currentRoom = joined;
+          joinWsRoom(joined);
+          showRoomLobbyForRoom(joined);
+        });
+      },
+      onBack: () => {
+        htmlRoomList.hide();
       },
     });
   }
 
   function startCharacterSelect() {
-    victoryStats.hide();
-    buffOffer.hide();
-    modifierOffer.hide();
-    audio.stopBgm();
-    characterSelect.show(() => {
-      characterSelect.hide();
-      startLobby();
+    htmlVictoryStats.hide();
+    audio.playBgm('menu');
+    htmlCharacterSelect.show({
+      username: auth.getUsername(),
+      onConfirm: (char) => {
+        htmlCharacterSelect.hide();
+        onCharacterSelected(char);
+      },
     });
   }
 
+  function onCharacterSelected(char: { id: string; name: string }) {
+    activeCharacterId = char.id;
+    if (char.id === 'naia') {
+      player.switchSpec(ARCHER);
+      void initNaia3DLayer();
+    } else {
+      player.switchSpec(ELESIS);
+    }
+    startMissionSelect();
+  }
+
+  let gameThreeLayer: GameThreeLayer | null = null;
+  let naia3DReady = false;
+  async function initNaia3DLayer(): Promise<void> {
+    if (gameThreeLayer) return;
+    if (!container) return;
+    gameThreeLayer = new GameThreeLayer(container, GAME_W, GAME_H);
+    try {
+      await gameThreeLayer.loadNaia('/models/naia.glb');
+      naia3DReady = true;
+      player.setRenderingHidden(true);
+    } catch (err) {
+      console.error('[main] failed to init Naia 3D layer:', err);
+    }
+  }
+
   if (!auth.isAuthenticated()) {
-    loginScreen.show({
+    htmlLogin.show({
       onSubmit: async (username) => {
         const result = await auth.login(username);
         if (result.ok) {
-          loginScreen.hide();
+          htmlLogin.hide();
           startCharacterSelect();
         } else {
-          loginScreen.setError(result.error);
+          htmlLogin.setError(result.error);
         }
       },
       onGuest: () => {
-        loginScreen.hide();
+        htmlLogin.hide();
         startCharacterSelect();
       },
     });
@@ -645,67 +782,61 @@ async function main() {
   app.ticker.add(() => {
     const realDtMs = app.ticker.deltaMS;
 
-    if (loginScreen.isOpen()) {
-      loginScreen.tick(realDtMs);
+    if (htmlLogin.element.dataset.visible === 'true') {
       input.endFrame();
       return;
     }
 
-    if (characterSelect.isOpen()) {
-      characterSelect.update(input);
+    if (htmlCharacterSelect.element.dataset.visible === 'true') {
       input.endFrame();
       return;
     }
 
-    if (lobbyScreen.isOpen()) {
-      lobbyScreen.tick(realDtMs);
-      lobbyScreen.update(input);
+    if (htmlLobby.element.dataset.visible === 'true') {
       input.endFrame();
       return;
     }
 
-    if (roomLobby.isOpen()) {
-      roomLobby.update(input);
+    if (htmlRoomLobby.element.dataset.visible === 'true') {
       input.endFrame();
       return;
     }
 
-    if (missionSelect.isOpen()) {
-      missionSelect.update(input);
+    if (htmlMissionSelect.element.dataset.visible === 'true') {
       input.endFrame();
       return;
     }
 
-    if (menuScreen.isOpen()) {
-      menuScreen.update(audio, input, {
-        username: auth.getUsername(),
-        onLogout: () => {
-          leaveCurrentRoom();
-          auth.logout();
-          menuScreen.close();
-          loginScreen.show({
-            onSubmit: async (username) => {
-              const result = await auth.login(username);
-              if (result.ok) {
-                loginScreen.hide();
-                startCharacterSelect();
-              } else {
-                loginScreen.setError(result.error);
-              }
-            },
-            onGuest: () => {
-              loginScreen.hide();
-              startCharacterSelect();
-            },
-          });
-        },
-      });
+    if (htmlMenuScreen.isOpen()) {
+      htmlMenuScreen.refresh();
       input.endFrame();
       return;
     }
 
     if (input.justPressed('options')) {
-      menuScreen.open();
+      htmlMenuScreen.open(audio, {
+        username: auth.getUsername(),
+        onLogout: () => {
+          leaveCurrentRoom();
+          auth.logout();
+          htmlMenuScreen.close();
+          htmlLogin.show({
+            onSubmit: async (username) => {
+              const result = await auth.login(username);
+              if (result.ok) {
+                htmlLogin.hide();
+                startCharacterSelect();
+              } else {
+                htmlLogin.setError(result.error);
+              }
+            },
+            onGuest: () => {
+              htmlLogin.hide();
+              startCharacterSelect();
+            },
+          });
+        },
+      });
       input.endFrame();
       return;
     }
@@ -725,8 +856,35 @@ async function main() {
     hitPauseMs = Math.max(0, hitPauseMs - realDtMs);
 
     player.update(dtMs, input, stage.getPlatforms());
+    const newArrows = player.flushPendingArrows();
+    if (newArrows.length > 0) {
+      stage.addPlayerProjectiles(newArrows);
+      for (let i = 0; i < newArrows.length; i++) audio.playBowShoot();
+    }
 
     const stageMobs = stage.getMobs();
+
+    if (currentRoom !== null) {
+      const justSpawned = stage.consumeRecentlySpawned();
+      for (const p of justSpawned) {
+        net.sendProjectileSpawn({
+          x: p.x,
+          y: p.y,
+          vx: p.vx,
+          vy: p.vy,
+          width: p.width,
+          height: p.height,
+          facing: p.facing,
+          damage: p.damage,
+          knockback: p.knockback,
+          lifetimeMs: p.lifetimeMs,
+          gravity: p.gravity,
+          visual: p.visual,
+          owner: p.owner,
+          pierce: p.pierce,
+        });
+      }
+    }
 
     if (!player.isInvincible()) {
       for (const m of stageMobs) {
@@ -763,7 +921,6 @@ async function main() {
               aerial,
               backstab,
             });
-            // Optimistic local visuals; mob HP will catch up via mob_states.
             const c = intersectionCenter(hit.bbox, hb);
             runStats.damageDealt += dmg;
             hitFx.popup(c.x, c.y, Math.round(dmg), {
@@ -779,7 +936,7 @@ async function main() {
             const impact = impactFromDamage(dmg);
             camera.shake(impact.shake, impact.shakeDur);
             hitPauseMs = Math.max(hitPauseMs, impact.pause);
-            audio.playHit(impact.intensity);
+            playMobHitSfx(m.getId(), impact.intensity);
             continue;
           }
 
@@ -805,7 +962,7 @@ async function main() {
             const impact = impactFromDamage(result.applied);
             camera.shake(impact.shake, impact.shakeDur);
             hitPauseMs = Math.max(hitPauseMs, impact.pause);
-            audio.playHit(impact.intensity);
+            playMobHitSfx(m.getId(), impact.intensity);
 
             if (!m.alive) {
               const isBoss = m.isBoss();
@@ -816,7 +973,7 @@ async function main() {
               else runStats.killCounts[id] = { name, count: 1 };
               camera.shake(isBoss ? 26 : 8, isBoss ? 700 : 200);
               hitPauseMs = Math.max(hitPauseMs, isBoss ? 220 : 50);
-              audio.playMobDeath(isBoss);
+              playMobDeathSfx(id, isBoss);
               if (isBoss && bossDramaTimerMs <= 0) {
                 bossDramaTimerMs = 1000;
               }
@@ -867,8 +1024,61 @@ async function main() {
 
     for (const proj of stage.getProjectiles()) {
       if (!proj.alive) continue;
-      const playerBox = player.aabb();
       const projBox = proj.hurtbox();
+
+      if (proj.owner === 'player') {
+        if (proj.isGhost) continue;
+        for (let mobIdx = 0; mobIdx < stageMobs.length; mobIdx++) {
+          const m = stageMobs[mobIdx]!;
+          if (!m.alive) continue;
+          const mobIdStr = String(mobIdx);
+          if (proj.hasHit(mobIdStr)) continue;
+          const hb = m.hurtbox();
+          if (!rectsOverlap(projBox, hb)) continue;
+          const c = intersectionCenter(projBox, hb);
+          const aerial = !m.onGround;
+          let dmg = proj.damage;
+          if (aerial) dmg *= 1.3;
+          const knockback = proj.facing * proj.knockback;
+          if (isCoOpJoiner) {
+            const dedupeKey = `arrow-${mobIdx}-${proj.attackId}`;
+            if (!joinerSentHits.has(dedupeKey)) {
+              joinerSentHits.add(dedupeKey);
+              net.sendPlayerHit({
+                mobIdx,
+                attackId: proj.attackId,
+                damage: dmg,
+                knockback,
+                facing: proj.facing,
+                isCombo: true,
+                parryBuff: false,
+                aerial,
+                backstab: false,
+              });
+            }
+            runStats.damageDealt += dmg;
+            hitFx.popup(c.x, c.y, Math.round(dmg), { aerial });
+            hitFx.spark(c.x, c.y);
+            player.giveMp(player.spec.mpPerHit);
+          } else {
+            const result = m.receiveHit(proj.attackId, dmg, knockback);
+            if (result !== null) {
+              runStats.damageDealt += result.applied;
+              hitFx.popup(c.x, c.y, Math.round(result.applied), { aerial });
+              hitFx.spark(c.x, c.y);
+              player.giveMp(player.spec.mpPerHit);
+            }
+          }
+          proj.markHit(mobIdStr);
+          if (proj.hitCount() >= proj.pierce) proj.alive = false;
+          camera.shake(3, 80);
+          playMobHitSfx(m.getId(), 'light');
+          if (!proj.alive) break;
+        }
+        continue;
+      }
+
+      const playerBox = player.aabb();
       if (rectsOverlap(projBox, playerBox)) {
         const c = intersectionCenter(projBox, playerBox);
         if (player.isParryActive()) {
@@ -986,6 +1196,8 @@ async function main() {
         stageTransitionTimerMs = 2000;
         stageBanner.text = 'GAME OVER';
         audio.stopBgm();
+        audio.playNaiaDeath();
+        audio.playDefeatSting();
       } else {
         for (const m of stage.getMobs()) m.resetTransientBuffs();
         stagePhase = 'nextAnnounce';
@@ -1002,6 +1214,7 @@ async function main() {
         stagePhase = 'bossDeathDrama';
         stageTransitionTimerMs = 2500;
         audio.stopBgm();
+        audio.playVictorySting();
       } else {
         stagePhase = 'awaitingPortal';
         stageBanner.text = `STAGE ${currentStageIdx + 1} CLEAR! → portal open`;
@@ -1053,74 +1266,33 @@ async function main() {
       stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
         stageBanner.visible = false;
-        buffOffer.show(pickRandomBuffs(BUFFS, 3));
+        showBuffPick(pickRandomBuffs(BUFFS, 3));
         stagePhase = 'buffOffer';
-      }
-    } else if (stagePhase === 'buffOffer') {
-      let pickIdx = -1;
-      if (input.justPressed('pick1')) pickIdx = 0;
-      else if (input.justPressed('pick2')) pickIdx = 1;
-      else if (input.justPressed('pick3')) pickIdx = 2;
-      if (pickIdx >= 0) {
-        const offers = buffOffer.getOffers();
-        const buff = offers[pickIdx];
-        if (buff) {
-          player.applyBuff(buff);
-          runStats.buffsPicked.push(buff.name);
-        }
-        buffOffer.hide();
-        currentStageIdx = currentStageIdx + 1;
-        stage.destroy();
-        stage = newStage();
-        stage.spawn();
-        background.setStage(currentStageSpec().id);
-        player.teleportToStart();
-        stagePhase = 'nextAnnounce';
-        stageTransitionTimerMs = 1500;
-        stageBanner.text = stageBannerText(currentStageSpec(), currentStageIdx);
-        stageBanner.visible = true;
-        audio.playBgm(bgmIdForStage(currentStageSpec().id));
       }
     } else if (stagePhase === 'nextAnnounce') {
       stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
         stageBanner.visible = false;
         stagePhase = 'playing';
+        audio.playStageIntro();
       }
     } else if (stagePhase === 'gameOver') {
       stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
-        startLobby('GAME OVER  ·  pick a mission to retry');
+        startMissionSelect();
       }
     } else if (stagePhase === 'victoryAnnounce') {
       stageTransitionTimerMs -= realDtMs;
       if (stageTransitionTimerMs <= 0) {
         stageBanner.visible = false;
-        victoryStats.show(statsView(), auth.getUsername());
+        htmlVictoryStats.show(statsView(), auth.getUsername());
         const pending = lastSaveRun;
         void (async () => {
           if (pending) await pending.catch(() => undefined);
           const entries = await fetchLeaderboard('time', 5);
-          victoryStats.setLeaderboard(entries, auth.getUsername());
+          htmlVictoryStats.setLeaderboard(entries, auth.getUsername());
         })();
         stagePhase = 'victoryStats';
-      }
-    } else if (stagePhase === 'modifierPick') {
-      let pickIdx = -1;
-      if (input.justPressed('pick1')) pickIdx = 0;
-      else if (input.justPressed('pick2')) pickIdx = 1;
-      else if (input.justPressed('pick3')) pickIdx = 2;
-      if (pickIdx >= 0) {
-        const offers = modifierOffer.getOffers();
-        const mod = offers[pickIdx];
-        if (mod) player.applyModifier(mod);
-        modifierOffer.hide();
-        stagePhase = 'nextAnnounce';
-        stageTransitionTimerMs = 1500;
-        stageBanner.text = stageBannerText(currentStageSpec(), currentStageIdx);
-        stageBanner.visible = true;
-        runStats.startedAtMs = performance.now();
-        audio.playBgm(bgmIdForStage(currentStageSpec().id));
       }
     } else if (stagePhase === 'victoryStats') {
       const anyAction =
@@ -1135,7 +1307,7 @@ async function main() {
         input.justPressed('pick3') ||
         input.justPressed('up');
       if (anyAction) {
-        startLobby();
+        startMissionSelect();
       }
     }
 
@@ -1212,18 +1384,35 @@ async function main() {
 
     background.update(camera.getOffsetX(), camera.getOffsetY());
 
+    if (gameThreeLayer && naia3DReady) {
+      gameThreeLayer.sync(
+        player.x + player.spec.width / 2,
+        player.y + player.spec.height,
+        player.vx,
+        player.facing,
+        player.onGround,
+        camera.getOffsetX(),
+        camera.getOffsetY(),
+      );
+      gameThreeLayer.syncMobs(stage.getMobs());
+      for (const m of stage.getMobs()) {
+        if (m.spec.model3DUrl) m.setRenderingHidden(true);
+      }
+      gameThreeLayer.render();
+    }
+
     if (input.isHeld('minimap')) {
-      miniMap.show(currentStageIdx);
+      htmlMiniMap.show(currentStageIdx);
     } else {
-      miniMap.hide();
+      htmlMiniMap.hide();
     }
 
     const boss = stage.getBoss();
     if (boss && stagePhase === 'playing') {
-      bossHpBar.show(boss.getBossName() ?? 'BOSS');
-      bossHpBar.update(boss.hp, boss.getMaxHp(), boss.getPhase());
+      htmlBossHpBar.show(boss.getBossName() ?? 'BOSS');
+      htmlBossHpBar.update(boss.hp, boss.getMaxHp(), boss.getPhase());
     } else {
-      bossHpBar.hide();
+      htmlBossHpBar.hide();
     }
 
     const aliveCount = stage.getMobs().filter((m) => m.alive).length;
@@ -1238,8 +1427,10 @@ async function main() {
     } else {
       infoLine = serverInfo;
     }
-    hud.update({
+    if (!htmlHud.isVisible()) htmlHud.show();
+    htmlHud.update({
       player,
+      characterName: activeCharacterId === 'naia' ? 'NAIA' : 'ASTRID',
       lives,
       maxLives: MAX_LIVES,
       stageIdx: currentStageIdx,

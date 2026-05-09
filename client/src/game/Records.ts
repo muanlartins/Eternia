@@ -45,9 +45,7 @@ export function loadRecords(): PersonalRecords {
 export function saveRecords(r: PersonalRecords): void {
   try {
     localStorage.setItem(RECORD_KEY, JSON.stringify(r));
-  } catch {
-    /* ignore (private browsing, quota, etc.) */
-  }
+  } catch {}
 }
 
 export function applyVictoryToRecords(
