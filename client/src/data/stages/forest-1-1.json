@@ -21,10 +21,12 @@
     { "kind": "trigger", "id": "portal", "x": 1136, "y": 400, "w": 88, "h": 80 }
   ],
   "spawns": [
-    { "type": "slim", "x": 280 },
-    { "type": "slim", "x": 480 },
-    { "type": "racoon", "x": 720 },
-    { "type": "slim", "x": 660, "y": 308 },
-    { "type": "racoon", "x": 1080 }
+    { "type": "slim", "x": 384 },
+    { "type": "slim", "x": 512 },
+    { "type": "slim", "x": 690, "y": 296 },
+    { "type": "slim", "x": 940, "y": 356 },
+    { "type": "slim", "x": 1020, "y": 356 },
+    { "type": "racoon", "x": 768 },
+    { "type": "racoon", "x": 1200 }
   ]
 }

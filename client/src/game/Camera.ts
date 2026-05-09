@@ -11,7 +11,7 @@ export class Camera {
     private readonly stage: Container,
     private readonly viewportWidth: number,
     private readonly viewportHeight: number,
-    private readonly lerpRate = 0.15,
+    private readonly lerpRate = 0.08,
   ) {}
 
   follow(
