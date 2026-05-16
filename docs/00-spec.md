@@ -2,16 +2,16 @@
 
 Para a especificação completa do MVP, veja:
 
-- **`../docs/eternia-mvp.md`** (no workspace `~/repos/grand-chase/docs/`) — vision, escopo,
+- **`eternia-mvp.md`** (kept in a separate private research repo) — vision, escopo,
   pillars de design, stack técnico, roadmap em 8 fases, acceptance criteria.
 
-Outros docs externos relevantes (todos em `~/repos/grand-chase/docs/`):
+Outros docs externos relevantes (todos no repo privado de pesquisa):
 
-- `playtest-notes.md` — anotações das sessões de playtest do GC original
-- `findings-s1-game-design-data.md` — estrutura de dados extraída do GC S1 BR
+- `playtest-notes.md` — anotações de sessões de playtest do material de referência
+- `findings-s1-game-design-data.md` — estrutura de dados extraída da referência
 - `findings-s5-server-emulators-limitation.md` — por que os emuladores S5 não nos
   ajudam com lógica de combate (e por que isso é boa notícia)
-- `00-status.md` — status do workspace inteiro (servidor C++ legacy + Eternia)
+- `00-status.md` — status do workspace inteiro
 
 ## Docs neste repo (`Eternia/docs/`)
 

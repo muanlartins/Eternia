@@ -3,7 +3,7 @@
 > Last updated: 2026-05-09 (post codebase cleanup pass).
 >
 > Live snapshot of project state. Plano original (imutável):
-> `~/repos/grand-chase/docs/eternia-mvp.md`.
+> `eternia-mvp.md` (kept in a separate private research repo).
 
 ## TL;DR
 
@@ -71,7 +71,8 @@ completo de uma run.
 
 1. **Pântano dos Esquecidos — arte pintada**: gerar parallax bgs,
    plataformas, ground tiles seguindo o mesmo template da Floresta
-   (`docs/prompts/floresta-stage-art.md`). Bog Frog + Mire Wraith +
+   (prompt template lives in the private grand-chase repo,
+   `docs/eternia-prompts/floresta-stage-art.md`). Bog Frog + Mire Wraith +
    Drowned King 3D models.
 2. **Naia animations**: walk, jump, shoot, hit clips contra o Tripo
    rig. Hoje só idle está autorizado; runtime aceita os outros mas no-op.

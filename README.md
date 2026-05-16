@@ -28,8 +28,8 @@ Eternia/
 └── package.json # root workspace
 ```
 
-External research, playtest notes, and findings about the GC reference live in
-`../docs/` (i.e. `~/repos/grand-chase/docs/`), NOT in this repo.
+External research, playtest notes, and findings about the reference material
+live in a separate private repo, NOT in this one.
 
 ## Setup (one-time)
 

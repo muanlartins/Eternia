@@ -157,7 +157,7 @@ screen's visibility and skips the run loop while one is open.
 ## Asset pipeline
 
 - **Backgrounds + foreground vines**: 16:9 JPEG, painted via Nano
-  Banana Pro per `docs/prompts/floresta-stage-art.md`.
+  Banana Pro (prompt template kept in the private grand-chase repo).
 - **Platform + ground tiles**: PNG with white bg removed externally
   (user's pipeline). Platform variants picked by `(w, h)` heuristic;
   ground tiles by index seed (60/25/15 distribution).

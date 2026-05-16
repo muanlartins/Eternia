@@ -87,8 +87,8 @@ voltar ao trabalho, switcha pra conta de trabalho.
 ### Iniciar Eternia (no host)
 
 ```bash
-cd ~/repos/grand-chase/Eternia/server && ./run        # terminal 1
-cd ~/repos/grand-chase/Eternia/client && pnpm dev     # terminal 2
+cd Eternia/server && ./run        # terminal 1
+cd Eternia/client && pnpm dev     # terminal 2
 ```
 
 Vite vai imprimir algo como:
