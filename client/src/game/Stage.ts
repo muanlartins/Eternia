@@ -3,7 +3,7 @@ import type { Shape, StageData } from '../data/stage-data.js';
 import { MOB_SPECS } from '../data/stages.js';
 import { Mob } from './Mob.js';
 import { Projectile } from './Projectile.js';
-import type { AABB } from './types.js';
+import type { AABB, SlopeBox } from './types.js';
 
 export class Stage {
   readonly spec: StageData;
@@ -14,6 +14,7 @@ export class Stage {
   private mobs: Mob[] = [];
   private solidBoxes: AABB[] = [];
   private onewayBoxes: AABB[] = [];
+  private slopeBoxes: SlopeBox[] = [];
   private platformGfx: Graphics[] = [];
   private platformSprites: Sprite[] = [];
   private groundSprite: Sprite | null = null;
@@ -54,19 +55,14 @@ export class Stage {
         this.solidBoxes.push({ x: s.x, y: s.y, w: s.w, h: s.h });
       } else if (s.kind === 'oneway') {
         this.onewayBoxes.push({ x: s.x, y: s.y, w: s.w, h: s.h });
+      } else if (s.kind === 'slope') {
+        this.slopeBoxes.push({ x: s.x, y: s.y, w: s.w, h: s.h, dir: s.dir ?? 'right' });
       } else if (s.kind === 'trigger' && s.id === 'portal') {
         this.portalShape = s;
       }
 
       if (s.image && (s.kind === 'solid' || s.kind === 'oneway')) {
         void this.loadShapeSprite(s);
-      } else if (!s.image && s.kind === 'oneway') {
-        const gfx = new Graphics();
-        gfx.rect(s.x, s.y, s.w, s.h)
-          .fill({ color: 0x4b5563, alpha: 0.95 })
-          .stroke({ color: 0x9ca3af, width: 1, alpha: 0.7 });
-        this.worldStage.addChild(gfx);
-        this.platformGfx.push(gfx);
       }
     }
 
@@ -75,7 +71,7 @@ export class Stage {
       const defaultY =
         spec.hasGravity === false && spec.hoverY !== undefined
           ? spec.hoverY
-          : findGroundUnder(sp.x, this.spec.shapes) - spec.height;
+          : findGroundUnder(sp.x, this.spec.shapes, this.spec.height) - spec.height;
       const y = sp.y ?? defaultY;
       const mob = new Mob(spec, sp.x, y, {
         autoRespawn: false,
@@ -83,6 +79,7 @@ export class Stage {
         dmgMul: this.dmgMul,
         remoteControlled: this.remoteControlled,
       });
+      mob.worldFloorY = this.spec.height;
       this.mobs.push(mob);
       this.worldStage.addChild(mob.view);
     }
@@ -133,17 +130,33 @@ export class Stage {
     if (!this.debugOverlay) return;
     this.debugOverlay.clear();
     for (const s of this.spec.shapes) {
-      const color = s.kind === 'solid' ? 0x22c55e : s.kind === 'oneway' ? 0xfacc15 : 0x3b82f6;
-      this.debugOverlay
-        .rect(s.x, s.y, s.w, s.h)
-        .fill({ color, alpha: 0.18 })
-        .stroke({ color, width: 2, alpha: 0.85 });
+      const color =
+        s.kind === 'solid' ? 0x22c55e :
+        s.kind === 'oneway' ? 0xfacc15 :
+        s.kind === 'slope' ? 0xa855f7 :
+        0x3b82f6;
+      if (s.kind === 'slope') {
+        const dir = s.dir ?? 'right';
+        const pts = dir === 'right'
+          ? [s.x, s.y + s.h, s.x + s.w, s.y, s.x + s.w, s.y + s.h]
+          : [s.x, s.y, s.x + s.w, s.y + s.h, s.x, s.y + s.h];
+        this.debugOverlay
+          .poly(pts)
+          .fill({ color, alpha: 0.18 })
+          .stroke({ color, width: 2, alpha: 0.85 });
+      } else {
+        this.debugOverlay
+          .rect(s.x, s.y, s.w, s.h)
+          .fill({ color, alpha: 0.18 })
+          .stroke({ color, width: 2, alpha: 0.85 });
+      }
     }
   }
 
   update(dtMs: number, playerCenterX: number) {
+    const mobPlatforms: AABB[] = [...this.onewayBoxes, ...this.solidBoxes];
     for (const m of this.mobs) {
-      m.update(dtMs, playerCenterX, this.onewayBoxes);
+      m.update(dtMs, playerCenterX, mobPlatforms);
       const newProjectiles = m.flushPendingProjectiles();
       for (const p of newProjectiles) {
         this.projectiles.push(p);
@@ -226,6 +239,10 @@ export class Stage {
     return this.solidBoxes;
   }
 
+  getSlopeBoxes(): readonly SlopeBox[] {
+    return this.slopeBoxes;
+  }
+
   isCleared(): boolean {
     return this.mobs.every((m) => !m.alive);
   }
@@ -287,6 +304,7 @@ export class Stage {
     }
     this.solidBoxes = [];
     this.onewayBoxes = [];
+    this.slopeBoxes = [];
     if (this.portal) {
       this.worldStage.removeChild(this.portal);
       this.portal.destroy();
@@ -302,8 +320,8 @@ export class Stage {
   }
 }
 
-function findGroundUnder(x: number, shapes: readonly Shape[]): number {
-  let bestY = 480;
+function findGroundUnder(x: number, shapes: readonly Shape[], worldFloorY: number): number {
+  let bestY = worldFloorY;
   for (const s of shapes) {
     if (s.kind !== 'solid' && s.kind !== 'oneway') continue;
     if (x < s.x || x > s.x + s.w) continue;

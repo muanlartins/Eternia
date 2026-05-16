@@ -1,7 +1,7 @@
 import type { MobType } from './stages.js';
 import { STAGES } from './stages.js';
 
-export type ShapeKind = 'solid' | 'oneway' | 'trigger';
+export type ShapeKind = 'solid' | 'oneway' | 'trigger' | 'slope';
 
 export interface Shape {
   readonly kind: ShapeKind;
@@ -11,6 +11,7 @@ export interface Shape {
   readonly w: number;
   readonly h: number;
   readonly image?: string;
+  readonly dir?: 'left' | 'right';
 }
 
 export interface SpawnEntry {

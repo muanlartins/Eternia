@@ -1,0 +1,134 @@
+{
+  "name": "Idle",
+  "duration": 3,
+  "loop": true,
+  "poses": [
+    {
+      "time": 0,
+      "bones": [
+        {
+          "bone": "mixamorig_LeftArm",
+          "euler": [
+            70,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_LeftForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightArm",
+          "euler": [
+            70,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        }
+      ],
+      "extras": {
+        "bowMidPull": [
+          0,
+          0,
+          0
+        ],
+        "arrowVisible": false
+      }
+    },
+    {
+      "time": 1,
+      "bones": [
+        {
+          "bone": "mixamorig_LeftArm",
+          "euler": [
+            65,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_LeftForeArm",
+          "euler": [
+            20,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightArm",
+          "euler": [
+            65,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightForeArm",
+          "euler": [
+            20,
+            0,
+            0
+          ]
+        }
+      ],
+      "extras": {
+        "bowMidPull": [
+          0,
+          0,
+          0
+        ],
+        "arrowVisible": false
+      }
+    },
+    {
+      "time": 2,
+      "bones": [
+        {
+          "bone": "mixamorig_LeftArm",
+          "euler": [
+            70,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_LeftForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightArm",
+          "euler": [
+            70,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

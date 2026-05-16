@@ -1,6 +1,6 @@
-import { ELESIS } from './elesis.js';
+import { ASTRID } from './astrid.js';
 
-export const ARCHER = {
+export const NAIA = {
   kind: 'archer' as const,
 
   width: 32,
@@ -14,7 +14,8 @@ export const ARCHER = {
   walkToRunHoldMs: 180,
   doubleTapWindowMs: 250,
 
-  jumpInitialVy: -600,
+  maxJumps: 1,
+  jumpInitialVy: -735,
   doubleJumpInitialVy: -660,
   gravity: 2200,
   fallGravityMultiplier: 1.4,
@@ -25,12 +26,12 @@ export const ARCHER = {
   dashDurationMs: 200,
   dashCooldownMs: 350,
 
-  airDashSpeed: 0,
-  airDashDurationMs: 0,
-  airDashDropVy: 0,
-  airDashMinHeight: 0,
-  airDashBufferMs: 0,
-  hasAirDash: false,
+  airDashSpeed: 630,
+  airDashDurationMs: 200,
+  airDashDropVy: 520,
+  airDashMinHeight: 20,
+  airDashBufferMs: 200,
+  hasAirDash: true,
 
   coyoteTimeMs: 90,
   jumpBufferMs: 90,
@@ -170,6 +171,6 @@ export const ARCHER = {
   },
 } as const;
 
-export type ArcherSpec = typeof ARCHER;
+export type NaiaSpec = typeof NAIA;
 
-export type CharacterSpec = typeof ELESIS | ArcherSpec;
+export type CharacterSpec = typeof ASTRID | NaiaSpec;

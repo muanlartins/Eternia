@@ -16,7 +16,7 @@
 
 .root[data-visible='true'] {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 1fr 1fr;
   grid-template-rows: 100%;
   animation: pilotFadeIn 220ms var(--ease-soft) backwards;
 }
@@ -546,4 +546,89 @@
 .importTextarea:focus {
   outline: none;
   border-color: var(--accent-400);
+}
+
+/* Timeline strip */
+
+.timelineWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background:
+    linear-gradient(180deg, rgba(8, 12, 10, 0.6), rgba(8, 12, 10, 0.3));
+  border: 1px solid rgba(46, 139, 87, 0.18);
+  border-radius: var(--r-base);
+}
+
+.timelineSvg {
+  display: block;
+  width: 100%;
+  height: 60px;
+  user-select: none;
+}
+
+.timelineSvg :global(.timelineKf):hover polygon {
+  stroke: var(--accent-200);
+  stroke-width: 1.6;
+}
+
+.timelineSvg :global(.timelineEase):hover rect {
+  fill: rgba(46, 139, 87, 0.28);
+  stroke: var(--accent-400);
+}
+
+.timelineSvg :global(.timelineInsert):hover {
+  fill: rgba(212, 165, 116, 0.08);
+}
+
+.timelineControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: var(--tracking-wide);
+  color: rgba(184, 194, 187, 0.55);
+}
+
+/* Bone skeleton diagram — dynamic graph layout */
+
+.boneDiagramWrap {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-2);
+  background: rgba(8, 12, 10, 0.45);
+  border: 1px solid rgba(46, 139, 87, 0.18);
+  border-radius: var(--r-base);
+  overflow: auto;
+  max-height: 460px;
+}
+
+.boneDiagram {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  user-select: none;
+}
+
+.boneDiagram :global(.boneNode) circle {
+  transition: r 100ms var(--ease-soft), stroke-width 100ms var(--ease-soft);
+}
+
+.boneDiagram :global(.boneNode):hover circle {
+  stroke: var(--accent-200);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 4px rgba(245, 200, 112, 0.45));
+}
+
+.boneDiagram :global(.boneNodeLabel) {
+  pointer-events: none;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.boneDiagram :global(.boneNode):hover :global(.boneNodeLabel) {
+  fill: var(--accent-100);
 }

@@ -1,0 +1,264 @@
+{
+  "name": "Walk",
+  "duration": 0.8,
+  "loop": true,
+  "poses": [
+    {
+      "time": 0,
+      "bones": [
+        {
+          "bone": "mixamorig_LeftArm",
+          "euler": [
+            70,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_LeftForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightArm",
+          "euler": [
+            70,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        }
+      ],
+      "extras": {
+        "bowMidPull": [
+          0,
+          0,
+          0
+        ],
+        "arrowVisible": false
+      }
+    },
+    {
+      "time": 0.2,
+      "bones": [
+        {
+          "bone": "mixamorig_LeftArm",
+          "euler": [
+            70,
+            0,
+            -30
+          ]
+        },
+        {
+          "bone": "mixamorig_LeftForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightArm",
+          "euler": [
+            70,
+            0,
+            -30
+          ]
+        },
+        {
+          "bone": "mixamorig_RightForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_LeftUpLeg",
+          "euler": [
+            30,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_LeftLeg",
+          "euler": [
+            -15,
+            0,
+            0
+          ]
+        }
+      ],
+      "extras": {
+        "bowMidPull": [
+          0,
+          0,
+          0
+        ],
+        "arrowVisible": false
+      }
+    },
+    {
+      "time": 0.4,
+      "bones": [
+        {
+          "bone": "mixamorig_LeftArm",
+          "euler": [
+            70,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_LeftForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightArm",
+          "euler": [
+            70,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        }
+      ],
+      "extras": {
+        "bowMidPull": [
+          0,
+          0,
+          0
+        ],
+        "arrowVisible": false
+      }
+    },
+    {
+      "time": 0.6,
+      "bones": [
+        {
+          "bone": "mixamorig_LeftArm",
+          "euler": [
+            70,
+            0,
+            30
+          ]
+        },
+        {
+          "bone": "mixamorig_LeftForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightArm",
+          "euler": [
+            70,
+            0,
+            30
+          ]
+        },
+        {
+          "bone": "mixamorig_RightForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightUpLeg",
+          "euler": [
+            30,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightLeg",
+          "euler": [
+            -15,
+            0,
+            0
+          ]
+        }
+      ],
+      "extras": {
+        "bowMidPull": [
+          0,
+          0,
+          0
+        ],
+        "arrowVisible": false
+      }
+    },
+    {
+      "time": 0.8,
+      "bones": [
+        {
+          "bone": "mixamorig_LeftArm",
+          "euler": [
+            70,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_LeftForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightArm",
+          "euler": [
+            70,
+            0,
+            0
+          ]
+        },
+        {
+          "bone": "mixamorig_RightForeArm",
+          "euler": [
+            15,
+            0,
+            0
+          ]
+        }
+      ],
+      "extras": {
+        "bowMidPull": [
+          0,
+          0,
+          0
+        ],
+        "arrowVisible": false
+      }
+    }
+  ]
+}

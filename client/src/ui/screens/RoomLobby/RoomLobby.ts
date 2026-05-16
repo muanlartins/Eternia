@@ -2,20 +2,35 @@ import styles from './RoomLobby.module.css';
 import type { RoomMember } from '../../../game/Network.js';
 import { Character3DPortrait } from '../../../three/Character3DPortrait.js';
 import { IDLE_NAIA } from '../../../three/procedural-anims.js';
+import type { ProceduralAnimSpec } from '../../../three/procedural-anims.js';
+
+const NAIA_ANIMS = import.meta.glob<{ default: ProceduralAnimSpec }>(
+  '../../../data/anim/naia/*.json',
+  { eager: true },
+);
+function findNaiaIdleSpec(): ProceduralAnimSpec {
+  for (const mod of Object.values(NAIA_ANIMS)) {
+    if (mod.default?.name?.toLowerCase() === 'idle') return mod.default;
+  }
+  return IDLE_NAIA;
+}
 
 export interface RoomLobbyShowOptions {
   code: string;
   youUserId: number | null;
+  missionName: string;
+  missionEyebrow: string;
+  missionDescription: string;
+  missionArtUrl: string | null;
   onReadyToggle: () => void;
   onStartMatch: () => void;
   onLeave: () => void;
 }
 
 const MAX_PARTY_SIZE = 4;
+const NAIA_MODEL_URL = '/models/naia-mixamo.glb';
 
-const NAIA_MODEL_URL = '/models/naia.glb';
-
-interface PartySlotEls {
+interface SlotEls {
   root: HTMLElement;
   portraitHost: HTMLElement;
   content: HTMLElement;
@@ -28,14 +43,21 @@ export class RoomLobby {
   private isHost = false;
   private isReady = false;
   private allReady = false;
+
   private codeEl: HTMLElement;
-  private copyBtn: HTMLButtonElement;
-  private partyEl: HTMLElement;
+  private inviteBtn: HTMLButtonElement;
   private actionBtn: HTMLButtonElement;
   private actionHint: HTMLElement;
   private connStatusEl: HTMLElement;
+  private leaderSlot: SlotEls;
+  private allySlots: SlotEls[] = [];
+  private missionTitleEl: HTMLElement;
+  private missionEyebrowEl: HTMLElement;
+  private missionDescriptionEl: HTMLElement;
+  private missionArtEl: HTMLElement;
+  private chatLogEl: HTMLElement;
+  private chatInputEl: HTMLInputElement;
 
-  private partySlots: PartySlotEls[] = [];
   private portraits3d = new Map<number, Character3DPortrait>();
 
   constructor() {
@@ -50,94 +72,146 @@ export class RoomLobby {
         <div class="${styles.grain}"></div>
       </div>
 
-      <div class="${styles.topBar}">
-        <div class="${styles.heading}">
-          <div class="${styles.eyebrow}">Travessia · Sala</div>
-          <h1 class="${styles.title}" data-title>Sala da jornada</h1>
-        </div>
-        <div class="${styles.connStatus}" data-connstatus>
-          <span class="${styles.connStatusDot}"></span>
-          <span>Conectado · sala aberta</span>
-        </div>
-      </div>
-
-      <div class="${styles.center}">
-        <div class="${styles.codeBlock}">
-          <div class="${styles.codeLabel}">Código da jornada</div>
-          <div class="${styles.codeRow}">
-            <div class="${styles.codeDigits}" data-code>------</div>
-            <button class="${styles.codeCopyBtn}" type="button" data-copy>Copiar</button>
+      <div class="${styles.shell}">
+        <header class="${styles.topBar}">
+          <div class="${styles.heading}">
+            <span class="${styles.eyebrow}">Travessia · sala</span>
+            <span class="${styles.codeChip}">
+              <span class="${styles.codeChipLabel}">#</span>
+              <span class="${styles.codeChipDigits}" data-code>------</span>
+            </span>
           </div>
-          <p class="${styles.codeHelp}">
-            Compartilhe o código com aliados para que possam acompanhar a jornada.
-          </p>
+          <div class="${styles.connStatus}" data-connstatus>
+            <span class="${styles.connStatusDot}"></span>
+            <span>Conectado · sala aberta</span>
+          </div>
+        </header>
+
+        <div class="${styles.body}">
+          <section class="${styles.leaderCol}" data-leader>
+            <div class="${styles.leaderPortrait}" data-leader-portrait></div>
+            <div class="${styles.leaderInfo}">
+              <span class="${styles.leaderRole}" data-leader-role>Líder da jornada</span>
+              <h2 class="${styles.leaderName}" data-leader-name>—</h2>
+              <div class="${styles.leaderState}" data-leader-state>
+                <span class="${styles.leaderStateDot}"></span>
+                <span data-leader-statetext>Aguardando</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="${styles.rightCol}">
+            <section class="${styles.alliesCard}">
+              <div class="${styles.cardLabel}">Aliados</div>
+              <div class="${styles.alliesRow}" data-allies></div>
+            </section>
+
+            <section class="${styles.missionCard}">
+              <div class="${styles.cardLabel}">Missão</div>
+              <div class="${styles.missionPreview}">
+                <div class="${styles.missionArt}" data-mission-art></div>
+                <div class="${styles.missionMeta}">
+                  <span class="${styles.missionEyebrow}" data-mission-eyebrow>—</span>
+                  <h3 class="${styles.missionTitle}" data-mission-title>—</h3>
+                  <p class="${styles.missionDescription}" data-mission-description></p>
+                </div>
+              </div>
+            </section>
+          </div>
         </div>
 
-        <div class="${styles.party}" data-party></div>
-      </div>
+        <footer class="${styles.bottomBar}">
+          <section class="${styles.chatCard}">
+            <div class="${styles.cardLabel}">Conversa</div>
+            <div class="${styles.chatLog}" data-chat-log>
+              <div class="${styles.chatPlaceholder}">A conversa começa quando alguém entrar na sala.</div>
+            </div>
+            <div class="${styles.chatInputRow}">
+              <input class="${styles.chatInput}" data-chat-input type="text" placeholder="Digite uma mensagem…" maxlength="180" disabled />
+              <span class="${styles.chatSoon}">em breve</span>
+            </div>
+          </section>
 
-      <div class="${styles.bottomBar}">
-        <button class="${styles.leaveBtn}" type="button" data-leave>
-          ← Abandonar a sala
-        </button>
-        <div class="${styles.actionCol}">
-          <span class="${styles.actionHint}" data-hint>
-            <span class="${styles.actionHintKey}">Esc</span> · sair · <span class="${styles.actionHintKey}">Enter</span> · ação
-          </span>
-          <button class="${styles.actionBtn}" type="button" data-action>
-            <span data-actionlabel>Pronto</span>
-            <span class="${styles.actionArrow}">►</span>
-          </button>
-        </div>
+          <div class="${styles.actionStack}">
+            <button class="${styles.inviteBtn}" type="button" data-invite>
+              <span class="${styles.inviteBtnArrow}">⌥</span>
+              <span class="${styles.inviteBtnLabel}">Convidar</span>
+            </button>
+            <button class="${styles.actionBtn}" type="button" data-action>
+              <span data-actionlabel>Pronto</span>
+            </button>
+            <button class="${styles.leaveBtn}" type="button" data-leave>
+              <span class="${styles.leaveBtnArrow}">←</span>
+              <span class="${styles.leaveBtnLabel}">Sair</span>
+            </button>
+            <span class="${styles.actionHint}" data-hint>
+              <span class="${styles.actionHintKey}">Esc</span> · sair · <span class="${styles.actionHintKey}">Enter</span> · ação
+            </span>
+          </div>
+        </footer>
       </div>
     `;
 
     this.element = root;
     this.codeEl = root.querySelector('[data-code]')!;
-    this.copyBtn = root.querySelector('[data-copy]')!;
-    this.partyEl = root.querySelector('[data-party]')!;
+    this.inviteBtn = root.querySelector('[data-invite]')!;
     this.actionBtn = root.querySelector('[data-action]')!;
     this.actionHint = root.querySelector('[data-hint]')!;
     this.connStatusEl = root.querySelector('[data-connstatus]')!;
+    this.missionTitleEl = root.querySelector('[data-mission-title]')!;
+    this.missionEyebrowEl = root.querySelector('[data-mission-eyebrow]')!;
+    this.missionDescriptionEl = root.querySelector('[data-mission-description]')!;
+    this.missionArtEl = root.querySelector('[data-mission-art]')!;
+    this.chatLogEl = root.querySelector('[data-chat-log]')!;
+    this.chatInputEl = root.querySelector('[data-chat-input]')!;
 
-    this.copyBtn.addEventListener('click', () => this.handleCopy());
+    this.leaderSlot = this.buildLeaderSlot(root);
+    this.allySlots = this.buildAllySlots(root);
+
+    this.inviteBtn.addEventListener('click', () => void this.handleInvite());
     this.actionBtn.addEventListener('click', () => this.handleAction());
     root.querySelector('[data-leave]')!.addEventListener('click', () => {
       this.opts?.onLeave();
     });
 
-    this.buildPartySlots();
-
-    document.addEventListener('keydown', this.onKey);
+    document.addEventListener('keydown', this.onKey, { capture: true });
   }
 
-  private buildPartySlots() {
-    for (let i = 0; i < MAX_PARTY_SIZE; i++) {
+  private buildLeaderSlot(root: HTMLElement): SlotEls {
+    return {
+      root: root.querySelector('[data-leader]')!,
+      portraitHost: root.querySelector('[data-leader-portrait]')!,
+      content: root.querySelector('[data-leader-state]')!,
+    };
+  }
+
+  private buildAllySlots(root: HTMLElement): SlotEls[] {
+    const host = root.querySelector('[data-allies]')!;
+    const slots: SlotEls[] = [];
+    for (let i = 0; i < MAX_PARTY_SIZE - 1; i++) {
       const slot = document.createElement('div');
-      slot.className = styles.partySlot!;
+      slot.className = styles.allySlot!;
       slot.dataset.empty = 'true';
 
       const portraitHost = document.createElement('div');
-      portraitHost.className = styles.partySlotPortrait!;
+      portraitHost.className = styles.allySlotPortrait!;
 
       const content = document.createElement('div');
+      content.className = styles.allySlotContent!;
 
       slot.appendChild(portraitHost);
       slot.appendChild(content);
+      host.appendChild(slot);
 
-      this.partyEl.appendChild(slot);
-      this.partySlots.push({ root: slot, portraitHost, content });
-
-      if (i < MAX_PARTY_SIZE - 1) {
-        const conn = document.createElement('div');
-        conn.className = styles.partyConnector!;
-        this.partyEl.appendChild(conn);
-      }
+      slots.push({ root: slot, portraitHost, content });
     }
+    return slots;
   }
 
   private onKey = (e: KeyboardEvent) => {
     if (this.element.dataset.visible !== 'true') return;
+    const target = e.target;
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -152,12 +226,28 @@ export class RoomLobby {
   show(opts: RoomLobbyShowOptions) {
     this.opts = opts;
     this.codeEl.textContent = opts.code;
-    this.copyBtn.dataset.copied = 'false';
-    this.copyBtn.textContent = 'Copiar';
+    // Drop focus from any lingering element on the previous screen so Enter
+    // hits our document-level handler instead of an off-screen button.
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active !== document.body) {
+      active.blur();
+    }
     this.members = [];
     this.isHost = false;
     this.isReady = false;
     this.allReady = false;
+
+    this.missionTitleEl.textContent = opts.missionName;
+    this.missionEyebrowEl.textContent = opts.missionEyebrow;
+    this.missionDescriptionEl.textContent = opts.missionDescription;
+    if (opts.missionArtUrl) {
+      this.missionArtEl.style.backgroundImage = `url(${opts.missionArtUrl})`;
+      this.missionArtEl.dataset.hasArt = 'true';
+    } else {
+      this.missionArtEl.style.backgroundImage = '';
+      this.missionArtEl.dataset.hasArt = 'false';
+    }
+
     this.refreshUI();
     this.element.dataset.visible = 'true';
   }
@@ -197,64 +287,75 @@ export class RoomLobby {
   }
 
   private refreshUI() {
-    this.refreshParty();
+    this.refreshLeader();
+    this.refreshAllies();
     this.refreshAction();
   }
 
-  private refreshParty() {
-    for (let i = 0; i < MAX_PARTY_SIZE; i++) {
-      const slotEls = this.partySlots[i]!;
-      const member = this.members[i];
+  private refreshLeader() {
+    const leader = this.members[0];
+    const nameEl = this.element.querySelector('[data-leader-name]') as HTMLElement;
+    const roleEl = this.element.querySelector('[data-leader-role]') as HTMLElement;
+    const stateText = this.element.querySelector('[data-leader-statetext]') as HTMLElement;
+    const stateBlock = this.element.querySelector('[data-leader-state]') as HTMLElement;
+
+    if (!leader) {
+      this.leaderSlot.root.dataset.empty = 'true';
+      nameEl.textContent = '—';
+      roleEl.textContent = 'Sala vazia';
+      stateText.textContent = 'Aguardando';
+      stateBlock.dataset.kind = 'idle';
+      this.releasePortrait(0);
+      return;
+    }
+
+    this.leaderSlot.root.dataset.empty = 'false';
+    nameEl.textContent = leader.username;
+    roleEl.textContent = leader.userId === this.opts?.youUserId ? 'Líder · você' : 'Líder da jornada';
+
+    const isAlone = this.members.length <= 1;
+    if (isAlone) {
+      stateText.textContent = 'Sozinho · pronto pra partir';
+      stateBlock.dataset.kind = 'ready';
+    } else if (this.allReady) {
+      stateText.textContent = 'Aliados prontos · pode iniciar';
+      stateBlock.dataset.kind = 'ready';
+    } else {
+      stateText.textContent = 'Aguardando aliados';
+      stateBlock.dataset.kind = 'idle';
+    }
+
+    this.ensurePortrait(0, this.leaderSlot.portraitHost);
+  }
+
+  private refreshAllies() {
+    for (let i = 0; i < this.allySlots.length; i++) {
+      const slotEls = this.allySlots[i]!;
+      const member = this.members[i + 1];
 
       if (!member) {
         slotEls.root.dataset.empty = 'true';
         delete slotEls.root.dataset.ready;
         slotEls.content.innerHTML = `
-          <span class="${styles.emptyGlyph}">·</span>
-          <span class="${styles.emptyLabel}">Aguardando aliado</span>
+          <span class="${styles.allySlotEmpty}">vago</span>
         `;
-        this.releasePortrait(i);
+        this.releasePortrait(i + 1);
         continue;
       }
 
       const isYou = this.opts?.youUserId === member.userId;
-      const showsReady = !member.isHost && member.ready;
       slotEls.root.dataset.empty = 'false';
-      slotEls.root.dataset.ready = showsReady ? 'true' : 'false';
+      slotEls.root.dataset.ready = member.ready ? 'true' : 'false';
+      slotEls.root.dataset.you = isYou ? 'true' : 'false';
 
-      const badges: string[] = [];
-      if (member.isHost) {
-        badges.push(`<span class="${styles.partySlotBadge} ${styles.partySlotBadgeHost}">Líder</span>`);
-      }
-      if (isYou) {
-        badges.push(`<span class="${styles.partySlotBadge} ${styles.partySlotBadgeYou}">Você</span>`);
-      }
-      const isAlone = this.members.length <= 1;
-      const stateText = member.isHost
-        ? isAlone
-          ? 'Sozinho · pronto pra partir'
-          : this.allReady
-            ? 'Aliados prontos · pode iniciar'
-            : 'Aguardando aliados'
-        : member.ready
-          ? 'Pronto'
-          : 'Preparando-se';
       slotEls.content.innerHTML = `
-        <div class="${styles.partySlotCorner}"></div>
-        <div class="${styles.partySlotHead}">
-          <span class="${styles.partySlotName}">${escapeHtml(member.username)}</span>
-          <div style="display:flex; gap:4px;">${badges.join('')}</div>
-        </div>
-        <div class="${styles.partySlotMeta}">
-          <span>${member.isHost ? 'Líder da jornada' : 'Aliado'}</span>
-        </div>
-        <div class="${styles.partySlotState}">
-          <span class="${styles.partySlotStateDot}"></span>
-          <span class="${styles.partySlotStateText}">${stateText}</span>
-        </div>
+        <span class="${styles.allySlotName}">${escapeHtml(member.username)}</span>
+        <span class="${styles.allySlotState}" data-kind="${member.ready ? 'ready' : 'idle'}">
+          ${member.ready ? 'Pronto' : 'Preparando'}
+        </span>
       `;
 
-      this.ensurePortrait(i, slotEls.portraitHost);
+      this.ensurePortrait(i + 1, slotEls.portraitHost);
     }
   }
 
@@ -264,11 +365,11 @@ export class RoomLobby {
       container: host,
       modelUrl: NAIA_MODEL_URL,
       toonShading: true,
-      cameraDistance: 2.0,
-      chestRatio: 0.55,
+      cameraDistance: slotIdx === 0 ? 2.6 : 2.1,
+      chestRatio: slotIdx === 0 ? 0.55 : 0.55,
       swayAmplitude: 0.14,
-      baseRotationY: -Math.PI / 2,
-      proceduralIdle: IDLE_NAIA,
+      baseRotationY: 0,
+      proceduralIdle: findNaiaIdleSpec(),
       onLoadError: () => {
         host.style.display = 'none';
       },
@@ -295,12 +396,12 @@ export class RoomLobby {
       this.actionBtn.dataset.variant = 'start';
       this.actionBtn.dataset.active = 'false';
       const isAlone = this.members.length <= 1;
-      labelEl.textContent = isAlone ? 'Iniciar (solo)' : 'Iniciar jornada';
+      labelEl.textContent = isAlone ? 'Iniciar (solo)' : 'Iniciar';
       const canStart = isAlone || this.allReady;
       this.actionBtn.disabled = !canStart;
       this.actionHint.innerHTML = canStart
         ? `<span class="${styles.actionHintKey}">Enter</span> · iniciar`
-        : 'Aguardando aliados ficarem prontos';
+        : 'Aguardando aliados';
     } else {
       this.actionBtn.dataset.variant = 'ready';
       this.actionBtn.dataset.active = this.isReady ? 'true' : 'false';
@@ -322,16 +423,17 @@ export class RoomLobby {
     }
   }
 
-  private async handleCopy() {
+  private async handleInvite() {
     const code = this.codeEl.textContent ?? '';
     if (!code || code === '------') return;
     try {
       await navigator.clipboard.writeText(code);
-      this.copyBtn.dataset.copied = 'true';
-      this.copyBtn.textContent = 'Copiado';
+      this.inviteBtn.dataset.copied = 'true';
+      const labelEl = this.inviteBtn.querySelector(`.${styles.inviteBtnLabel}`)!;
+      labelEl.textContent = 'Copiado!';
       setTimeout(() => {
-        this.copyBtn.dataset.copied = 'false';
-        this.copyBtn.textContent = 'Copiar';
+        this.inviteBtn.dataset.copied = 'false';
+        labelEl.textContent = 'Convidar';
       }, 1500);
     } catch {
       const range = document.createRange();

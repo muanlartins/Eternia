@@ -2,7 +2,8 @@ import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 
 import { getStageData } from './data/stage-data.js';
 import type { Shape, ShapeKind, SpawnEntry, StageData } from './data/stage-data.js';
 
-type Tool = 'solid' | 'oneway' | 'trigger' | 'spawn' | 'start' | 'select';
+type Tool = 'solid' | 'oneway' | 'trigger' | 'slope' | 'spawn' | 'start' | 'select';
+type ResizeHandle = 'tl' | 't' | 'tr' | 'l' | 'r' | 'bl' | 'b' | 'br';
 
 interface EditorState {
   stage: StageData;
@@ -10,11 +11,17 @@ interface EditorState {
   spawns: SpawnEntry[];
   playerStart: { x: number; y: number };
   selectedIdx: number | null;
+  selectedSpawnIdx: number | null;
   tool: Tool;
   spawnType: string;
+  slopeDir: 'left' | 'right';
   snap: number;
   dirty: boolean;
 }
+
+const HANDLE_VISUAL = 14;
+const HANDLE_HIT = 20;
+const SPAWN_HIT_RADIUS = 18;
 
 const URL_PARAMS = new URLSearchParams(location.search);
 const STAGE_ID = URL_PARAMS.get('stage') ?? 'forest-1-1';
@@ -23,6 +30,7 @@ const KIND_COLOR: Record<ShapeKind, number> = {
   solid: 0x22c55e,
   oneway: 0xfacc15,
   trigger: 0x3b82f6,
+  slope: 0xa855f7,
 };
 
 const SPAWN_TYPES = [
@@ -50,11 +58,87 @@ async function main() {
     spawns: [...initial.spawns],
     playerStart: { ...initial.playerStart },
     selectedIdx: null,
+    selectedSpawnIdx: null,
     tool: 'select',
     spawnType: 'slim',
+    slopeDir: 'right',
     snap: 8,
     dirty: false,
   };
+
+  let resize: {
+    handle: ResizeHandle;
+    initial: Shape;
+    startX: number;
+    startY: number;
+  } | null = null;
+
+  function handlePositions(s: Shape) {
+    return {
+      tl: { x: s.x, y: s.y },
+      t: { x: s.x + s.w / 2, y: s.y },
+      tr: { x: s.x + s.w, y: s.y },
+      l: { x: s.x, y: s.y + s.h / 2 },
+      r: { x: s.x + s.w, y: s.y + s.h / 2 },
+      bl: { x: s.x, y: s.y + s.h },
+      b: { x: s.x + s.w / 2, y: s.y + s.h },
+      br: { x: s.x + s.w, y: s.y + s.h },
+    } as const;
+  }
+
+  function hitHandle(sx: number, sy: number, s: Shape): ResizeHandle | null {
+    const ps = handlePositions(s);
+    const r = HANDLE_HIT / 2;
+    for (const k of Object.keys(ps) as ResizeHandle[]) {
+      const p = ps[k];
+      if (Math.abs(sx - p.x) <= r && Math.abs(sy - p.y) <= r) return k;
+    }
+    return null;
+  }
+
+  function applyResize(s: Shape, h: ResizeHandle, dx: number, dy: number): Shape {
+    let x = s.x;
+    let y = s.y;
+    let w = s.w;
+    let hh = s.h;
+    if (h.includes('l')) {
+      x = s.x + dx;
+      w = s.w - dx;
+    }
+    if (h.includes('r')) {
+      w = s.w + dx;
+    }
+    if (h.includes('t')) {
+      y = s.y + dy;
+      hh = s.h - dy;
+    }
+    if (h.includes('b')) {
+      hh = s.h + dy;
+    }
+    if (w < 4) {
+      if (h.includes('l')) x = s.x + s.w - 4;
+      w = 4;
+    }
+    if (hh < 4) {
+      if (h.includes('t')) y = s.y + s.h - 4;
+      hh = 4;
+    }
+    return { ...s, x, y, w, h: hh };
+  }
+
+  function spawnPos(sp: SpawnEntry) {
+    return { x: sp.x, y: sp.y ?? state.stage.height - 64 };
+  }
+
+  function hitSpawn(sx: number, sy: number): number | null {
+    for (let i = state.spawns.length - 1; i >= 0; i--) {
+      const p = spawnPos(state.spawns[i]!);
+      const dx = sx - p.x;
+      const dy = sy - p.y;
+      if (dx * dx + dy * dy <= SPAWN_HIT_RADIUS * SPAWN_HIT_RADIUS) return i;
+    }
+    return null;
+  }
 
   const wrap = document.getElementById('editor-canvas-wrap')!;
   const toolbar = document.getElementById('editor-toolbar')!;
@@ -145,6 +229,7 @@ async function main() {
       { id: 'select', label: 'Select', key: 'V' },
       { id: 'solid', label: 'Solid', key: 'S' },
       { id: 'oneway', label: 'OneWay', key: 'O' },
+      { id: 'slope', label: 'Slope', key: 'R' },
       { id: 'trigger', label: 'Trigger', key: 'T' },
       { id: 'spawn', label: 'Spawn', key: 'M' },
       { id: 'start', label: 'Start', key: 'P' },
@@ -175,6 +260,19 @@ async function main() {
         state.spawnType = select.value;
       };
       toolbar.appendChild(select);
+    }
+
+    if (state.tool === 'slope') {
+      const sep = document.createElement('div');
+      sep.className = 'sep';
+      toolbar.appendChild(sep);
+      const dirBtn = document.createElement('button');
+      dirBtn.textContent = `Dir ${state.slopeDir === 'right' ? '↗ right' : '↖ left'} (F)`;
+      dirBtn.onclick = () => {
+        state.slopeDir = state.slopeDir === 'right' ? 'left' : 'right';
+        buildToolbar();
+      };
+      toolbar.appendChild(dirBtn);
     }
 
     const sep2 = document.createElement('div');
@@ -211,9 +309,12 @@ async function main() {
   function setTool(t: Tool) {
     state.tool = t;
     state.selectedIdx = null;
+    state.selectedSpawnIdx = null;
+    resize = null;
     buildToolbar();
     renderSide();
     renderSelection();
+    renderSpawns();
   }
 
   function toggleSnap() {
@@ -221,15 +322,28 @@ async function main() {
     buildToolbar();
   }
 
+  function slopeTriangle(s: Shape): number[] {
+    const dir = s.dir ?? 'right';
+    return dir === 'right'
+      ? [s.x, s.y + s.h, s.x + s.w, s.y, s.x + s.w, s.y + s.h]
+      : [s.x, s.y, s.x + s.w, s.y + s.h, s.x, s.y + s.h];
+  }
+
   function renderShapes() {
     const g = new Graphics();
     for (let i = 0; i < state.shapes.length; i++) {
       const s = state.shapes[i]!;
       const color = KIND_COLOR[s.kind];
-      const alpha = s.kind === 'oneway' ? 0.45 : 0.32;
-      g.rect(s.x, s.y, s.w, s.h)
-        .fill({ color, alpha })
-        .stroke({ color, width: 2, alpha: 0.95 });
+      const alpha = s.kind === 'oneway' ? 0.45 : s.kind === 'slope' ? 0.4 : 0.32;
+      if (s.kind === 'slope') {
+        g.poly(slopeTriangle(s))
+          .fill({ color, alpha })
+          .stroke({ color, width: 2, alpha: 0.95 });
+      } else {
+        g.rect(s.x, s.y, s.w, s.h)
+          .fill({ color, alpha })
+          .stroke({ color, width: 2, alpha: 0.95 });
+      }
     }
     layers.shapes.removeChildren();
     layers.shapes.addChild(g);
@@ -278,15 +392,38 @@ async function main() {
 
   function renderSelection() {
     layers.selection.removeChildren();
-    if (state.selectedIdx === null) return;
-    const s = state.shapes[state.selectedIdx];
-    if (!s) return;
-    const g = new Graphics();
-    g.rect(s.x - 2, s.y - 2, s.w + 4, s.h + 4)
-      .stroke({ color: 0xffffff, width: 2, alpha: 1 });
-    g.rect(s.x - 5, s.y - 5, s.w + 10, s.h + 10)
-      .stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
-    layers.selection.addChild(g);
+    if (state.selectedIdx !== null) {
+      const s = state.shapes[state.selectedIdx];
+      if (s) {
+        const g = new Graphics();
+        g.rect(s.x - 2, s.y - 2, s.w + 4, s.h + 4)
+          .stroke({ color: 0xffffff, width: 2, alpha: 1 });
+        g.rect(s.x - 5, s.y - 5, s.w + 10, s.h + 10)
+          .stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
+        const hsz = HANDLE_VISUAL;
+        const half = hsz / 2;
+        const ps = handlePositions(s);
+        for (const k of Object.keys(ps) as ResizeHandle[]) {
+          const p = ps[k];
+          g.rect(p.x - half, p.y - half, hsz, hsz)
+            .fill({ color: 0xffffff, alpha: 0.95 })
+            .stroke({ color: 0x000000, width: 1, alpha: 0.85 });
+        }
+        layers.selection.addChild(g);
+      }
+    }
+    if (state.selectedSpawnIdx !== null) {
+      const sp = state.spawns[state.selectedSpawnIdx];
+      if (sp) {
+        const p = spawnPos(sp);
+        const g = new Graphics();
+        g.circle(p.x, p.y, 22)
+          .stroke({ color: 0xffffff, width: 2, alpha: 1 });
+        g.circle(p.x, p.y, 26)
+          .stroke({ color: 0xffffff, width: 1, alpha: 0.5 });
+        layers.selection.addChild(g);
+      }
+    }
   }
 
   function renderSide() {
@@ -305,7 +442,8 @@ async function main() {
       swatch.className = `swatch ${s.kind}`;
       row.appendChild(swatch);
       const text = document.createElement('span');
-      text.innerHTML = `<strong>${s.kind}</strong>${s.id ? `:${s.id}` : ''}<br><span class="meta">${s.x},${s.y} · ${s.w}×${s.h}</span>`;
+      const dirSuffix = s.kind === 'slope' ? ` ↗${s.dir === 'left' ? 'L' : 'R'}` : '';
+      text.innerHTML = `<strong>${s.kind}${dirSuffix}</strong>${s.id ? `:${s.id}` : ''}<br><span class="meta">${s.x},${s.y} · ${s.w}×${s.h}</span>`;
       row.appendChild(text);
       sideList.appendChild(row);
     }
@@ -344,6 +482,16 @@ async function main() {
     const y = snap(sy);
 
     if (state.tool === 'select') {
+      if (state.selectedIdx !== null) {
+        const cur = state.shapes[state.selectedIdx];
+        if (cur) {
+          const h = hitHandle(sx, sy, cur);
+          if (h) {
+            resize = { handle: h, initial: { ...cur }, startX: sx, startY: sy };
+            return;
+          }
+        }
+      }
       let hit: number | null = null;
       for (let i = state.shapes.length - 1; i >= 0; i--) {
         const s = state.shapes[i]!;
@@ -352,8 +500,16 @@ async function main() {
           break;
         }
       }
-      state.selectedIdx = hit;
+      if (hit !== null) {
+        state.selectedIdx = hit;
+        state.selectedSpawnIdx = null;
+      } else {
+        const sphit = hitSpawn(sx, sy);
+        state.selectedIdx = null;
+        state.selectedSpawnIdx = sphit;
+      }
       renderSelection();
+      renderSpawns();
       renderSide();
       return;
     }
@@ -376,28 +532,53 @@ async function main() {
   });
 
   app.canvas.addEventListener('mousemove', (e: MouseEvent) => {
-    if (!dragStart) return;
     const rect = app.canvas.getBoundingClientRect();
     const sx = (e.clientX - rect.left) * (state.stage.width / rect.width);
     const sy = (e.clientY - rect.top) * (state.stage.height / rect.height);
+
+    if (resize && state.selectedIdx !== null) {
+      const dx = snap(sx) - snap(resize.startX);
+      const dy = snap(sy) - snap(resize.startY);
+      state.shapes[state.selectedIdx] = applyResize(resize.initial, resize.handle, dx, dy);
+      renderShapes();
+      renderSelection();
+      renderSide();
+      markDirty();
+      return;
+    }
+
+    if (!dragStart) return;
     const x = snap(sx);
     const y = snap(sy);
     const minX = Math.min(dragStart.x, x);
     const minY = Math.min(dragStart.y, y);
     const w = Math.abs(x - dragStart.x);
     const h = Math.abs(y - dragStart.y);
-    const color = state.tool === 'solid' || state.tool === 'oneway' || state.tool === 'trigger'
-      ? KIND_COLOR[state.tool]
+    const color = state.tool === 'solid' || state.tool === 'oneway' || state.tool === 'trigger' || state.tool === 'slope'
+      ? KIND_COLOR[state.tool === 'slope' ? 'slope' : state.tool]
       : 0xffffff;
     dragGfx.clear();
     if (w > 0 && h > 0) {
-      dragGfx.rect(minX, minY, w, h)
-        .fill({ color, alpha: 0.25 })
-        .stroke({ color, width: 2, alpha: 0.95 });
+      if (state.tool === 'slope') {
+        const pts = state.slopeDir === 'right'
+          ? [minX, minY + h, minX + w, minY, minX + w, minY + h]
+          : [minX, minY, minX + w, minY + h, minX, minY + h];
+        dragGfx.poly(pts)
+          .fill({ color, alpha: 0.25 })
+          .stroke({ color, width: 2, alpha: 0.95 });
+      } else {
+        dragGfx.rect(minX, minY, w, h)
+          .fill({ color, alpha: 0.25 })
+          .stroke({ color, width: 2, alpha: 0.95 });
+      }
     }
   });
 
   app.canvas.addEventListener('mouseup', (e: MouseEvent) => {
+    if (resize) {
+      resize = null;
+      return;
+    }
     if (!dragStart) return;
     const rect = app.canvas.getBoundingClientRect();
     const sx = (e.clientX - rect.left) * (state.stage.width / rect.width);
@@ -413,6 +594,11 @@ async function main() {
     if (w < 4 || h < 4) return;
     if (state.tool === 'solid' || state.tool === 'oneway' || state.tool === 'trigger') {
       state.shapes.push({ kind: state.tool, x: minX, y: minY, w, h });
+      renderShapes();
+      renderSide();
+      markDirty();
+    } else if (state.tool === 'slope') {
+      state.shapes.push({ kind: 'slope', dir: state.slopeDir, x: minX, y: minY, w, h });
       renderShapes();
       renderSide();
       markDirty();
@@ -433,6 +619,7 @@ async function main() {
       v: 'select', V: 'select',
       s: 'solid', S: 'solid',
       o: 'oneway', O: 'oneway',
+      r: 'slope', R: 'slope',
       t: 'trigger', T: 'trigger',
       m: 'spawn', M: 'spawn',
       p: 'start', P: 'start',
@@ -443,6 +630,24 @@ async function main() {
     }
     if (e.key === 'g' || e.key === 'G') {
       toggleSnap();
+      return;
+    }
+    if (e.key === 'f' || e.key === 'F') {
+      if (state.selectedIdx !== null) {
+        const cur = state.shapes[state.selectedIdx];
+        if (cur && cur.kind === 'slope') {
+          state.shapes[state.selectedIdx] = { ...cur, dir: cur.dir === 'right' ? 'left' : 'right' };
+          renderShapes();
+          renderSelection();
+          renderSide();
+          markDirty();
+          e.preventDefault();
+          return;
+        }
+      }
+      state.slopeDir = state.slopeDir === 'right' ? 'left' : 'right';
+      buildToolbar();
+      e.preventDefault();
       return;
     }
     if (state.selectedIdx !== null) {
@@ -469,6 +674,34 @@ async function main() {
         renderShapes();
         renderSelection();
         renderSide();
+        markDirty();
+        e.preventDefault();
+      }
+      return;
+    }
+    if (state.selectedSpawnIdx !== null) {
+      const step = e.shiftKey ? state.snap * 2 : state.snap;
+      const sp = state.spawns[state.selectedSpawnIdx];
+      if (!sp) return;
+      let dx = 0, dy = 0;
+      if (e.key === 'ArrowLeft') dx = -step;
+      else if (e.key === 'ArrowRight') dx = step;
+      else if (e.key === 'ArrowUp') dy = -step;
+      else if (e.key === 'ArrowDown') dy = step;
+      else if (e.key === 'Delete' || e.key === 'Backspace') {
+        state.spawns.splice(state.selectedSpawnIdx, 1);
+        state.selectedSpawnIdx = null;
+        renderSpawns();
+        renderSelection();
+        markDirty();
+        e.preventDefault();
+        return;
+      }
+      if (dx !== 0 || dy !== 0) {
+        const cur = spawnPos(sp);
+        state.spawns[state.selectedSpawnIdx] = { ...sp, x: cur.x + dx, y: cur.y + dy };
+        renderSpawns();
+        renderSelection();
         markDirty();
         e.preventDefault();
       }

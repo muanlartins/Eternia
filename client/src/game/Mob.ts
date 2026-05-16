@@ -82,7 +82,7 @@ function paletteFor(id: string): Record<MobState, number> {
 const MOB_GRAVITY = 2200;
 const MOB_FALL_GRAVITY_MULTIPLIER = 1.4;
 const MOB_MAX_FALL_SPEED = 1400;
-const GROUND_Y = 480;
+const DEFAULT_GROUND_Y = 480;
 
 export class Mob {
   x: number;
@@ -92,6 +92,7 @@ export class Mob {
   hp: number;
   alive = true;
   onGround = true;
+  worldFloorY = DEFAULT_GROUND_Y;
   private phase: 1 | 2 = 1;
   private justEnteredPhase2 = false;
 
@@ -523,7 +524,7 @@ export class Mob {
         this.vy = Math.min(MOB_MAX_FALL_SPEED, this.vy + g * dt);
         this.y += this.vy * dt;
 
-        let effectiveGroundY = GROUND_Y - this.spec.height;
+        let effectiveGroundY = this.worldFloorY - this.spec.height;
         const mobCenterX = this.x + this.spec.width / 2;
         for (const p of platforms) {
           if (mobCenterX < p.x || mobCenterX > p.x + p.w) continue;
@@ -550,7 +551,7 @@ export class Mob {
   }
 
   private tickHover(dt: number) {
-    const hoverY = this.spec.hoverY ?? GROUND_Y - this.spec.height - 100;
+    const hoverY = this.spec.hoverY ?? this.worldFloorY - this.spec.height - 100;
     if (this.state === MobState.Active) {
       this.y += this.vy * dt;
     } else {
@@ -664,12 +665,9 @@ export class Mob {
           .rect(0, -drift, this.spec.width, this.spec.height)
           .fill({ color: 0xddddff, alpha })
           .stroke({ color: 0xffd700, width: 2, alpha: alpha * 0.8 });
-      } else if (!this.isBoss()) {
-        const deadColor = paletteFor(this.spec.id).dead;
-        this.body
-          .rect(0, 0, this.spec.width, this.spec.height)
-          .fill({ color: deadColor, alpha: 0.35 });
       }
+      // After koFade ends, body stays cleared (no static carcass).
+      // The mob's view remains in the scene but renders nothing.
       return;
     }
 

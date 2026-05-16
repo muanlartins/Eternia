@@ -1,0 +1,11 @@
+{
+  "name": "Tchau",
+  "duration": 1,
+  "loop": true,
+  "poses": [
+    {
+      "time": 0,
+      "bones": []
+    }
+  ]
+}

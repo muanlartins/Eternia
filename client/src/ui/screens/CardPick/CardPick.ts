@@ -55,29 +55,34 @@ export class CardPick {
     this.subtitleEl = root.querySelector('[data-subtitle]')!;
     this.hintEl = root.querySelector('[data-hint]')!;
 
-    document.addEventListener('keydown', this.onKey);
+    document.addEventListener('keydown', this.onKey, { capture: true });
   }
 
   private onKey = (e: KeyboardEvent) => {
     if (this.element.dataset.visible !== 'true') return;
-    if (e.key === '1') {
-      this.activate(0);
-      e.preventDefault();
-    } else if (e.key === '2') {
-      this.activate(1);
-      e.preventDefault();
-    } else if (e.key === '3') {
-      this.activate(2);
-      e.preventDefault();
-    } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+    const handled =
+      e.key === '1' ||
+      e.key === '2' ||
+      e.key === '3' ||
+      e.key === 'ArrowRight' ||
+      e.key === 'ArrowLeft' ||
+      e.key === 'a' ||
+      e.key === 'A' ||
+      e.key === 'd' ||
+      e.key === 'D' ||
+      e.key === 'Enter';
+    if (!handled) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.key === '1') this.activate(0);
+    else if (e.key === '2') this.activate(1);
+    else if (e.key === '3') this.activate(2);
+    else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
       this.selectIdx((this.selectedIdx + 1) % this.cardEls.length);
-      e.preventDefault();
     } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
       this.selectIdx((this.selectedIdx - 1 + this.cardEls.length) % this.cardEls.length);
-      e.preventDefault();
     } else if (e.key === 'Enter') {
       this.activate(this.selectedIdx);
-      e.preventDefault();
     }
   };
 
@@ -116,6 +121,9 @@ export class CardPick {
           : c.rarity === 'modifier'
             ? styles.cardRarityModifier
             : styles.cardRarityCommon;
+      const iconBlock = c.glyph
+        ? `<div class="${styles.cardIcon}"><span class="${styles.cardIconGlyph}">${escapeHtml(c.glyph)}</span></div>`
+        : '';
       el.innerHTML = `
         <div class="${styles.cardBg}"></div>
         <div class="${styles.cardCorner}"></div>
@@ -125,9 +133,7 @@ export class CardPick {
         </div>
         <div class="${styles.cardRarity} ${rarityClass}">${rarityLabel}</div>
         <div class="${styles.cardContent}">
-          <div class="${styles.cardIcon}">
-            <span class="${styles.cardIconGlyph}">${escapeHtml(c.glyph ?? c.name.charAt(0).toUpperCase())}</span>
-          </div>
+          ${iconBlock}
           <h3 class="${styles.cardName}">${escapeHtml(c.name)}</h3>
           <p class="${styles.cardDesc}">${escapeHtml(c.description)}</p>
         </div>

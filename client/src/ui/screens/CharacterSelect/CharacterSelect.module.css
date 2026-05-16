@@ -117,31 +117,13 @@
   flex: 0 0 auto;
   margin: var(--space-5) var(--space-7) 0;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   pointer-events: none;
   opacity: 0;
   transform: translateY(-12px);
   animation: revealDown 600ms var(--ease-decel) 200ms forwards;
   z-index: 2;
-}
-
-.topBarLabel {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  letter-spacing: var(--tracking-widest);
-  color: rgba(184, 194, 187, 0.7);
-  text-transform: uppercase;
-}
-
-.topBarLabel::before {
-  content: '';
-  width: 22px;
-  height: 1px;
-  background: var(--accent-500);
 }
 
 .topBarRight {
@@ -416,6 +398,113 @@
   color: rgba(184, 194, 187, 0.45);
   background: rgba(108, 120, 114, 0.08);
   border-color: rgba(108, 120, 114, 0.25);
+}
+
+/* ============= Ability cycler ============= */
+
+.heroAbility {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.heroAbilitySlots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.heroAbilitySlot {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(184, 194, 187, 0.35);
+  background: rgba(46, 139, 87, 0.06);
+  border: 1px solid rgba(46, 139, 87, 0.2);
+  transition: all 200ms var(--ease-soft);
+}
+
+.heroAbilitySlot[data-active='true'] {
+  color: var(--accent-300);
+  background: rgba(46, 139, 87, 0.22);
+  border-color: rgba(46, 139, 87, 0.55);
+  box-shadow: 0 0 0 2px rgba(46, 139, 87, 0.12);
+}
+
+.root[data-char='astrid'] .heroAbilitySlot[data-active='true'] {
+  color: #f0c0c4;
+  background: rgba(208, 64, 80, 0.22);
+  border-color: rgba(208, 64, 80, 0.55);
+  box-shadow: 0 0 0 2px rgba(208, 64, 80, 0.12);
+}
+
+.heroAbilityCycleHint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(184, 194, 187, 0.4);
+  text-transform: uppercase;
+  margin-left: 6px;
+}
+
+.heroAbility[data-focused='true'] .heroAbilityCard {
+  background: rgba(46, 139, 87, 0.12);
+  border-color: rgba(46, 139, 87, 0.45);
+  border-left-width: 3px;
+  box-shadow: 0 0 0 2px rgba(46, 139, 87, 0.12);
+}
+
+.root[data-char='astrid'] .heroAbility[data-focused='true'] .heroAbilityCard {
+  background: rgba(208, 64, 80, 0.12);
+  border-color: rgba(208, 64, 80, 0.45);
+  box-shadow: 0 0 0 2px rgba(208, 64, 80, 0.12);
+}
+
+.heroAbilityCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: rgba(8, 14, 12, 0.4);
+  border: 1px solid rgba(46, 139, 87, 0.18);
+  border-radius: 6px;
+  border-left: 2px solid var(--accent-300);
+  min-height: 78px;
+  transition: all 200ms var(--ease-soft);
+}
+
+.root[data-char='astrid'] .heroAbilityCard {
+  border-left-color: #d04050;
+  border-color: rgba(208, 64, 80, 0.18);
+}
+
+.root[data-char='locked'] .heroAbilityCard {
+  border-left-color: rgba(108, 120, 114, 0.4);
+  border-color: rgba(108, 120, 114, 0.15);
+}
+
+.heroAbilityName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--neutral-50);
+  letter-spacing: 0.02em;
+}
+
+.heroAbilityDesc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(232, 237, 233, 0.78);
+  margin: 0;
+  font-style: italic;
 }
 
 @keyframes heroIn {

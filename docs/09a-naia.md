@@ -184,6 +184,21 @@ Quando ramp pra mais que 5 sprites, considerar montar **sprite sheet
   static views. `naia-anchor.png` virou single source of truth.
 - **2026-05-07**: 3 sprites integrados ingame via `Player.setSpriteTextures`.
   Naia selecionável em CharacterSelect.
+- **2026-05-10**: kit revisado — S1/S2/S3 original (Triple Shot fan / Arc
+  Shot overhead / Piercing Volley) substituído por **A · Rajada de
+  Flechas + S · Flecha-Tempestade + D · Tríplice Tempestade**. Fantasia
+  "chuva de flechas" mais clara que mistura de mecânicas geométricas.
+  S resolve issue do Arc Shot original que "nunca acerta" via
+  "explode no apex de distância" em vez de "cai no chão". CharacterSelect
+  expõe ability cycler (↑↓ alterna A/S/D).
+- **2026-05-10 (later)**: D refinada — abandonada a ideia "1 flecha que
+  vira muitas" (subdivisão tinha hand-off visual fraco) em favor de
+  **5 rajadas horizontais com 3 das 5 linhas escolhidas aleatoriamente
+  por rajada** (15 flechas total). Mecânica mais limpa, sem timing de
+  despawn/spawn, com sensação orgânica de chuva caótica. "Tríplice"
+  ressignificada — agora descreve as 3 linhas por rajada. A é
+  sequencial (5 flechas em cascata, mesma direção). S mantém apex-explode
+  com timing alinhado.
 
 ## Archer gameplay design (LOCKED 2026-05-07)
 
@@ -194,21 +209,39 @@ Naia ranged combat kit. Princípios:
 - **Tiro horizontal balístico com gravidade** — plataformas ajudam aiming
   vertical, não mouse-aim
 
-### Kit final
+### Kit final (revisão 2026-05-10 — A/S/D arrow rain)
 
-| Move | Input | Mecânica |
-|---|---|---|
-| **Basic shot chain** | Z (tap, encadeável 3×) | 3-hit chain de single arrows ~0.3s gap, MP regen on hit |
-| **Power shot** | Z (hold + release) | 3 charge tiers (475/950/1425 ms = mesma escala Astrid charge-Z) com damage scaling, ballistic arc |
-| **S1 Triple Shot** | 1 | 3 arrows fan ~30° spread |
-| **S2 Arc Shot** | 2 | Overhead arc, ground AOE |
-| **S3 Piercing Volley** | 3 | Multi-arrow horizontal piercing line |
-| Dash | Shift | Ground dash (mesmo Astrid) |
-| Dash atk | Shift+Z | Rolling shot durante dash |
-| Jump atk | Jump+Z | Aerial shot |
-| Dodge roll | S+S | Same as Astrid |
-| **Step-back hop** | Espaço | Pequeno hop pra trás (~80px) com i-frames; substitui parry estática |
-| Double jump | Jump (2×) | Já existe; SEM air dash pra archer |
+> Skills S1/S2/S3 originais (Triple Shot fan, Arc Shot overhead, Piercing
+> Volley) foram **substituídas** por kit baseado em "rajadas + chuvas
+> de flechas" — fantasia "tempestade de flechas élficas". Mecânicas mais
+> dramáticas que disparam no feel GC. Damages/MP costs/cooldowns TBD em
+> Sprint 1. Input keys (1/2/3 vs A/S/D) TBD; spec usa slot A/S/D como
+> identificador canônico.
+
+| Slot | Move | Input (TBD) | Mecânica |
+|---|---|---|---|
+| — | Basic shot chain | Z (tap, encadeável 3×) | 3-hit chain de single arrows ~0.3s gap, MP regen on hit |
+| — | Power shot | Z (hold + release) | 3 charge tiers (475/950/1425 ms) com damage scaling, ballistic arc |
+| **A** | **Rajada de Flechas** | 1 / A | Disparo multi-flecha contínuo na **mesma direção do ataque básico** — mesmo arco balístico, volume bem maior. Cobertura linear pra mob denso, sem dispersão lateral. |
+| **S** | **Flecha-Tempestade** | 2 / S | Flecha alta lançada num arco íngreme. **Após percorrer distância horizontal X**, explode em chuva descendente de mini-flechas. AoE vertical que ignora cobertura — substitui o Arc Shot original com lógica "explode no apex" em vez de "cai no chão". Resolve o problema do Arc Shot original que "nunca acerta". |
+| **D** | **Tríplice Tempestade** | 3 / D | **8 rajadas** espaçadas no tempo (~80ms entre rajadas). Cada rajada dispara em **2 das 5 linhas paralelas tight** (offsets ±30/±15/0px do bow — bem concentrado, ~60px range total) escolhidas **aleatoriamente**. Flechas têm **gravidade igual ao ataque básico** (`gravityMul: 1`) — todas seguem arcos parabólicos idênticos deslocados verticalmente, dando sensação de **curvas paralelas** em vez de linhas retas. Total: **16 flechas** em ~640ms de cascata caótica densa. (Nome "Tríplice" é histórico — mantém pela continuidade narrativa.) |
+| — | Dash | Shift | Ground dash (mesmo Astrid) |
+| — | Dash atk | Shift+Z | Rolling shot durante dash |
+| — | Jump atk | Jump+Z | Aerial shot |
+| — | Dodge roll | S+S | Same as Astrid (TBD: pode conflitar com S = Flecha-Tempestade) |
+| — | **Step-back hop** | Espaço | Pequeno hop pra trás (~80px) com i-frames; substitui parry estática |
+| — | Double jump | Jump (2×) | Já existe; SEM air dash pra archer |
+
+### Parâmetros TBD (Sprint 1 vai resolver)
+
+- **A · Rajada**: número de flechas por tick, ROF, MP cost, cooldown
+- **S · Flecha-Tempestade**: distância X até explodir, número de mini-flechas
+  na chuva, raio do AoE, MP cost, cooldown
+- **D · Tríplice**: spacing vertical entre as 5 linhas (atual ±90px), intervalo
+  entre rajadas (atual 90ms), número de linhas escolhidas por rajada (atual 3),
+  damage per arrow (~32% do base damage), MP cost (provavelmente o mais caro)
+- **Damage scaling**: A/S/D devem escalar acima do básico mas balanceados pelo
+  custo de MP — TBD numa pass de balanceamento
 
 ### Decisões finais
 

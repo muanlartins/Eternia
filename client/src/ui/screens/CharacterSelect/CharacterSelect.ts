@@ -4,6 +4,18 @@ import naiaPortrait from '../../../assets/naia/naia-cutout.png';
 import naiaHeadshot from '../../../assets/naia/naia-headshot.png';
 import { Character3DPortrait } from '../../../three/Character3DPortrait.js';
 import { IDLE_NAIA } from '../../../three/procedural-anims.js';
+import type { ProceduralAnimSpec } from '../../../three/procedural-anims.js';
+
+const NAIA_ANIMS = import.meta.glob<{ default: ProceduralAnimSpec }>(
+  '../../../data/anim/naia/*.json',
+  { eager: true },
+);
+function findNaiaIdleSpec(): ProceduralAnimSpec {
+  for (const mod of Object.values(NAIA_ANIMS)) {
+    if (mod.default?.name?.toLowerCase() === 'idle') return mod.default;
+  }
+  return IDLE_NAIA;
+}
 
 interface Model3DSpec {
   modelUrl: string;
@@ -12,36 +24,60 @@ interface Model3DSpec {
 
 const MODELS_3D: Record<string, Model3DSpec> = {
   naia: {
-    modelUrl: '/models/naia.glb',
+    modelUrl: '/models/naia-mixamo.glb',
   },
 };
+
+type AbilitySlot = 'A' | 'S' | 'D';
+
+interface AbilityDef {
+  slot: AbilitySlot;
+  name: string;
+  desc: string;
+}
 
 interface CharBible {
   className: string;
   lore: string;
-  chips: readonly string[];
+  abilities: readonly AbilityDef[];
 }
 
 const BIBLES: Record<string, CharBible> = {
   naia: {
     className: 'Elven Archer · Arco curto',
     lore: '"Cada flecha encontra seu alvo, se a paciência permitir."',
-    chips: ['RANGED', 'POWER SHOT', 'DOUBLE-JUMP', 'I-FRAMES'],
+    abilities: [
+      {
+        slot: 'A',
+        name: 'Rajada de Flechas',
+        desc: 'Disparo multi-flecha contínuo na mesma direção do ataque básico — mesmo arco balístico, volume bem maior. Cobertura linear pra zerar mob denso.',
+      },
+      {
+        slot: 'S',
+        name: 'Flecha-Tempestade',
+        desc: 'Flecha alta lançada num arco íngreme. Após percorrer distância horizontal, explode em chuva descendente de mini-flechas. AoE vertical que ignora cobertura.',
+      },
+      {
+        slot: 'D',
+        name: 'Tríplice Tempestade',
+        desc: 'Oito rajadas em cascata densa, cada uma disparando 2 das 5 linhas paralelas tight (alturas próximas, escolhidas aleatoriamente). Flechas seguem arcos parabólicos paralelos — 16 flechas total em chuva contínua e caótica.',
+      },
+    ],
   },
   astrid: {
     className: 'Knight · Espadachim',
     lore: '"Onde a espada cruza, o caminho se abre."',
-    chips: ['EM BREVE'],
+    abilities: [],
   },
   slot3: {
     className: 'Mage · Caster místico',
     lore: 'A guardiã de runas perdidas vai retornar quando seu nome for lembrado.',
-    chips: ['EM BREVE'],
+    abilities: [],
   },
   slot4: {
     className: 'Spell Knight · Lâmina e arcano',
     lore: 'A espada que canta runas espera seu portador.',
-    chips: ['EM BREVE'],
+    abilities: [],
   },
 };
 
@@ -68,13 +104,20 @@ export class CharacterSelect {
   private nameEl: HTMLElement;
   private classEl: HTMLElement;
   private loreEl: HTMLElement;
-  private chipsEl: HTMLElement;
+  private abilityWrapEl: HTMLElement;
+  private abilitySlotsEl: HTMLElement;
+  private abilityNameEl: HTMLElement;
+  private abilityDescEl: HTMLElement;
+  private cycleHintEl: HTMLElement;
+  private abilityIdx = 0;
+  private focusMode: 'character' | 'ability' = 'character';
   private portraitImg: HTMLImageElement;
   private portraitLockedEl: HTMLElement;
   private portrait3dHost: HTMLElement;
   private confirmBtn: HTMLButtonElement;
   private userNameEl: HTMLElement;
   private portraits3d = new Map<string, Character3DPortrait>();
+  private portraitLoads = new Map<string, Promise<void>>();
   private active3dCharId: string | null = null;
 
   constructor() {
@@ -92,7 +135,6 @@ export class CharacterSelect {
       </div>
 
       <div class="${styles.topBar}">
-        <div class="${styles.topBarLabel}">Capítulo I · Escolha o herói</div>
         <div class="${styles.topBarRight}">
           <span data-userlabel>·</span>
         </div>
@@ -118,8 +160,17 @@ export class CharacterSelect {
           <div class="${styles.heroClass}" data-class>—</div>
           <p class="${styles.heroLore}" data-lore>—</p>
           <div class="${styles.heroKitBlock}">
-            <div class="${styles.heroKitLabel}">Kit</div>
-            <div class="${styles.heroChips}" data-chips></div>
+            <div class="${styles.heroKitLabel}">
+              Kit
+              <span class="${styles.heroAbilityCycleHint}" data-cycle-hint>↑ ↓ alterna</span>
+            </div>
+            <div class="${styles.heroAbility}" data-ability>
+              <div class="${styles.heroAbilitySlots}" data-ability-slots></div>
+              <div class="${styles.heroAbilityCard}">
+                <div class="${styles.heroAbilityName}" data-ability-name>—</div>
+                <p class="${styles.heroAbilityDesc}" data-ability-desc>—</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -145,7 +196,11 @@ export class CharacterSelect {
     this.nameEl = root.querySelector('[data-name]')!;
     this.classEl = root.querySelector('[data-class]')!;
     this.loreEl = root.querySelector('[data-lore]')!;
-    this.chipsEl = root.querySelector('[data-chips]')!;
+    this.abilityWrapEl = root.querySelector('[data-ability]')!;
+    this.abilitySlotsEl = root.querySelector('[data-ability-slots]')!;
+    this.abilityNameEl = root.querySelector('[data-ability-name]')!;
+    this.abilityDescEl = root.querySelector('[data-ability-desc]')!;
+    this.cycleHintEl = root.querySelector('[data-cycle-hint]')!;
     this.portraitImg = root.querySelector('[data-portraitimg]')!;
     this.portraitLockedEl = root.querySelector('[data-portraitlocked]')!;
     this.portrait3dHost = root.querySelector('[data-portrait3d]')!;
@@ -183,11 +238,45 @@ export class CharacterSelect {
 
   private onKey = (e: KeyboardEvent) => {
     if (this.element.dataset.visible !== 'true') return;
-    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+    const isLeft = e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A';
+    const isRight = e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D';
+    const isUp = e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W';
+    const isDown = e.key === 'ArrowDown' || e.key === 's' || e.key === 'S';
+
+    if (this.focusMode === 'ability') {
+      if (isLeft) {
+        this.cycleAbility(-1);
+        e.preventDefault();
+      } else if (isRight) {
+        this.cycleAbility(1);
+        e.preventDefault();
+      } else if (isDown) {
+        this.setFocusMode('character');
+        e.preventDefault();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.setFocusMode('character');
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.confirmCurrent();
+      }
+      return;
+    }
+
+    if (isRight) {
       this.cycle(1);
       e.preventDefault();
-    } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+    } else if (isLeft) {
       this.cycle(-1);
+      e.preventDefault();
+    } else if (isUp) {
+      const c = CHARACTERS[this.selectedIdx]!;
+      const bible = BIBLES[c.id]!;
+      if (bible.abilities.length > 0) {
+        this.setFocusMode('ability');
+      }
       e.preventDefault();
     } else if (e.key === 'Enter') {
       e.preventDefault();
@@ -200,6 +289,22 @@ export class CharacterSelect {
     }
   };
 
+  private setFocusMode(mode: 'character' | 'ability'): void {
+    this.focusMode = mode;
+    this.abilityWrapEl.dataset.focused = mode === 'ability' ? 'true' : 'false';
+    this.updateCycleHint();
+  }
+
+  private updateCycleHint(): void {
+    if (this.focusMode === 'ability') {
+      this.cycleHintEl.textContent = '← → alterna · ↓ voltar';
+    } else {
+      const c = CHARACTERS[this.selectedIdx]!;
+      const bible = BIBLES[c.id]!;
+      this.cycleHintEl.textContent = bible.abilities.length > 0 ? '↑ ver habilidades' : '';
+    }
+  }
+
   private cycle(delta: number) {
     let next = this.selectedIdx;
     for (let step = 0; step < CHARACTERS.length; step++) {
@@ -209,6 +314,44 @@ export class CharacterSelect {
         return;
       }
     }
+  }
+
+  /**
+   * Eagerly construct the Character3DPortrait for `charId` so its GLB load + parse
+   * happens BEFORE the screen is shown. Returns a promise that resolves on first
+   * successful render-ready frame (or rejects on load error).
+   *
+   * Safe to call multiple times — subsequent calls return the cached load promise.
+   */
+  preload(charId: string): Promise<void> {
+    const cached = this.portraitLoads.get(charId);
+    if (cached) return cached;
+    const spec = MODELS_3D[charId];
+    if (!spec) {
+      const p = Promise.resolve();
+      this.portraitLoads.set(charId, p);
+      return p;
+    }
+    const loadPromise = new Promise<void>((resolve, reject) => {
+      const portrait = new Character3DPortrait({
+        container: this.portrait3dHost,
+        modelUrl: spec.modelUrl,
+        ...(spec.extraAnimationUrls
+          ? { extraAnimationUrls: spec.extraAnimationUrls }
+          : {}),
+        toonShading: true,
+        chestRatio: 0.55,
+        cameraDistance: 2.5,
+        baseRotationY: 0,
+        proceduralIdle: findNaiaIdleSpec(),
+        enableUserRotation: true,
+        onLoad: () => resolve(),
+        onLoadError: (err) => reject(err),
+      });
+      this.portraits3d.set(charId, portrait);
+    });
+    this.portraitLoads.set(charId, loadPromise);
+    return loadPromise;
   }
 
   show(opts: CharacterSelectShowOptions) {
@@ -242,8 +385,8 @@ export class CharacterSelect {
         toonShading: true,
         chestRatio: 0.55,
         cameraDistance: 2.5,
-        baseRotationY: -Math.PI / 2,
-        proceduralIdle: IDLE_NAIA,
+        baseRotationY: 0,
+        proceduralIdle: findNaiaIdleSpec(),
         enableUserRotation: true,
         onLoad: () => {
           if (this.active3dCharId !== charId) return;
@@ -289,12 +432,12 @@ export class CharacterSelect {
     this.classEl.textContent = bible.className;
     this.loreEl.textContent = bible.lore;
 
-    this.chipsEl.innerHTML = '';
-    for (const chip of bible.chips) {
-      const span = document.createElement('span');
-      span.className = styles.heroChip!;
-      span.textContent = chip;
-      this.chipsEl.appendChild(span);
+    this.abilityIdx = 0;
+    this.renderAbility(bible);
+    if (bible.abilities.length === 0 && this.focusMode === 'ability') {
+      this.setFocusMode('character');
+    } else {
+      this.updateCycleHint();
     }
 
     const portraitUrl = PORTRAITS[c.id];
@@ -335,4 +478,36 @@ export class CharacterSelect {
     if (!c.available) return;
     this.opts?.onConfirm(c);
   }
+
+  private cycleAbility(delta: number): void {
+    const c = CHARACTERS[this.selectedIdx]!;
+    const bible = BIBLES[c.id]!;
+    if (bible.abilities.length === 0) return;
+    this.abilityIdx =
+      (this.abilityIdx + delta + bible.abilities.length) % bible.abilities.length;
+    this.renderAbility(bible);
+  }
+
+  private renderAbility(bible: CharBible): void {
+    this.abilitySlotsEl.innerHTML = '';
+    if (bible.abilities.length === 0) {
+      this.abilityNameEl.textContent = 'Em breve';
+      this.abilityDescEl.textContent =
+        'Habilidades dessa heroína serão reveladas quando ela for jogável.';
+      this.cycleHintEl.style.visibility = 'hidden';
+      return;
+    }
+    this.cycleHintEl.style.visibility = '';
+    const active = bible.abilities[this.abilityIdx]!;
+    for (const ab of bible.abilities) {
+      const slot = document.createElement('span');
+      slot.className = styles.heroAbilitySlot!;
+      slot.textContent = ab.slot;
+      slot.dataset.active = ab.slot === active.slot ? 'true' : 'false';
+      this.abilitySlotsEl.appendChild(slot);
+    }
+    this.abilityNameEl.textContent = `${active.slot} · ${active.name}`;
+    this.abilityDescEl.textContent = active.desc;
+  }
+
 }

@@ -2,31 +2,168 @@
   "id": "forest-1-1",
   "name": "Floresta dos Elfos — 1",
   "biome": "forest",
-  "width": 1280,
-  "height": 720,
-  "playerStart": { "x": 80, "y": 416 },
-  "ground": {
-    "image": "/assets/floresta/maps/forest-1-1/ground.png",
-    "y": 480,
-    "h": 240
+  "width": 1536,
+  "height": 512,
+  "playerStart": {
+    "x": 73,
+    "y": 382
   },
-  "loadingImage": "/assets/floresta/maps/forest-1-1/loading.png",
+  "ground": {
+    "image": "/assets/floresta/maps/forest-1-1/map-elven.png",
+    "y": 0,
+    "h": 512
+  },
   "shapes": [
-    { "kind": "solid", "x": -24, "y": 0, "w": 24, "h": 720 },
-    { "kind": "solid", "x": 1280, "y": 0, "w": 24, "h": 720 },
-    { "kind": "solid", "x": 0, "y": 480, "w": 1280, "h": 240 },
-    { "kind": "oneway", "x": 240, "y": 400, "w": 180, "h": 12, "image": "/assets/floresta/maps/forest-1-1/platform.png" },
-    { "kind": "oneway", "x": 580, "y": 340, "w": 220, "h": 12, "image": "/assets/floresta/maps/forest-1-1/platform.png" },
-    { "kind": "oneway", "x": 880, "y": 400, "w": 180, "h": 12, "image": "/assets/floresta/maps/forest-1-1/platform.png" },
-    { "kind": "trigger", "id": "portal", "x": 1136, "y": 400, "w": 88, "h": 80 }
+    {
+      "kind": "solid",
+      "x": 1,
+      "y": 418,
+      "w": 1536,
+      "h": 94
+    },
+    {
+      "kind": "solid",
+      "x": 320,
+      "y": 396,
+      "w": 1217,
+      "h": 21
+    },
+    {
+      "kind": "slope",
+      "dir": "right",
+      "x": 270,
+      "y": 397,
+      "w": 50,
+      "h": 18
+    },
+    {
+      "kind": "oneway",
+      "x": 272,
+      "y": 277,
+      "w": 352,
+      "h": 28
+    },
+    {
+      "kind": "oneway",
+      "x": 698,
+      "y": 222,
+      "w": 339,
+      "h": 30
+    },
+    {
+      "kind": "oneway",
+      "x": -4,
+      "y": 326,
+      "w": 196,
+      "h": 4
+    },
+    {
+      "kind": "oneway",
+      "x": 75,
+      "y": 180,
+      "w": 128,
+      "h": 4
+    },
+    {
+      "kind": "oneway",
+      "x": 1145,
+      "y": 273,
+      "w": 391,
+      "h": 7
+    },
+    {
+      "kind": "oneway",
+      "x": 1256,
+      "y": 62,
+      "w": 181,
+      "h": 4
+    },
+    {
+      "kind": "solid",
+      "x": -7,
+      "y": -96,
+      "w": 4,
+      "h": 517
+    },
+    {
+      "kind": "solid",
+      "x": 1539,
+      "y": -151,
+      "w": 4,
+      "h": 658
+    },
+    {
+      "kind": "oneway",
+      "x": 1168,
+      "y": 149,
+      "w": 98,
+      "h": 5
+    },
+    {
+      "kind": "oneway",
+      "x": 1392,
+      "y": 176,
+      "w": 60,
+      "h": 4
+    },
+    {
+      "kind": "oneway",
+      "x": 116,
+      "y": 230,
+      "w": 32,
+      "h": 4
+    }
   ],
   "spawns": [
-    { "type": "slim", "x": 384 },
-    { "type": "slim", "x": 512 },
-    { "type": "slim", "x": 690, "y": 296 },
-    { "type": "slim", "x": 940, "y": 356 },
-    { "type": "slim", "x": 1020, "y": 356 },
-    { "type": "racoon", "x": 768 },
-    { "type": "racoon", "x": 1200 }
+    {
+      "type": "slim",
+      "x": 440,
+      "y": 249
+    },
+    {
+      "type": "racoon",
+      "x": 1224,
+      "y": 248
+    },
+    {
+      "type": "slim",
+      "x": 872,
+      "y": 192
+    },
+    {
+      "type": "slim",
+      "x": 736,
+      "y": 360
+    },
+    {
+      "type": "slim",
+      "x": 304,
+      "y": 248
+    },
+    {
+      "type": "slim",
+      "x": 144,
+      "y": 152
+    },
+    {
+      "type": "racoon",
+      "x": 1224,
+      "y": 120
+    },
+    {
+      "type": "racoon",
+      "x": 992,
+      "y": 192
+    },
+    {
+      "type": "racoon",
+      "x": 744,
+      "y": 192
+    },
+    {
+      "type": "racoon",
+      "x": 568,
+      "y": 248
+    }
   ]
 }

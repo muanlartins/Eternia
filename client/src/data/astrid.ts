@@ -1,4 +1,4 @@
-export const ELESIS = {
+export const ASTRID = {
   kind: 'knight' as const,
   hasAirDash: true,
   hasParry: true,
@@ -14,6 +14,7 @@ export const ELESIS = {
   walkToRunHoldMs: 180,
   doubleTapWindowMs: 250,
 
+  maxJumps: 2,
   jumpInitialVy: -600,
   doubleJumpInitialVy: -660,
   gravity: 2200,
@@ -119,4 +120,4 @@ export const ELESIS = {
   },
 } as const;
 
-export type ElesisSpec = typeof ELESIS;
+export type AstridSpec = typeof ASTRID;

@@ -1,13 +1,13 @@
 import { Container, Graphics } from 'pixi.js';
-import type { CharacterSpec } from '../data/archer.js';
+import type { CharacterSpec } from '../data/naia.js';
 import type { BuffSpec, PlayerModifiers } from '../data/buffs.js';
 import { DEFAULT_MODIFIERS } from '../data/buffs.js';
 import type { RunModifier } from '../data/modifiers.js';
 import type { Input } from './Input.js';
 import { Projectile } from './Projectile.js';
-import { PlayerState, STATE_COLOR, type AABB, type ActiveHit, type Facing } from './types.js';
+import { PlayerState, STATE_COLOR, type AABB, type ActiveHit, type Facing, type SlopeBox } from './types.js';
 
-const GROUND_Y = 480;
+const DEFAULT_GROUND_Y = 480;
 
 interface HitPhase {
   readonly active: readonly [number, number];
@@ -23,11 +23,36 @@ interface HitPhase {
 
 const SKILL_KEYS = ['skill1', 'skill2', 'skill3'] as const;
 
+interface PendingArrowDrop {
+  remainingMs: number;
+  spawnX: number;
+  spawnY: number;
+  count: number;
+  pattern: 'vertical-rain' | 'horizontal-rain';
+  damage: number;
+  knockback: number;
+  facing: -1 | 1;
+}
+
+interface PendingPlayerArrow {
+  remainingMs: number;
+  damage: number;
+  knockback: number;
+  facing: -1 | 1;
+  vyBias?: number;
+  gravityMul?: number;
+  lifetimeMs?: number;
+  spawnYOffset?: number;
+}
+
 export class Player {
   x = 0;
-  y = GROUND_Y - 64;
+  y = DEFAULT_GROUND_Y - 64;
   vx = 0;
   vy = 0;
+  worldFloorY = DEFAULT_GROUND_Y;
+  spawnX = 80;
+  spawnY = DEFAULT_GROUND_Y - 64;
 
   facing: Facing = 1;
   state: PlayerState = PlayerState.Idle;
@@ -85,6 +110,8 @@ export class Player {
 
   spec: CharacterSpec;
   private pendingArrows: Projectile[] = [];
+  private pendingArrowDrops: PendingArrowDrop[] = [];
+  private pendingPlayerArrows: PendingPlayerArrow[] = [];
 
   constructor(spec: CharacterSpec) {
     this.spec = spec;
@@ -124,39 +151,179 @@ export class Player {
       return;
     }
     if (this.state === PlayerState.Skill1) {
-      this.spawnArrow(damage, knockback, { angleDeg: -15 });
-      this.spawnArrow(damage, knockback, { angleDeg: 0 });
-      this.spawnArrow(damage, knockback, { angleDeg: 15 });
+      // A · Rajada de Flechas — 5 arrows in rapid SEQUENCE (one after another),
+      // same direction as basic shot. Direction locked to cast moment.
+      const N = 5;
+      const intervalMs = 55;
+      for (let i = 0; i < N; i++) {
+        this.pendingPlayerArrows.push({
+          remainingMs: i * intervalMs,
+          damage,
+          knockback,
+          facing: this.facing,
+        });
+      }
       return;
     }
     if (this.state === PlayerState.Skill2) {
-      this.spawnArrow(Math.round(damage * 1.4), knockback, { angleDeg: -45, vxMul: 1.1 });
+      // S · Flecha-Tempestade — main "charged" arrow flies in upward arc,
+      // expires EXACTLY at the rain spawn point. No visual gap.
+      const rainDelayMs = 360;
+      const apexDx = 200;       // horizontal distance to rain spawn
+      const apexDy = -220;      // negative = above player
+      const t = rainDelayMs / 1000;
+      const g = this.spec.arrowGravity;
+      // Solve trajectory: x(t) = vx*t, y(t) = vy*t + 0.5*g*t²
+      const requiredVx = (this.facing * apexDx) / t;
+      const requiredVy = (apexDy - 0.5 * g * t * t) / t;
+      const cx = this.x + this.spec.width / 2 + this.facing * this.spec.arrowSpawnDx;
+      const cy = this.y + this.spec.height / 2 + this.spec.arrowSpawnDy;
+      const charged = new Projectile(
+        cx, cy,
+        requiredVx,
+        Math.round(damage * 0.4),
+        knockback * 0.4,
+        this.spec.arrowWidth + 6,
+        this.spec.arrowHeight + 4,
+        rainDelayMs,
+        this.facing,
+        undefined,
+        {
+          vy: requiredVy,
+          gravity: g,
+          owner: 'player',
+          visual: 'arrow',
+        },
+      );
+      this.pendingArrows.push(charged);
+      this.pendingArrowDrops.push({
+        remainingMs: rainDelayMs,
+        spawnX: cx + this.facing * apexDx,
+        spawnY: cy + apexDy,
+        count: 9,
+        pattern: 'vertical-rain',
+        damage: Math.round(damage * 0.55),
+        knockback: knockback * 0.5,
+        facing: this.facing,
+      });
       return;
     }
     if (this.state === PlayerState.Skill3) {
-      this.spawnArrow(damage, knockback, { angleDeg: -3, vxMul: 1.3, pierce: 5 });
-      this.spawnArrow(damage, knockback, { angleDeg: 0, vxMul: 1.3, pierce: 5 });
-      this.spawnArrow(damage, knockback, { angleDeg: 3, vxMul: 1.3, pierce: 5 });
+      // D · Tríplice Tempestade — 5 tight parallel lines, 8 volleys × 2 arrows.
+      // Each volley picks 2 of 5 lines (random). With basic-arrow gravity,
+      // all arrows trace identical parabolic arcs offset vertically — visually
+      // parallel curves, not flat horizontals. Total: 16 arrows.
+      const lineOffsets = [-30, -15, 0, 15, 30];
+      const volleys = 8;
+      const volleyIntervalMs = 80;
+      const linesPerVolley = 2;
+      const perArrowDmg = Math.round(damage * 0.22);
+      const perArrowKb = knockback * 0.22;
+      for (let v = 0; v < volleys; v++) {
+        const shuffled = [...lineOffsets].sort(() => Math.random() - 0.5);
+        const picks = shuffled.slice(0, linesPerVolley);
+        for (const offset of picks) {
+          this.pendingPlayerArrows.push({
+            remainingMs: v * volleyIntervalMs,
+            damage: perArrowDmg,
+            knockback: perArrowKb,
+            facing: this.facing,
+            spawnYOffset: offset,
+            vyBias: 0,
+            gravityMul: 1,
+            lifetimeMs: this.spec.arrowLifetimeMs,
+          });
+        }
+      }
       return;
     }
     this.spawnArrow(damage, knockback);
   }
 
+  private executeArrowDrop(drop: PendingArrowDrop): void {
+    if (this.spec.kind !== 'archer') return;
+    const aw = this.spec.arrowWidth;
+    const ah = this.spec.arrowHeight;
+    const baseSpeed = this.spec.arrowSpeed;
+    if (drop.pattern === 'vertical-rain') {
+      const spread = 90;
+      for (let i = 0; i < drop.count; i++) {
+        const xOffset = (i - (drop.count - 1) / 2) * (spread / drop.count) * 1.4;
+        const cx = drop.spawnX + xOffset + (Math.random() - 0.5) * 18;
+        const cy = drop.spawnY + (Math.random() - 0.5) * 22;
+        const arrow = new Projectile(
+          cx,
+          cy,
+          (Math.random() - 0.5) * 40,
+          drop.damage,
+          drop.knockback,
+          aw,
+          ah,
+          1100,
+          drop.facing,
+          undefined,
+          {
+            vy: 280,
+            gravity: this.spec.arrowGravity * 1.6,
+            owner: 'player',
+            visual: 'arrow',
+          },
+        );
+        this.pendingArrows.push(arrow);
+      }
+      return;
+    }
+    // horizontal-rain: continuing forward, tight vertical spread
+    for (let i = 0; i < drop.count; i++) {
+      const vyOff = (i - (drop.count - 1) / 2) * 18;
+      const arrow = new Projectile(
+        drop.spawnX,
+        drop.spawnY,
+        drop.facing * baseSpeed * 0.85,
+        drop.damage,
+        drop.knockback,
+        aw,
+        ah,
+        700,
+        drop.facing,
+        undefined,
+        {
+          vy: vyOff,
+          gravity: this.spec.arrowGravity * 0.85,
+          owner: 'player',
+          visual: 'arrow',
+        },
+      );
+      this.pendingArrows.push(arrow);
+    }
+  }
+
   private spawnArrow(
     damage: number,
     knockback: number,
-    opts?: { vyBias?: number; vxMul?: number; angleDeg?: number; pierce?: number },
+    opts?: {
+      vyBias?: number;
+      vxMul?: number;
+      angleDeg?: number;
+      pierce?: number;
+      lifetimeMs?: number;
+      facingOverride?: -1 | 1;
+      gravityMul?: number;
+      spawnYOffset?: number;
+    },
   ) {
     if (this.spec.kind !== 'archer') return;
-    const cx = this.x + this.spec.width / 2 + this.facing * this.spec.arrowSpawnDx;
-    const cy = this.y + this.spec.height / 2 + this.spec.arrowSpawnDy;
+    const facing = opts?.facingOverride ?? this.facing;
+    const cx = this.x + this.spec.width / 2 + facing * this.spec.arrowSpawnDx;
+    const cy =
+      this.y + this.spec.height / 2 + this.spec.arrowSpawnDy + (opts?.spawnYOffset ?? 0);
     const speed = this.spec.arrowSpeed * (opts?.vxMul ?? 1);
     const angleRad = ((opts?.angleDeg ?? 0) * Math.PI) / 180;
-    const vx = this.facing * speed * Math.cos(angleRad);
+    const vx = facing * speed * Math.cos(angleRad);
     const vy = (opts?.vyBias ?? 0) + speed * Math.sin(angleRad);
     const projOpts: import('./Projectile.js').ProjectileOptions = {
       vy,
-      gravity: this.spec.arrowGravity,
+      gravity: this.spec.arrowGravity * (opts?.gravityMul ?? 1),
       owner: 'player',
       visual: 'arrow',
     };
@@ -169,8 +336,8 @@ export class Player {
       knockback,
       this.spec.arrowWidth,
       this.spec.arrowHeight,
-      this.spec.arrowLifetimeMs,
-      this.facing,
+      opts?.lifetimeMs ?? this.spec.arrowLifetimeMs,
+      facing,
       undefined,
       projOpts,
     );
@@ -187,6 +354,7 @@ export class Player {
     input: Input,
     onewayBoxes: readonly AABB[] = [],
     solidBoxes: readonly AABB[] = [],
+    slopeBoxes: readonly SlopeBox[] = [],
   ) {
     this.stateTimeMs += dtMs;
     this.coyoteMs = Math.max(0, this.coyoteMs - dtMs);
@@ -201,6 +369,34 @@ export class Player {
 
     for (let i = 0; i < this.skillCooldowns.length; i++) {
       this.skillCooldowns[i] = Math.max(0, this.skillCooldowns[i]! - dtMs);
+    }
+
+    for (let i = this.pendingArrowDrops.length - 1; i >= 0; i--) {
+      const d = this.pendingArrowDrops[i]!;
+      d.remainingMs -= dtMs;
+      if (d.remainingMs <= 0) {
+        this.executeArrowDrop(d);
+        this.pendingArrowDrops.splice(i, 1);
+      }
+    }
+    for (let i = this.pendingPlayerArrows.length - 1; i >= 0; i--) {
+      const a = this.pendingPlayerArrows[i]!;
+      a.remainingMs -= dtMs;
+      if (a.remainingMs <= 0) {
+        const opts: {
+          vyBias?: number;
+          facingOverride: -1 | 1;
+          gravityMul?: number;
+          lifetimeMs?: number;
+          spawnYOffset?: number;
+        } = { facingOverride: a.facing };
+        if (a.vyBias !== undefined) opts.vyBias = a.vyBias;
+        if (a.gravityMul !== undefined) opts.gravityMul = a.gravityMul;
+        if (a.lifetimeMs !== undefined) opts.lifetimeMs = a.lifetimeMs;
+        if (a.spawnYOffset !== undefined) opts.spawnYOffset = a.spawnYOffset;
+        this.spawnArrow(a.damage, a.knockback, opts);
+        this.pendingPlayerArrows.splice(i, 1);
+      }
     }
 
     if (this.onGround && input.justPressed('down') && this.chargingAllowed()) {
@@ -359,6 +555,7 @@ export class Player {
       const overlapB = s.y + s.h - this.y;
       const minH = Math.min(overlapL, overlapR);
       const minV = Math.min(overlapT, overlapB);
+      const STEP_UP_HEIGHT = 24;
       if (minV <= minH) {
         if (overlapT < overlapB) {
           this.y = s.y - this.spec.height;
@@ -367,6 +564,9 @@ export class Player {
           this.y = s.y + s.h;
           if (this.vy < 0) this.vy = 0;
         }
+      } else if (overlapT > 0 && overlapT <= STEP_UP_HEIGHT && this.vy >= 0) {
+        this.y = s.y - this.spec.height;
+        if (this.vy > 0) this.vy = 0;
       } else {
         if (overlapL < overlapR) {
           this.x = s.x - this.spec.width;
@@ -378,11 +578,18 @@ export class Player {
       }
     }
 
-    let effectiveGroundY = GROUND_Y;
+    let effectiveGroundY = this.worldFloorY;
     const playerCenterX = this.x + this.spec.width / 2;
     for (const s of solidBoxes) {
       if (playerCenterX < s.x || playerCenterX > s.x + s.w) continue;
       if (s.y < effectiveGroundY && s.y + s.h > this.y) effectiveGroundY = s.y;
+    }
+    for (const s of slopeBoxes) {
+      if (playerCenterX < s.x || playerCenterX > s.x + s.w) continue;
+      const localX = playerCenterX - s.x;
+      const t = Math.max(0, Math.min(1, localX / s.w));
+      const slopeY = s.dir === 'right' ? s.y + s.h * (1 - t) : s.y + s.h * t;
+      if (slopeY < effectiveGroundY && s.y + s.h > this.y) effectiveGroundY = slopeY;
     }
     if (this.dropThroughMs <= 0) {
       for (const p of onewayBoxes) {
@@ -629,7 +836,7 @@ export class Player {
       this.setState(PlayerState.Fall);
     }
 
-    const heightAboveGround = (GROUND_Y - this.spec.height) - this.y;
+    const heightAboveGround = (this.worldFloorY - this.spec.height) - this.y;
 
     const dtap = input.consumeDoubleTap();
     if (this.spec.hasAirDash && dtap !== 0 && !this.airDashUsed && ax === dtap) {
@@ -655,7 +862,7 @@ export class Player {
       return;
     }
 
-    if (this.jumpBufferMs > 0 && this.jumpsUsed < 2) {
+    if (this.jumpBufferMs > 0 && this.jumpsUsed < this.spec.maxJumps) {
       this.startDoubleJump();
     }
   }
@@ -686,7 +893,13 @@ export class Player {
   }
 
   private tickDash(dtMs: number, input: Input, ax: number) {
-    this.vy = 0;
+    if (this.onGround) {
+      this.vy = 0;
+    } else {
+      const dt = dtMs / 1000;
+      const g = this.vy >= 0 ? this.spec.gravity * this.spec.fallGravityMultiplier : this.spec.gravity;
+      this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
+    }
 
     if (input.justPressed('dodge') && this.dodgeBar >= this.spec.dodgeStandCost) {
       this.dodgeBar -= this.spec.dodgeStandCost;
@@ -793,7 +1006,7 @@ export class Player {
     return false;
   }
 
-  private tickAttack(_dtMs: number, input: Input, comboIdx: number) {
+  private tickAttack(dtMs: number, input: Input, comboIdx: number) {
     if (this.tryDefensiveCancel(input)) return;
     const spec = this.spec.comboZ[comboIdx]!;
 
@@ -801,6 +1014,15 @@ export class Player {
       this.vx = this.facing * spec.vxPush;
     } else {
       this.vx = 0;
+    }
+
+    if (!this.onGround) {
+      const dt = dtMs / 1000;
+      const g =
+        this.vy >= 0
+          ? this.spec.gravity * this.spec.fallGravityMultiplier
+          : this.spec.gravity;
+      this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
     }
 
     const nw = spec.nextWindow;
@@ -821,14 +1043,29 @@ export class Player {
     }
   }
 
-  private tickSkill(_dtMs: number, input: Input, skillIdx: number) {
+  private tickSkill(dtMs: number, input: Input, skillIdx: number) {
     if (this.tryDefensiveCancel(input)) return;
     if (this.consumeSkillBuffer()) return;
-    this.vx = 0;
-    this.vy = 0;
     const skill = this.skillByIdx(skillIdx);
-    if (this.stateTimeMs >= skill.duration) {
+    const lastHitEnd = Math.max(...skill.hits.map((h) => h.active[1]));
+
+    // After the last active hit window + small post-fire buffer, return control
+    // to the player so they can move/turn while queued sub-arrows still fire.
+    if (this.stateTimeMs >= lastHitEnd + 60) {
       this.setState(PlayerState.Idle);
+      return;
+    }
+
+    this.vx = 0;
+    if (this.onGround) {
+      this.vy = 0;
+    } else {
+      const dt = dtMs / 1000;
+      const g =
+        this.vy >= 0
+          ? this.spec.gravity * this.spec.fallGravityMultiplier
+          : this.spec.gravity;
+      this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
     }
   }
 
@@ -838,6 +1075,14 @@ export class Player {
     const decel = this.spec.groundFriction * dt;
     if (this.vx > 0) this.vx = Math.max(0, this.vx - decel);
     else if (this.vx < 0) this.vx = Math.min(0, this.vx + decel);
+
+    if (!this.onGround) {
+      const g =
+        this.vy >= 0
+          ? this.spec.gravity * this.spec.fallGravityMultiplier
+          : this.spec.gravity;
+      this.vy = Math.min(this.spec.maxFallSpeed, this.vy + g * dt);
+    }
 
     if (this.stateTimeMs >= this.spec.dashAtk.duration) {
       this.setState(PlayerState.Idle);
@@ -996,8 +1241,8 @@ export class Player {
   }
 
   teleportToStart() {
-    this.x = 80;
-    this.y = GROUND_Y - this.spec.height;
+    this.x = this.spawnX;
+    this.y = this.spawnY;
     this.vx = 0;
     this.vy = 0;
     this.airAtkUsed = false;

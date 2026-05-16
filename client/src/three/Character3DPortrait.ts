@@ -158,7 +158,7 @@ export class Character3DPortrait {
     const base = await loadAnyModel(url);
     this.installModel(base);
     if (this.modelRoot && isNaiaModelUrl(this.modelUrl)) {
-      await attachNaiaProps(this.modelRoot);
+      await attachNaiaProps(this.modelRoot, this.modelUrl);
       if (this.toonOn) {
         applyToonToTree(this.modelRoot, this.originalMaterials, this.toonGradient);
       }

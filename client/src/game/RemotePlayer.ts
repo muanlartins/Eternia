@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import { ELESIS } from '../data/elesis.js';
+import { ASTRID } from '../data/astrid.js';
 import type { RemoteStatePayload } from './Network.js';
 
 const LERP_RATE = 24;
@@ -45,7 +45,7 @@ export class RemotePlayer {
       },
     });
     this.label.anchor.set(0.5, 1);
-    this.label.x = ELESIS.width / 2;
+    this.label.x = ASTRID.width / 2;
     this.label.y = -22;
     this.view.addChild(this.label);
 
@@ -91,19 +91,19 @@ export class RemotePlayer {
   private redraw() {
     this.body.clear();
     this.body
-      .rect(0, 0, ELESIS.width, ELESIS.height)
+      .rect(0, 0, ASTRID.width, ASTRID.height)
       .fill({ color: 0x88aaff, alpha: GHOST_ALPHA })
       .stroke({ color: 0xddddee, width: 2, alpha: 0.85 });
 
-    const fy = ELESIS.height * 0.4;
-    const cx = ELESIS.width / 2;
-    const tipX = cx + this.targetFacing * (ELESIS.width * 0.55);
+    const fy = ASTRID.height * 0.4;
+    const cx = ASTRID.width / 2;
+    const tipX = cx + this.targetFacing * (ASTRID.width * 0.55);
     this.body
       .moveTo(cx, fy)
       .lineTo(tipX, fy)
       .stroke({ color: 0xffffff, width: 2, alpha: 0.85 });
 
-    const barW = ELESIS.width;
+    const barW = ASTRID.width;
     const barH = 3;
     const pct = Math.max(0, Math.min(1, this.targetHp / this.targetMaxHp));
     this.hpBg.clear();

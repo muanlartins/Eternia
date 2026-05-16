@@ -18,7 +18,7 @@ const STAGE_INFO: Record<string, StageCardInfo> = {
     lore: '"As árvores ainda lembram o nome dos primeiros viajantes."',
     mobs: ['Forest Sprite', 'Bramble Beast'],
     drops: [],
-    artUrl: null,
+    artUrl: '/assets/floresta/maps/forest-1-1/map.png',
   },
 };
 
@@ -84,14 +84,17 @@ export class RoomList {
             </div>
             <div class="${styles.roomList}" data-rooms></div>
             <div class="${styles.roomEmpty}" data-empty style="display:none">
-              Nenhuma sala disponível.<br/>
+              <div>Nenhuma sala disponível.</div>
               <span class="${styles.roomEmptyHint}">Crie a sua para começar.</span>
             </div>
           </section>
         </div>
 
         <footer class="${styles.dialogFoot}">
-          <button class="${styles.backLink}" data-backlink type="button">← voltar ao mapa</button>
+          <button class="${styles.backChip}" data-backlink type="button" title="Voltar ao mapa (Esc)">
+            <span class="${styles.backChipArrow}">←</span>
+            <span class="${styles.backChipLabel}">Voltar ao mapa</span>
+          </button>
           <button class="${styles.createBtn}" data-create type="button">
             <span class="${styles.createBtnPlus}">+</span>
             Criar sala
@@ -183,9 +186,11 @@ export class RoomList {
     this.listEl.innerHTML = '';
     if (rooms.length === 0) {
       this.emptyEl.style.display = '';
+      this.listEl.style.display = 'none';
       return;
     }
     this.emptyEl.style.display = 'none';
+    this.listEl.style.display = '';
     for (const r of rooms) {
       const row = document.createElement('button');
       row.className = styles.roomRow!;

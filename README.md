@@ -5,6 +5,8 @@ Personal browser-based action game. Inspired by Grand Chase Season 1 BR (Level U
 
 **Status:** Phases 0–9 done. Floresta dos Elfos is fully playable in 3D (Naia + Forest Sprite + Bramble Beast) with painted parallax, file-based audio, and Tailscale-alpha co-op. See `docs/STATUS.md` for the live snapshot and `docs/architecture.md` for current code shape.
 
+**Current blocker:** Phase 10+ work is paused on a personal-commitment decision about how to handle character animations. Today only Naia's `Idle` clip is authorized — the runtime accepts walk/jump/shoot/hit but no-ops them. Picking an animation pipeline (Mixamo retarget on the Tripo rig vs. hand-keyed vs. extending the existing procedural-anim layer) and committing the time to author the clips is the gating item before more content (2nd character Astrid, Pântano biome) lands.
+
 > Private project, friends-only access. Not for commercial use. No "Grand Chase" branding
 > in distributable form.
 

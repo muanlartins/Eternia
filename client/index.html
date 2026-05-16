@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eternia</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -58,21 +60,9 @@
         #ui-overlay > * {
             pointer-events: auto;
         }
-        #status {
-            position: fixed;
-            top: 12px;
-            left: 16px;
-            font-size: 11px;
-            font-family: 'JetBrains Mono', ui-monospace, monospace;
-            color: rgba(184, 194, 187, 0.4);
-            letter-spacing: 0.08em;
-            z-index: 100;
-            pointer-events: none;
-        }
     </style>
 </head>
 <body>
-    <div id="status">ETERNIA · v0.0.1</div>
     <div id="viewport">
         <div id="stage">
             <div id="game-container"></div>

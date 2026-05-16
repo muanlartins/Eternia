@@ -1,0 +1,247 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: block;
+  background-color: #050807;
+  background-image:
+    radial-gradient(ellipse at center, #0c1612 0%, #050807 70%, #000 100%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: all;
+  transition: opacity 0.5s ease-out;
+  overflow: hidden;
+}
+
+.root[data-state='hiding'] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.root[data-state='hidden'] {
+  display: none;
+}
+
+/* Atmospheric fallback (visible only if art doesn't load) */
+
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 400ms ease-out;
+}
+
+.root[data-art-loaded='true'] .atmosphere {
+  opacity: 0;
+}
+
+.tint {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    rgba(46, 139, 87, 0.18) 0%,
+    transparent 60%
+  );
+}
+
+.beam {
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  width: 70%;
+  height: 80%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(212, 165, 116, 0.10) 0%,
+    transparent 55%
+  );
+  filter: blur(10px);
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' /></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.7'/></svg>");
+  mix-blend-mode: overlay;
+}
+
+/* Vignette overlay on top of art for text legibility */
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.35) 0%,
+      transparent 25%,
+      transparent 55%,
+      rgba(0, 0, 0, 0.55) 90%,
+      rgba(0, 0, 0, 0.75) 100%
+    );
+}
+
+/* ============= Logo top-left ============= */
+
+.logoCorner {
+  position: absolute;
+  top: 32px;
+  left: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  animation: fadeInLeft 0.7s ease-out 0.1s both;
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.logoImg {
+  max-width: 200px;
+  max-height: 80px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+}
+
+.logoText {
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: 36px;
+  letter-spacing: 0.16em;
+  color: #e8d9b3;
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.7),
+    0 0 22px rgba(212, 165, 116, 0.25);
+  margin: 0;
+  line-height: 1;
+}
+
+/* ============= Title bottom-center ============= */
+
+.title {
+  position: absolute;
+  bottom: 14%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+  animation: fadeInUp 0.8s ease-out 0.25s both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.titleEyebrow {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0.34em;
+  color: rgba(212, 165, 116, 0.75);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.titleName {
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: 76px;
+  letter-spacing: 0.18em;
+  color: #f0e3c0;
+  margin: 0;
+  line-height: 1;
+  text-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.85),
+    0 0 36px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(46, 139, 87, 0.15);
+}
+
+.titleQuote {
+  font-family: 'Pretendard', system-ui, sans-serif;
+  font-style: italic;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  color: rgba(232, 217, 179, 0.78);
+  margin: 14px auto 0;
+  max-width: 640px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+  line-height: 1.5;
+}
+
+/* ============= Progress bar bottom ============= */
+
+.progress {
+  position: absolute;
+  bottom: 3%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.6s ease-out 0.4s both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.progressBar {
+  width: 280px;
+  height: 2px;
+  background: rgba(232, 217, 179, 0.12);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progressBar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 35%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(212, 165, 116, 0.9),
+    transparent
+  );
+  animation: progressSlide 1.6s ease-in-out infinite;
+}
+
+@keyframes progressSlide {
+  0% { left: -35%; }
+  100% { left: 100%; }
+}
+
+.progressLabel {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: rgba(232, 217, 179, 0.5);
+  text-transform: uppercase;
+}

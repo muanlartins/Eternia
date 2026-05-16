@@ -36,6 +36,10 @@ export interface AABB {
   h: number;
 }
 
+export interface SlopeBox extends AABB {
+  dir: 'left' | 'right';
+}
+
 export interface ActiveHit {
   bbox: AABB;
   damage: number;

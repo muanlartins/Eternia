@@ -1,12 +1,12 @@
-import { Application, Container, Graphics, Text } from 'pixi.js';
-import { ELESIS } from './data/elesis.js';
+import { Application, Container, Text } from 'pixi.js';
+import { ASTRID } from './data/astrid.js';
 import { BUFFS, pickRandomBuffs, type BuffSpec } from './data/buffs.js';
 import { Input } from './game/Input.js';
 import { Player } from './game/Player.js';
 import { Camera } from './game/Camera.js';
 import { Stage } from './game/Stage.js';
 import { Projectile } from './game/Projectile.js';
-import { ARCHER } from './data/archer.js';
+import { NAIA } from './data/naia.js';
 import { HitFx } from './game/HitFx.js';
 import { GameAudio, type BgmId, type HitIntensity } from './game/Audio.js';
 import { HtmlHud } from './ui/screens/Hud/Hud.js';
@@ -27,6 +27,7 @@ import { Auth, fetchLeaderboard, type Room } from './game/Auth.js';
 import './ui/tokens.css';
 import { Login } from './ui/screens/Login/Login.js';
 import { CharacterSelect as HtmlCharacterSelect } from './ui/screens/CharacterSelect/CharacterSelect.js';
+import { LoadingScreen } from './ui/screens/LoadingScreen/LoadingScreen.js';
 import { MissionSelect as HtmlMissionSelect } from './ui/screens/MissionSelect/MissionSelect.js';
 import { RoomList as HtmlRoomList } from './ui/screens/RoomList/RoomList.js';
 import { Lobby as HtmlLobby } from './ui/screens/Lobby/Lobby.js';
@@ -50,6 +51,9 @@ import {
   type NewRecordFlags,
 } from './game/Records.js';
 import { PlayerState, type AABB } from './game/types.js';
+import { createCamDevPanel } from './dev/cam-panel.js';
+import { createShaderDevPanel } from './dev/shader-dev-panel.js';
+import { loadShaderConfig } from './three/shader-config.js';
 
 function bgmIdForStage(stageId: string): BgmId {
   if (stageId === 'forest-1-4' || stageId === 'swamp-1-2') return 'boss';
@@ -119,9 +123,14 @@ function resolvePlayerVsBox(player: Player, box: AABB) {
 
 const GAME_W = 1024;
 const GAME_H = 576;
-const GROUND_Y = 480;
+const CAMERA_ZOOM = 1;
 
 async function main() {
+  const loadingScreen = new LoadingScreen({ minDurationMs: 2500 });
+  document.body.appendChild(loadingScreen.element);
+  // `naia3DPreloadResolve` / `naia3DPreloadPromise` are wired below after CharacterSelect is created.
+  // We tee the promise here so the loading screen can wait on it.
+
   const app = new Application();
   await app.init({
     width: GAME_W,
@@ -160,14 +169,8 @@ async function main() {
   const background = new Background(GAME_W, GAME_H);
   bgStage.addChild(background.container);
 
-  const ground = new Graphics();
-  ground
-    .rect(-5000, GROUND_Y, 10000, 200)
-    .fill({ color: 0x1f2937 });
-  worldStage.addChild(ground);
-
-  const input = new Input({ doubleTapWindowMs: ELESIS.doubleTapWindowMs });
-  const player = new Player(ELESIS);
+  const input = new Input({ doubleTapWindowMs: ASTRID.doubleTapWindowMs });
+  const player = new Player(ASTRID);
 
   let activeCharacterId = 'astrid';
 
@@ -198,6 +201,16 @@ async function main() {
     });
   }
 
+  function bindPlayerToStage() {
+    const spec = stage.spec;
+    player.worldFloorY = spec.height;
+    player.spawnX = spec.playerStart.x;
+    player.spawnY = spec.playerStart.y;
+    const fitZoom = GAME_H / spec.height;
+    camera.setZoom(fitZoom);
+    gameThreeLayer?.setZoom(fitZoom);
+  }
+
   void loadForestArt().then(() => {
     background.setStage(currentStageSpec().id);
   });
@@ -211,7 +224,57 @@ async function main() {
   const hitFx = new HitFx();
   worldStage.addChild(hitFx.container);
 
-  const camera = new Camera(worldStage, GAME_W, GAME_H);
+  const camera = new Camera(worldStage, GAME_W, GAME_H, 0.08, CAMERA_ZOOM);
+  let gameThreeLayer: GameThreeLayer | null = null;
+  let naia3DReady = false;
+  bindPlayerToStage();
+
+  const camDev = createCamDevPanel({
+    initialZoom: GAME_H / 512,
+    initialNaiaScale: 1.4,
+    onZoomChange: (z) => {
+      camera.setZoom(z);
+      gameThreeLayer?.setZoom(z);
+    },
+    onNaiaScaleChange: (s) => {
+      gameThreeLayer?.setNaiaScale(s);
+    },
+  });
+  document.body.appendChild(camDev.element);
+  if (new URLSearchParams(location.search).has('cam')) camDev.show();
+  window.addEventListener('keydown', (e) => {
+    if (e.key === '`' || e.key === '~') {
+      const t = e.target;
+      if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+      camDev.toggle();
+      e.preventDefault();
+    }
+  });
+
+  const shaderDev = createShaderDevPanel({
+    models: [
+      { id: 'naia', label: 'Naia (player)' },
+      { id: 'forest-sprite', label: 'Forest Sprite (mob)' },
+      { id: 'bramble-breast', label: 'Bramble Beast (mob)' },
+    ],
+    initialModelId: 'naia',
+    onConfigChange: (modelId, cfg) => {
+      if (modelId === 'naia') gameThreeLayer?.setShaderConfig(cfg);
+    },
+    onPullMats: (modelId, url) => {
+      console.log(`[shader-dev] pull mats requested for ${modelId} from ${url} — not wired in-game yet`);
+    },
+  });
+  document.body.appendChild(shaderDev.element);
+  if (new URLSearchParams(location.search).has('shader')) shaderDev.show();
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'l' && e.key !== 'L') return;
+    const t = e.target;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    shaderDev.toggle();
+    e.preventDefault();
+  });
 
   const htmlHud = new HtmlHud();
 
@@ -246,6 +309,9 @@ async function main() {
   refreshMiniMap();
 
   const auth = new Auth();
+  // Session persistence disabled — login screen always shows on boot.
+  // Remove this `auth.logout()` line to re-enable session persistence.
+  auth.logout();
 
   const uiOverlay = document.getElementById('ui-overlay');
   const htmlLogin = new Login();
@@ -253,6 +319,10 @@ async function main() {
 
   const htmlCharacterSelect = new HtmlCharacterSelect();
   uiOverlay?.appendChild(htmlCharacterSelect.element);
+  // Preload Naia 3D portrait so it's ready by the time the user lands on character select.
+  // Loading screen waits for this before hiding (alongside minDurationMs).
+  const naia3DPreloadPromise = htmlCharacterSelect.preload('naia');
+  void loadingScreen.hideAfterMin(naia3DPreloadPromise);
 
   const htmlMissionSelect = new HtmlMissionSelect();
   uiOverlay?.appendChild(htmlMissionSelect.element);
@@ -499,6 +569,7 @@ async function main() {
     stage.destroy();
     stage = newStage();
     stage.spawn();
+    bindPlayerToStage();
     background.setStage(currentStageSpec().id);
     refreshMiniMap();
     player.teleportToStart();
@@ -514,7 +585,6 @@ async function main() {
       name: b.name,
       description: b.description,
       rarity: b.rarity === 'rare' ? 'rare' : 'common',
-      glyph: b.name.charAt(0).toUpperCase(),
     };
   }
 
@@ -523,7 +593,6 @@ async function main() {
       name: m.name,
       description: m.description,
       rarity: 'modifier',
-      glyph: '★',
     };
   }
 
@@ -545,6 +614,7 @@ async function main() {
         stage.destroy();
         stage = newStage();
         stage.spawn();
+        bindPlayerToStage();
         background.setStage(currentStageSpec().id);
         player.teleportToStart();
         stagePhase = 'nextAnnounce';
@@ -559,7 +629,7 @@ async function main() {
   function showModifierPick(offers: readonly RunModifier[]) {
     htmlCardPick.show({
       eyebrow: 'Antes da partida',
-      title: 'Sele um caminho',
+      title: 'Selecione um caminho',
       subtitle: 'Cada caminho cobra um preço — escolha aquele que melhor se afina com seu instinto.',
       cards: offers.map(modifierToCard),
       hintLabel: 'selar caminho',
@@ -602,9 +672,30 @@ async function main() {
   function showRoomLobbyForRoom(room: Room) {
     htmlMissionSelect.hide();
     htmlRoomList.hide();
+    const missionMeta = currentMission.id === 'forest'
+      ? {
+          eyebrow: 'Bioma I · Floresta',
+          art: '/assets/floresta/maps/forest-1-1/map.png',
+          desc: '"As árvores ainda lembram o nome dos primeiros viajantes."',
+        }
+      : currentMission.id === 'swamp'
+        ? {
+            eyebrow: 'Bioma II · Pântano',
+            art: null,
+            desc: '"A névoa engole quem se demora demais entre os ciprestes."',
+          }
+        : {
+            eyebrow: currentMission.subtitle,
+            art: null,
+            desc: currentMission.description,
+          };
     htmlRoomLobby.show({
       code: room.code,
       youUserId: auth.getUserId(),
+      missionName: currentMission.name,
+      missionEyebrow: missionMeta.eyebrow,
+      missionDescription: missionMeta.desc,
+      missionArtUrl: missionMeta.art,
       onReadyToggle: () => {
         const me = lastRoomStatus?.members.find((m) => m.userId === auth.getUserId());
         net.sendReady(!(me?.ready ?? false));
@@ -721,22 +812,22 @@ async function main() {
   function onCharacterSelected(char: { id: string; name: string }) {
     activeCharacterId = char.id;
     if (char.id === 'naia') {
-      player.switchSpec(ARCHER);
+      player.switchSpec(NAIA);
       void initNaia3DLayer();
     } else {
-      player.switchSpec(ELESIS);
+      player.switchSpec(NAIA);
     }
     startMissionSelect();
   }
 
-  let gameThreeLayer: GameThreeLayer | null = null;
-  let naia3DReady = false;
   async function initNaia3DLayer(): Promise<void> {
     if (gameThreeLayer) return;
     if (!container) return;
-    gameThreeLayer = new GameThreeLayer(container, GAME_W, GAME_H);
+    gameThreeLayer = new GameThreeLayer(container, GAME_W, GAME_H, CAMERA_ZOOM);
     try {
-      await gameThreeLayer.loadNaia('/models/naia.glb');
+      await gameThreeLayer.loadNaia('/models/naia-mixamo.glb');
+      // Re-apply shader-dev config (the panel was created before this layer existed).
+      gameThreeLayer.setShaderConfig(loadShaderConfig('naia'));
       naia3DReady = true;
       player.setRenderingHidden(true);
     } catch (err) {
@@ -856,7 +947,7 @@ async function main() {
     const dtMs = hitPauseMs > 0 ? 0 : gameDtMs;
     hitPauseMs = Math.max(0, hitPauseMs - realDtMs);
 
-    player.update(dtMs, input, stage.getOnewayBoxes(), stage.getSolidBoxes());
+    player.update(dtMs, input, stage.getOnewayBoxes(), stage.getSolidBoxes(), stage.getSlopeBoxes());
     const newArrows = player.flushPendingArrows();
     if (newArrows.length > 0) {
       stage.addPlayerProjectiles(newArrows);
@@ -930,7 +1021,7 @@ async function main() {
               backstab,
             });
             hitFx.spark(c.x, c.y);
-            player.giveMp(ELESIS.mpPerHit);
+            player.giveMp(ASTRID.mpPerHit);
             if (hit.isCombo && player.modifiers.comboLifestealPct > 0) {
               player.heal(dmg * player.modifiers.comboLifestealPct);
             }
@@ -955,7 +1046,7 @@ async function main() {
               hitFx.spark(c.x + 10, c.y - 4);
               hitFx.spark(c.x - 10, c.y + 4);
             }
-            player.giveMp(ELESIS.mpPerHit);
+            player.giveMp(ASTRID.mpPerHit);
             if (hit.isCombo && player.modifiers.comboLifestealPct > 0) {
               player.heal(result.applied * player.modifiers.comboLifestealPct);
             }
@@ -1021,7 +1112,7 @@ async function main() {
       }
     }
 
-    stage.update(dtMs, player.x + ELESIS.width / 2);
+    stage.update(dtMs, player.x + ASTRID.width / 2);
 
     for (const proj of stage.getProjectiles()) {
       if (!proj.alive) continue;
@@ -1192,6 +1283,7 @@ async function main() {
         stage.destroy();
         stage = newStage();
         stage.spawn();
+        bindPlayerToStage();
         background.setStage(currentStageSpec().id);
         stagePhase = 'gameOver';
         stageTransitionTimerMs = 2000;
@@ -1363,8 +1455,8 @@ async function main() {
     }
 
     camera.follow(
-      player.x + ELESIS.width / 2,
-      player.y + ELESIS.height / 2,
+      player.x + ASTRID.width / 2,
+      player.y + ASTRID.height / 2,
       0,
       stage.spec.width,
       0,
